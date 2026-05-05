@@ -1,0 +1,39 @@
+
+navData = 
+
+  包含以下字段的 1×12 struct 数组:
+
+    satID
+    epoch
+    clockBias
+    clockDrift
+    clockDriftRate
+    IODE
+    Crs_m
+    Delta_n_rad_per_sec
+    M0_rad
+    Cuc_rad
+    e
+    Cus_rad
+    sqrtA_sqrtm
+    Toe_sec
+    Cic_rad
+    Omega0_rad
+    Cis_rad
+    i0_rad
+    Crc_m
+    omega_rad
+    OmegaDot_rad_per_sec
+    IDOT_rad_per_sec
+    Codes
+    GPS_Week_week
+    L2P_Flag
+    SvAcc_m
+    SvHealth
+    TGD_sec
+    IODC
+    TransmissionTime_sec
+    FitInterval_sec
+
+>> 
+>> 

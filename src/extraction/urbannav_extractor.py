@@ -1,7 +1,7 @@
 """
 UrbanNav Dataset Extraction
 Data source: https://github.com/IPNL-POLYU/UrbanNavDataset
-Locations: Hong Kong, Beijing, Taipei
+Locations: Hong Kong (HK-Medium-Urban-1, HK-Tunnel-1), Tokyo (Odaiba, Shinjuku)
 Format: GNSS raw measurements (need RTKLIB conversion) + ground truth
 """
 
@@ -26,11 +26,11 @@ class UrbanNavExtractor:
         self.output_dir = Path("data/processed/urbannav")
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Define location subdirectories
+        # Define location subdirectories (actual downloaded datasets)
         self.locations = {
-            'hong_kong': 'hong_kong',
-            'beijing': 'beijing',
-            'taipei': 'taipei'
+            'HK-Medium-Urban-1': 'HK-Medium-Urban-1',  # 33.7 GB - urban canyon HK
+            'HK-Tunnel-1': 'HK-Tunnel-1',              # 17 GB   - complete signal loss
+            'tokyo': 'tokyo',                           # 4.14 GB - Odaiba + Shinjuku
         }
 
     def extract_all_locations(self):

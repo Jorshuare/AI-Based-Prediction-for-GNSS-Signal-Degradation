@@ -20,7 +20,7 @@ class SupervisorVehicleExtractor:
     Raw formats: NMEA, Septentrio Binary (.sbf), Rinex
     """
 
-    def __init__(self, data_root: str = "data/vehicle"):
+    def __init__(self, data_root: str = "data/raw/supervisor/vehicle"):
         self.data_root = Path(data_root)
         self.output_dir = Path("data/processed/supervisor/vehicle")
         self.output_dir.mkdir(parents=True, exist_ok=True)

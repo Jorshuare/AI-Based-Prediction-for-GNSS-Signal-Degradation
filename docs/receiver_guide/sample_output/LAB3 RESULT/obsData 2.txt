@@ -1,0 +1,11 @@
+obsData = 
+
+  包含以下字段的 struct:
+
+        GPS: [1×5193 struct]
+    GLONASS: [1×4769 struct]
+    Galileo: [1×3771 struct]
+        BDS: [1×11630 struct]
+       QZSS: [1×1154 struct]
+       SBAS: [1×1655 struct]
+

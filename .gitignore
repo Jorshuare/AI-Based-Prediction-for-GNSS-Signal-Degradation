@@ -1,2 +1,86 @@
-/data
-/banks
+# ─── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# ─── Jupyter ──────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+
+# ─── OS artefacts ─────────────────────────────────────────────────────────────
+.DS_Store
+._*
+Thumbs.db
+desktop.ini
+
+# ─── Large raw data — do NOT push to GitHub ───────────────────────────────────
+# These are too large for Git and must be transferred separately (USB/cloud).
+# The folder structure and README files ARE tracked so others know what to put here.
+data/raw/public/nclt/*/gps.csv
+data/raw/public/nclt/*/gps_rtk.csv
+data/raw/public/nclt/*/gps_rtk_err.csv
+data/raw/public/oxford/**/*.csv
+data/raw/public/urbannav/**/*.obs
+data/raw/public/urbannav/**/*.nmea
+data/raw/public/urbannav/**/*.zip
+data/raw/supervisor/**/*.sbf
+data/raw/supervisor/**/*.24o
+data/raw/supervisor/**/*.25O
+data/raw/supervisor/**/*.25N
+data/raw/supervisor/**/*.25G
+data/raw/supervisor/**/*.25P
+data/raw/supervisor/**/*.25L
+data/raw/supervisor/**/*.25I
+data/raw/supervisor/**/*.pos
+data/raw/scenarios/**/*.sbf
+data/raw/scenarios/**/*.26O
+data/raw/scenarios/**/*.26N
+data/raw/scenarios/**/*.26G
+data/raw/scenarios/**/*.26P
+data/raw/scenarios/**/*.26L
+data/raw/scenarios/**/*.26I
+data/raw/scenarios/**/*.26B
+data/raw/scenarios/**/*.nmea
+
+# ─── Processed outputs — large, regenerable ───────────────────────────────────
+data/processed/**/*.pos
+data/processed/**/*.csv
+data/rinex/**/*.obs
+data/rinex/**/*.pos
+data/labelled/**/*.csv
+
+# ─── Banks (archive/scratch) — never push ─────────────────────────────────────
+banks/
+
+# ─── Media (photos) — too large for Git ──────────────────────────────────────
+media/field_photos/*
+media/team_photos/*
+# Keep the placeholder so folder structure is tracked
+!media/field_photos/.gitkeep
+!media/team_photos/.gitkeep
+
+# ─── Results (model weights, large outputs) ───────────────────────────────────
+results/*.pkl
+results/*.h5
+results/*.pt
+results/*.pth
+results/*.joblib
+
+# ─── Route planning charts (regenerable PNGs) ─────────────────────────────────
+route_planning/analysis/**/*.png
+
+# ─── VS Code ──────────────────────────────────────────────────────────────────
+.vscode/
+
+# ─── What IS tracked (overrides above) ───────────────────────────────────────
+# README files in every data folder — essential for onboarding
+!data/**/README.md
+!data/**/README.txt
+# .gitkeep placeholders
+!**/.gitkeep
+# KAIST PDFs kept in docs (small, useful reference)
+!docs/dataset_references/*.pdf

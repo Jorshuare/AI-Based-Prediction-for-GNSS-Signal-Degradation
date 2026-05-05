@@ -318,15 +318,117 @@ Recommended request list instead of downloading everything:
 
 ## Processing Plan After Collection
 
-After today, the next pipeline is:
+### What the Septentrio Receiver Gives You
 
-1. Copy all receiver logs and backup phone logs immediately
-2. Convert raw data to RINEX if required
-3. Process with RTKLIB
-4. Extract the GNSS degradation features
-5. Label each segment as CLEAN, WARNING, or DEGRADED
-6. Merge with supervisor data and public datasets
-7. Build temporal train, validation, and test splits
+When you stop recording, the receiver has written these files to its SD card or internal storage:
+
+| File            | What it is                                                                                                                          |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `SEPT????.sbf`  | Septentrio Binary Format — the raw binary recording of everything the receiver heard                                                |
+| `SEPT????.25O`  | RINEX 3 Observation file — the measurement log in open standard format (pseudorange + carrier phase + C/N0 per satellite per epoch) |
+| `SEPT????.25N`  | RINEX Navigation — GPS satellite orbital parameters                                                                                 |
+| `SEPT????.25G`  | RINEX Navigation — GLONASS satellite orbital parameters                                                                             |
+| `SEPT????.25P`  | RINEX Navigation — mixed constellation orbital parameters                                                                           |
+| `log_0000.nmea` | NMEA 0183 stream — human-readable position sentences ($GPGGA, $GPRMC etc.)                                                          |
+
+The `.25O` file is the most important one. Everything else supports it.
+
+### What RTKLIB Does With These Files
+
+RTKLIB is a free open-source GNSS post-processing toolkit. It takes the RINEX files and computes a much more accurate position solution than what the receiver reported live.
+
+**Input:**
+
+- Rover `.25O` — the moving receiver that collected the scenario
+- Base `.25O` — the stationary receiver left in open sky (if you ran rover + base mode)
+- Navigation files `.25N`, `.25G`, `.25P`
+
+**Output: a `.pos` file** — plain text, one line per second, looks like this:
+
+```
+%  GPST               latitude(deg)  longitude(deg)  height(m)  Q  ns  sdn(m)  sde(m)  sdu(m)  age  ratio
+2025/05/05 09:12:00  39.921234      116.402987       52.341     1  14  0.002   0.002   0.004   1.0  5.2
+2025/05/05 09:12:01  39.921256      116.402994       52.339     1  14  0.002   0.002   0.004   1.0  5.3
+2025/05/05 09:12:15  39.921301      116.403010       52.302     2  11  0.042   0.038   0.091   1.2  2.1
+2025/05/05 09:12:30  39.921399      116.403088       52.198     5   8  1.250   1.100   2.300   0.0  0.0
+```
+
+The `Q` column (quality) tells the whole story:
+
+| Q   | Name      | Accuracy | What it means physically                                             |
+| --- | --------- | -------- | -------------------------------------------------------------------- |
+| 1   | Fixed RTK | 1–3 cm   | Full satellite geometry, no multipath, ambiguity resolved            |
+| 2   | Float RTK | 10–30 cm | Partial blockage or moderate multipath, ambiguity not fully resolved |
+| 3   | SBAS      | ~1 m     | Satellite-based augmentation only                                    |
+| 4   | DGPS      | 1–3 m    | Differential correction without carrier phase                        |
+| 5   | Single    | 3–10 m   | No correction, raw pseudorange only — signal significantly degraded  |
+
+A transition from Q=1 through Q=2 to Q=5 is exactly the degradation event the model must learn to predict. The `sdn`, `sde`, `sdu` columns (standard deviation north, east, up in metres) and the `ns` column (satellite count) are the numerical features that lead the transition.
+
+### How to Run RTKLIB on Our Data
+
+**Option A — GUI (easiest for first use):**
+
+1. Open `C:\Program Files\RTKLIB\bin\rtkpost.exe`
+2. Set RINEX OBS (rover) to your `.25O` file
+3. Set RINEX OBS (base) to base `.25O` if available
+4. Set RINEX NAV to `.25N` and `.25G`
+5. Set Output to `data/processed/our_collection/scenario_A_solution.pos`
+6. Options → Positioning: Kinematic | L1+L2 | Ionosphere-free LC | Saastamoinen troposphere
+7. Click Execute
+
+**Option B — Automated pipeline (preferred for batch processing):**
+
+```powershell
+# After placing .25O files under data/raw/our_collection/scenario_A/ etc.:
+python src/processing/our_collection_processor.py --scenario A
+python src/processing/our_collection_processor.py --all
+```
+
+**Option C — Direct command line:**
+
+```powershell
+& "C:\Program Files\RTKLIB\bin\rnx2rtkp.exe" -p 2 -o solution.pos nav.25N nav.25G rover.25O base.25O
+# -p 2 = kinematic mode (moving receiver)
+# Omit base.25O if no base station was used
+```
+
+### Complete Post-Collection Pipeline
+
+```
+Step 1 — Copy files immediately
+  Copy all receiver files to data/raw/our_collection/scenario_A/ etc.
+  Back up to a second location (external drive or cloud).
+
+Step 2 — Run RTKLIB
+  python src/processing/our_collection_processor.py --all
+  → Output: data/processed/our_collection/scenario_A_solution.pos etc.
+
+Step 3 — Extract features from .pos files
+  python src/features/feature_extractor.py \
+    --input data/processed/our_collection/scenario_A_solution.pos \
+    --output data/processed/our_collection/scenario_A.features.csv \
+    --source our_collection_A
+  → Output: CSV with 35 features per epoch
+
+Step 4 — Label the features
+  python src/labeling/labeler.py
+  → Output: data/labelled/scenario_A_labelled.csv
+
+Step 5 — Process public datasets (NCLT, Oxford, UrbanNav)
+  python src/extraction/urbannav_extractor.py
+  python src/processing/nclt_processor.py      # after downloading NCLT
+  python src/processing/oxford_processor.py    # after downloading Oxford
+
+Step 6 — Assemble final dataset with train/val/test split
+  python src/features/dataset_assembler.py --split temporal
+  → Output: data/labelled/ train.csv, val.csv, test.csv
+
+Step 7 — Train the model
+  See models/ and notebooks/ for model code.
+```
+
+**Critical rule for step 6:** Always use a time-based split, never random. GNSS data is a time series. Random shuffling leaks future data into training and will make the model look better than it really is. The split must go: past → train, near-future → val, far-future → test.
 
 ## Final Decision Summary For Today
 

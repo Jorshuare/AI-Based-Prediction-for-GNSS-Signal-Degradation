@@ -19,7 +19,7 @@ class NCLTExtractor:
     Handles: gps.csv (raw), gps_rtk.csv (high accuracy)
     """
 
-    def __init__(self, data_root: str = "data/NCLT_data"):
+    def __init__(self, data_root: str = "data/raw/public/nclt"):
         self.data_root = Path(data_root)
         self.output_dir = Path("data/processed/nclt")
         self.output_dir.mkdir(parents=True, exist_ok=True)

@@ -18,7 +18,7 @@ class SupervisorDroneExtractor:
     Raw formats: Rinex observation files (.24o), RTKLIB solutions (.pos)
     """
 
-    def __init__(self, data_root: str = "data/drone"):
+    def __init__(self, data_root: str = "data/raw/supervisor/drone"):
         self.data_root = Path(data_root)
         self.output_dir = Path("data/processed/supervisor/drone")
         self.output_dir.mkdir(parents=True, exist_ok=True)
