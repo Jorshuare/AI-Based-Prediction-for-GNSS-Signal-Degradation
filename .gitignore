@@ -17,12 +17,11 @@ build/
 Thumbs.db
 desktop.ini
 
-# ─── Large raw data — do NOT push to GitHub ───────────────────────────────────
-# Entire raw data tree is excluded. Transfer via USB/cloud storage.
-# Folder structure and README files ARE tracked so teammates know what to place here.
+# ─── Large raw data 
+data
 data/raw/
 
-# ─── Processed outputs — large, regenerable ───────────────────────────────────
+# ─── Processed outputs 
 data/processed/
 data/rinex/
 data/labelled/
@@ -42,6 +41,7 @@ banks/
 # ─── Media (photos) — too large for Git ──────────────────────────────────────
 media/field_photos/*
 media/team_photos/*
+
 # Keep the placeholder so folder structure is tracked
 !media/field_photos/.gitkeep
 !media/team_photos/.gitkeep
