@@ -18,7 +18,7 @@ Thumbs.db
 desktop.ini
 
 # ─── Large raw data 
-data
+data/
 data/raw/
 
 # ─── Processed outputs 
