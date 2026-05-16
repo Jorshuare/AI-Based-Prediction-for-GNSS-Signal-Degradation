@@ -17,19 +17,22 @@ build/
 Thumbs.db
 desktop.ini
 
-# ─── Large raw data 
-data/
+# ─── Raw data ─────────────────
 data/raw/
-
-# ─── Processed outputs 
-data/processed/
 data/rinex/
-data/labelled/
 
-# But always track README files and folder placeholders inside data/
-!data/
-!data/raw/
-!data/raw/**/
+# ─── Processed outputs — CSV feature files ARE pushed; nothing else ─────────────
+# Block everything by default, then re-allow folders and CSVs.
+data/processed/**
+!data/processed/
+!data/processed/**/
+!data/processed/**/*.csv
+
+data/labelled/**
+!data/labelled/
+!data/labelled/*.csv
+
+# ─── Folder placeholders and docs ────────────────────────────────────────────────
 !data/**/README.md
 !data/**/README.txt
 !data/**/.gitkeep
@@ -37,18 +40,12 @@ data/labelled/
 
 # ─── Banks (archive/scratch) — never push ─────────────────────────────────────
 banks/
+josh_processed_data
+# ─── Media (photos)  ──────────────────────────────────────
 
-# ─── Media (photos) — too large for Git ──────────────────────────────────────
-media/field_photos/*
-media/team_photos/*
 
-# Keep the placeholder so folder structure is tracked
-!media/field_photos/.gitkeep
-!media/team_photos/.gitkeep
+# ─── Results  ─────────────────
 
-# ─── Results — charts/PNGs are tracked; model weights are not ─────────────────
-# Charts, figures, and analysis PNGs → pushed to GitHub (small, useful to share)
-# Trained model weights → NOT pushed (large, regenerable from training data)
 results/models/*.pkl
 results/models/*.h5
 results/models/*.pt
@@ -56,7 +53,7 @@ results/models/*.pth
 results/models/*.joblib
 results/models/*.bin
 
-# ─── Route planning charts (regenerable PNGs) ─────────────────────────────────
+# ─── Route planning charts  ─────────────────────────────────
 route_planning/analysis/**/*.png
 
 # ─── VS Code ──────────────────────────────────────────────────────────────────

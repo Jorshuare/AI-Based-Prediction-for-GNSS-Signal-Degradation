@@ -31,17 +31,19 @@ import logging
 import argparse
 import json
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s [%(levelname)s] %(message)s')
 logger = logging.getLogger(__name__)
 
 # ─── RTKLIB CONFIGURATION ─────────────────────────────────────────────────────
 RTKLIB_BIN = r"C:\Program Files\RTKLIB\bin"
 RTKCONV = os.path.join(RTKLIB_BIN, "rtkconv.exe")
 RTKPOST = os.path.join(RTKLIB_BIN, "rtkpost.exe")
-RNX2RTKP = os.path.join(RTKLIB_BIN, "rnx2rtkp.exe")  # Command-line post-processor
+# Command-line post-processor
+RNX2RTKP = os.path.join(RTKLIB_BIN, "rnx2rtkp.exe")
 
-# Base directory for the project
-BASE_DIR = Path(".")
+# Base directory for the project (always the project root, regardless of cwd)
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 CONFIG_DIR = BASE_DIR / "config"
 
 
@@ -49,7 +51,8 @@ def check_rtklib_installed():
     """Verify RTKLIB is installed and accessible."""
     if not os.path.exists(RTKCONV):
         logger.error(f"rtkconv.exe not found at: {RTKCONV}")
-        logger.error("Please verify RTKLIB is installed at C:\\Program Files\\RTKLIB\\")
+        logger.error(
+            "Please verify RTKLIB is installed at C:\\Program Files\\RTKLIB\\")
         return False
     if not os.path.exists(RTKPOST):
         logger.error(f"rtkpost.exe not found at: {RTKPOST}")
@@ -159,7 +162,8 @@ def convert_nmea_to_rinex(nmea_file: Path, output_dir: Path) -> Path:
     logger.debug(f"Command: {' '.join(cmd)}")
 
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=120)
         if result.returncode == 0:
             logger.info(f"  ✓ Converted: {obs_file.name}")
             return obs_file
@@ -199,13 +203,15 @@ def convert_sbf_to_rinex(sbf_file: Path, output_dir: Path) -> Path:
     logger.info(f"Converting SBF to RINEX: {sbf_file.name}")
 
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=300)
         if result.returncode == 0:
             logger.info(f"  ✓ Converted: {obs_file.name}")
             return obs_file
         else:
             logger.error(f"  ✗ convbin failed: {result.stderr}")
-            logger.info("  Tip: Try converting SBF to NMEA using Septentrio RxControl first")
+            logger.info(
+                "  Tip: Try converting SBF to NMEA using Septentrio RxControl first")
             return None
     except Exception as e:
         logger.error(f"  ✗ Error: {e}")
@@ -258,7 +264,8 @@ def run_rtkpost(obs_file: Path, nav_file: Path, base_obs: Path,
     logger.debug(f"Command: {' '.join(cmd)}")
 
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=600)
         if result.returncode == 0 and output_pos.exists():
             # Count lines in output (= number of solution epochs)
             with open(output_pos, 'r') as f:
@@ -276,88 +283,134 @@ def run_rtkpost(obs_file: Path, nav_file: Path, base_obs: Path,
         return False
 
 
+def _find_base_obs(run_dir: Path) -> Path | None:
+    """
+    Find the base station RINEX observation file for a given run directory.
+
+    Each run sub-folder has a result sub-directory (rtkre/, rtkresult/, rkt result/, trk/)
+    containing rtkobs1212.obs — the base station RINEX converted from RTCM.
+    """
+    result_dirs = ["rkt result", "rtkresult", "rtkre", "trk"]
+    for rd in result_dirs:
+        candidate = run_dir / rd / "rtkobs1212.obs"
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def _find_nav_file(search_dir: Path) -> Path | None:
+    """Return best available navigation file (.25P mixed nav preferred)."""
+    # Priority: mixed nav (.25P) > GPS nav (.25N) > GLONASS nav (.25G)
+    for pattern in ["*.25P", "*.24P", "*.[0-9][0-9]P",
+                    "*.25N", "*.24N", "*.[0-9][0-9]N",
+                    "*.25G", "*.24G"]:
+        files = list(search_dir.glob(pattern))
+        if files:
+            return files[0]
+    return None
+
+
+def _process_run_dir(run_dir: Path, exp_label: str, rinex_dir: Path, config_file: Path):
+    """
+    Process a single run directory: find RINEX obs + nav + base, then call rnx2rtkp.
+    Works for both sub-run folders (exp1/exp2) and flat exp folders (exp3/exp4).
+    """
+    rinex_obs_files = (
+        list(run_dir.glob("*.[0-9][0-9]O")) +
+        list(run_dir.glob("*.[0-9][0-9]o"))
+    )
+
+    if not rinex_obs_files:
+        # Fallback: try NMEA → RINEX
+        nmea_files = list(run_dir.glob("*.nmea"))
+        if nmea_files:
+            logger.info(f"    Converting NMEA: {nmea_files[0].name}")
+            obs_file = convert_nmea_to_rinex(nmea_files[0], rinex_dir)
+            if obs_file:
+                rinex_obs_files = [obs_file]
+        else:
+            sbf_files = list(run_dir.glob("*.sbf"))
+            if sbf_files:
+                obs_file = convert_sbf_to_rinex(sbf_files[0], rinex_dir)
+                if obs_file:
+                    rinex_obs_files = [obs_file]
+
+    if not rinex_obs_files:
+        logger.warning(f"    No RINEX obs found in {run_dir.name} — skipping")
+        return
+
+    nav_file = _find_nav_file(run_dir)
+    base_obs = _find_base_obs(run_dir)
+
+    if base_obs:
+        logger.info(
+            f"    Base station: {base_obs.parent.name}/{base_obs.name}")
+    else:
+        logger.info(f"    No base obs found — will use nav-only (single-point)")
+
+    for obs_file in rinex_obs_files:
+        run_name = run_dir.name.replace(" ", "_")
+        output_pos = rinex_dir / f"{exp_label}_{run_name}.pos"
+        run_rtkpost(
+            obs_file=obs_file,
+            nav_file=nav_file if nav_file else Path("auto"),
+            base_obs=base_obs,
+            output_pos=output_pos,
+            config_file=config_file,
+        )
+
+
 def process_supervisor_vehicle():
     """
     Process supervisor vehicle dataset.
 
-    Data location: data/vehicle/exp1-4/
-    Each experiment folder has:
-        - *.nmea  : NMEA GPS data (parse directly)
-        - *.sbf   : Septentrio binary (needs conversion)
-        - *.25O   : RINEX observation (ready for RTKLIB)
-        - *.25N, *.25G etc.: Navigation files
+    Data location: data/raw/supervisor/vehicle/
+    Structure:
+        exp1/, exp2/ — each has sub-run folders ("1 base", "2 base", "3 b", "4b", etc.)
+                       Each sub-run has SEPT*.25O, SEPT*.25P (nav),
+                       and a result subfolder (rtkre/rkt result/rtkresult/trk/)
+                       containing rtkobs1212.obs (base RINEX from RTCM).
+        exp3/, exp4/ — flat: SEPT*.25O and nav directly in the exp folder.
 
-    Strategy: Use existing RINEX files (.25O) directly with RTKPOST
+    Strategy: Use RINEX .25O + .25P nav + rtkobs1212.obs base with RTKPOST.
     """
     logger.info("\n=== Processing Supervisor Vehicle Dataset ===")
-    vehicle_dir = BASE_DIR / "data/vehicle"
-    rinex_dir = BASE_DIR / "data/rinex/supervisor/vehicle"
+    vehicle_dir = BASE_DIR / "data" / "raw" / "supervisor" / "vehicle"
+    rinex_dir = BASE_DIR / "data" / "rinex" / "supervisor" / "vehicle"
     rinex_dir.mkdir(parents=True, exist_ok=True)
 
     config_file = CONFIG_DIR / "rtkpost_vehicle.conf"
     create_rtkpost_config(config_file, mode="kinematic")
 
-    # Base station file (shared reference for RTK)
-    base_obs = None
-    base_files = list(vehicle_dir.rglob("*base*.25O")) + list(vehicle_dir.rglob("*BASE*.25O"))
-    if base_files:
-        base_obs = base_files[0]
-        logger.info(f"  Using base station: {base_obs.name}")
-
     for exp_num in range(1, 5):
         exp_dir = vehicle_dir / f"exp{exp_num}"
         if not exp_dir.exists():
-            logger.warning(f"  Experiment {exp_num} directory not found")
+            logger.warning(
+                f"  Experiment {exp_num} directory not found: {exp_dir}")
             continue
 
         logger.info(f"\n  Processing Vehicle Experiment {exp_num}...")
 
-        # Look through all base station folders in this experiment
-        for base_dir in exp_dir.iterdir():
-            if not base_dir.is_dir():
-                continue
+        # exp3 and exp4 are flat — RINEX lives directly in the exp folder
+        obs_directly = (
+            list(exp_dir.glob("*.[0-9][0-9]O")) +
+            list(exp_dir.glob("*.[0-9][0-9]o"))
+        )
+        if obs_directly:
+            _process_run_dir(
+                exp_dir, f"vehicle_exp{exp_num}", rinex_dir, config_file)
+            continue
 
-            # Find RINEX observation files (.25O, .24O, etc.)
-            rinex_obs_files = (
-                list(base_dir.glob("*.[0-9][0-9]O")) +
-                list(base_dir.glob("*.[0-9][0-9]o"))
-            )
+        # exp1 and exp2 — iterate sub-run folders
+        sub_dirs = sorted([d for d in exp_dir.iterdir() if d.is_dir()])
+        if not sub_dirs:
+            logger.warning(f"  exp{exp_num}: no sub-run folders found")
+            continue
 
-            if not rinex_obs_files:
-                # Try to convert NMEA to RINEX first
-                nmea_files = list(base_dir.glob("*.nmea"))
-                if nmea_files:
-                    logger.info(f"    Converting NMEA: {nmea_files[0].name}")
-                    obs_file = convert_nmea_to_rinex(nmea_files[0], rinex_dir)
-                    if obs_file:
-                        rinex_obs_files = [obs_file]
-                else:
-                    # Try SBF conversion
-                    sbf_files = list(base_dir.glob("*.sbf"))
-                    if sbf_files:
-                        obs_file = convert_sbf_to_rinex(sbf_files[0], rinex_dir)
-                        if obs_file:
-                            rinex_obs_files = [obs_file]
-
-            for obs_file in rinex_obs_files:
-                # Find matching navigation file
-                nav_patterns = ["*.25N", "*.24N", "*.25G", "*.24G"]
-                nav_file = None
-                for pattern in nav_patterns:
-                    nav_files = list(base_dir.glob(pattern))
-                    if nav_files:
-                        nav_file = nav_files[0]
-                        break
-
-                output_pos = rinex_dir / f"vehicle_exp{exp_num}_{base_dir.name}.pos"
-
-                run_rtkpost(
-                    obs_file=obs_file if obs_file.exists() else Path(obs_file),
-                    nav_file=nav_file if nav_file else Path("auto"),
-                    base_obs=base_obs,
-                    output_pos=output_pos,
-                    config_file=config_file
-                )
+        for sub_dir in sub_dirs:
+            logger.info(f"    Sub-run: {sub_dir.name}")
+            _process_run_dir(
+                sub_dir, f"vehicle_exp{exp_num}", rinex_dir, config_file)
 
 
 def process_supervisor_drone():
@@ -372,20 +425,22 @@ def process_supervisor_drone():
     Strategy: Use RINEX files directly, with base station for RTK accuracy.
     """
     logger.info("\n=== Processing Supervisor Drone Dataset ===")
-    drone_dir = BASE_DIR / "data/drone"
-    rinex_dir = BASE_DIR / "data/rinex/supervisor/drone"
+    drone_dir = BASE_DIR / "data" / "raw" / "supervisor" / "drone"
+    rinex_dir = BASE_DIR / "data" / "rinex" / "supervisor" / "drone"
     rinex_dir.mkdir(parents=True, exist_ok=True)
 
     config_file = CONFIG_DIR / "rtkpost_drone.conf"
     create_rtkpost_config(config_file, mode="kinematic")
 
     # Find base station file
-    base_obs_files = list(drone_dir.glob("base*.24o")) + list(drone_dir.glob("*base*.24o"))
+    base_obs_files = list(drone_dir.glob("base*.24o")) + \
+        list(drone_dir.glob("*base*.24o"))
     base_obs = base_obs_files[0] if base_obs_files else None
     if base_obs:
         logger.info(f"  Base station: {base_obs.name}")
     else:
-        logger.warning("  No base station file found — will use auto nav download")
+        logger.warning(
+            "  No base station file found — will use auto nav download")
 
     # Find drone observation files
     drone_obs_files = [f for f in drone_dir.glob("drone*.24o")]
@@ -432,7 +487,8 @@ def process_scenarios():
     for scenario_name, scenario_label in scenario_labels.items():
         scenario_dir = scenarios_dir / scenario_name
         if not scenario_dir.exists():
-            logger.warning(f"  {scenario_name} not found — collect data first!")
+            logger.warning(
+                f"  {scenario_name} not found — collect data first!")
             continue
 
         logger.info(f"\n  Processing {scenario_name}: {scenario_label}")
@@ -441,8 +497,8 @@ def process_scenarios():
 
         # Find RINEX observation files
         obs_files = list(scenario_dir.glob("*.[0-9][0-9]O")) + \
-                    list(scenario_dir.glob("*.[0-9][0-9]o")) + \
-                    list(scenario_dir.glob("*.obs"))
+            list(scenario_dir.glob("*.[0-9][0-9]o")) + \
+            list(scenario_dir.glob("*.obs"))
 
         if not obs_files:
             # Try NMEA conversion
@@ -483,7 +539,8 @@ def process_nclt():
         gps_raw = date_dir / "gps.csv"
 
         if gps_rtk.exists():
-            logger.info(f"  ✓ {date_dir.name}: RTK solution found ({gps_rtk.stat().st_size/1024/1024:.1f} MB)")
+            logger.info(
+                f"  ✓ {date_dir.name}: RTK solution found ({gps_rtk.stat().st_size/1024/1024:.1f} MB)")
         elif gps_raw.exists():
             logger.info(f"  ℹ {date_dir.name}: Only raw GPS found (no RTK)")
         else:
@@ -493,11 +550,14 @@ def process_nclt():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="RTKLIB processing pipeline for all datasets")
+    parser = argparse.ArgumentParser(
+        description="RTKLIB processing pipeline for all datasets")
     parser.add_argument("--dataset", type=str,
-                        choices=["vehicle", "drone", "scenarios", "nclt", "all"],
+                        choices=["vehicle", "drone",
+                                 "scenarios", "nclt", "all"],
                         help="Which dataset to process")
-    parser.add_argument("--all", action="store_true", help="Process all datasets")
+    parser.add_argument("--all", action="store_true",
+                        help="Process all datasets")
 
     args = parser.parse_args()
 
