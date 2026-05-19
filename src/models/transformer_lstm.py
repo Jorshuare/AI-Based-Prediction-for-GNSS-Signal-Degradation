@@ -360,10 +360,183 @@ def build_model(config: dict | None = None) -> SentinelGNSS:
         for k in arch_keys:
             if k in config:
                 default[k] = config[k]
-    model = SentinelGNSS(**default)
-    n_params = model.count_parameters()
-    print(f"SentinelGNSS  |  parameters: {n_params:,}")
+
+    model_type = (config or {}).get("model_type", "full")
+
+    if model_type == "lstm_only":
+        model = LSTMOnlyModel(
+            n_features=default["n_features"],
+            d_model=default["d_model"],
+            lstm_hidden=default["lstm_hidden"],
+            n_lstm_layers=default["n_lstm_layers"],
+            n_classes=default["n_classes"],
+            dropout=default["dropout"],
+        )
+        print(f"LSTMOnlyModel  |  parameters: {model.count_parameters():,}")
+    elif model_type == "transformer_only":
+        model = TransformerOnlyModel(
+            n_features=default["n_features"],
+            d_model=default["d_model"],
+            n_heads=default["n_heads"],
+            n_tf_layers=default["n_tf_layers"],
+            d_ff=default["d_ff"],
+            n_classes=default["n_classes"],
+            dropout=default["dropout"],
+        )
+        print(
+            f"TransformerOnlyModel  |  parameters: {model.count_parameters():,}")
+    else:
+        model = SentinelGNSS(**default)
+        print(f"SentinelGNSS  |  parameters: {model.count_parameters():,}")
+
     return model
+
+
+# ─── Ablation: LSTM-only ──────────────────────────────────────────────────────
+class LSTMOnlyModel(nn.Module):
+    """Ablation baseline — LSTM without Transformer encoder.
+
+    Removes the self-attention mechanism entirely.  If SENTINEL-GNSS
+    outperforms this ablation, it demonstrates that long-range attention
+    over the 30-step window contributes meaningful signal beyond sequential
+    state alone.
+
+    Architecture: Linear projection → 2-layer LSTM → 3 output heads.
+    ~163 K parameters (vs 359 K for full model).
+    """
+
+    def __init__(
+        self,
+        n_features:    int = 34,
+        d_model:       int = 64,
+        lstm_hidden:   int = 128,
+        n_lstm_layers: int = 2,
+        n_classes:     int = 3,
+        dropout:       float = 0.1,
+    ):
+        super().__init__()
+        self.input_proj = nn.Sequential(
+            nn.Linear(n_features, d_model),
+            nn.LayerNorm(d_model),
+        )
+        self.lstm = nn.LSTM(
+            input_size=d_model,
+            hidden_size=lstm_hidden,
+            num_layers=n_lstm_layers,
+            dropout=dropout if n_lstm_layers > 1 else 0.0,
+            batch_first=True,
+        )
+        self.lstm_dropout = nn.Dropout(dropout)
+        head_in = lstm_hidden
+        self.head_5s = self._make_head(head_in, n_classes, dropout)
+        self.head_15s = self._make_head(head_in, n_classes, dropout)
+        self.head_30s = self._make_head(head_in, n_classes, dropout)
+        self._init_weights()
+
+    @staticmethod
+    def _make_head(in_dim: int, out_dim: int, dropout: float) -> nn.Module:
+        return nn.Sequential(
+            nn.Linear(in_dim, in_dim // 2),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(in_dim // 2, out_dim),
+        )
+
+    def _init_weights(self) -> None:
+        for name, p in self.named_parameters():
+            if "weight" in name and p.dim() >= 2:
+                nn.init.orthogonal_(
+                    p) if "lstm" in name else nn.init.xavier_uniform_(p)
+            elif "bias" in name:
+                nn.init.zeros_(p)
+
+    def forward(self, x: torch.Tensor, **_) -> dict[str, torch.Tensor]:
+        x = self.input_proj(x)                  # (B, T, d_model)
+        _, (h_n, _) = self.lstm(x)
+        h = self.lstm_dropout(h_n[-1])           # (B, lstm_hidden)
+        return {
+            "logits_5s":  self.head_5s(h),
+            "logits_15s": self.head_15s(h),
+            "logits_30s": self.head_30s(h),
+        }
+
+    def count_parameters(self) -> int:
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
+
+# ─── Ablation: Transformer-only ───────────────────────────────────────────────
+class TransformerOnlyModel(nn.Module):
+    """Ablation baseline — Transformer without LSTM.
+
+    Removes the sequential LSTM layer.  The Transformer output is
+    mean-pooled over the time dimension before classification heads.
+    If SENTINEL-GNSS outperforms this, it demonstrates the LSTM adds
+    temporal ordering information beyond attention alone.
+
+    Architecture: Linear projection → Positional encoding →
+                  Transformer Encoder → mean-pool → 3 output heads.
+    ~196 K parameters.
+    """
+
+    def __init__(
+        self,
+        n_features:  int = 34,
+        d_model:     int = 64,
+        n_heads:     int = 4,
+        n_tf_layers: int = 2,
+        d_ff:        int = 256,
+        n_classes:   int = 3,
+        dropout:     float = 0.1,
+    ):
+        super().__init__()
+        self.input_proj = nn.Sequential(
+            nn.Linear(n_features, d_model),
+            nn.LayerNorm(d_model),
+        )
+        self.pos_enc = SinusoidalPositionalEncoding(d_model, dropout=dropout)
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=d_model, nhead=n_heads, dim_feedforward=d_ff,
+            dropout=dropout, activation="gelu",
+            batch_first=True, norm_first=True,
+        )
+        self.transformer = nn.TransformerEncoder(
+            encoder_layer, num_layers=n_tf_layers,
+            norm=nn.LayerNorm(d_model),
+        )
+        head_in = d_model
+        self.head_5s = self._make_head(head_in, n_classes, dropout)
+        self.head_15s = self._make_head(head_in, n_classes, dropout)
+        self.head_30s = self._make_head(head_in, n_classes, dropout)
+        self._init_weights()
+
+    @staticmethod
+    def _make_head(in_dim: int, out_dim: int, dropout: float) -> nn.Module:
+        return nn.Sequential(
+            nn.Linear(in_dim, in_dim // 2),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(in_dim // 2, out_dim),
+        )
+
+    def _init_weights(self) -> None:
+        for name, p in self.named_parameters():
+            if "weight" in name and p.dim() >= 2:
+                nn.init.xavier_uniform_(p)
+            elif "bias" in name:
+                nn.init.zeros_(p)
+
+    def forward(self, x: torch.Tensor, **_) -> dict[str, torch.Tensor]:
+        x = self.pos_enc(self.input_proj(x))    # (B, T, d_model)
+        x = self.transformer(x)                 # (B, T, d_model)
+        h = x.mean(dim=1)                       # mean-pool → (B, d_model)
+        return {
+            "logits_5s":  self.head_5s(h),
+            "logits_15s": self.head_15s(h),
+            "logits_30s": self.head_30s(h),
+        }
+
+    def count_parameters(self) -> int:
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
 
 
 if __name__ == "__main__":

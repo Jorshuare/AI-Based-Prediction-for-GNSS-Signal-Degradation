@@ -507,6 +507,11 @@ if __name__ == "__main__":
     parser.add_argument("--lr",           type=float, default=None)
     parser.add_argument("--dropout",      type=float, default=None)
     parser.add_argument("--focal_gamma",  type=float, default=None)
+    parser.add_argument("--model_type",   type=str,   default="full",
+                        choices=["full", "lstm_only", "transformer_only"],
+                        help="Model architecture: full=SENTINEL-GNSS, "
+                             "lstm_only=ablation (no Transformer), "
+                             "transformer_only=ablation (no LSTM)")
     parser.add_argument("--debug",        action="store_true",
                         help="Smoke-test: use windows_debug/ and a debug checkpoint dir")
     args = parser.parse_args()
@@ -516,13 +521,15 @@ if __name__ == "__main__":
         val = getattr(args, key)
         if val is not None:
             cfg[key] = val
+    cfg["model_type"] = args.model_type
+
+    # Each model type gets its own checkpoint directory so runs don't overwrite each other
+    ckpt_suffix = "" if args.model_type == "full" else f"_{args.model_type}"
 
     if args.debug:
         debug_window_dir = ROOT / "data" / "processed" / "windows_debug"
-        debug_ckpt_dir = ROOT / "results" / "models" / "checkpoints_debug"
-        # Safe defaults for a fast smoke-test
-        # keep CLI override if given
-        cfg.setdefault("max_epochs", cfg["max_epochs"])
+        debug_ckpt_dir = ROOT / "results" / "models" / \
+            f"checkpoints_debug{ckpt_suffix}"
         if args.max_epochs is None:
             cfg["max_epochs"] = 5
         cfg["save_every"] = 1
@@ -532,4 +539,5 @@ if __name__ == "__main__":
         train(config=cfg, resume=args.resume,
               ckpt_dir=debug_ckpt_dir, window_dir=debug_window_dir)
     else:
-        train(config=cfg, resume=args.resume)
+        ckpt_dir = ROOT / "results" / "models" / f"checkpoints{ckpt_suffix}"
+        train(config=cfg, resume=args.resume, ckpt_dir=ckpt_dir)
