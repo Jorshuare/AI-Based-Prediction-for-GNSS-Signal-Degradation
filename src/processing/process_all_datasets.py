@@ -1494,6 +1494,74 @@ def process_tokyo_odaiba() -> pd.DataFrame:
     return combined
 
 
+def process_tokyo_shinjuku() -> pd.DataFrame:
+    """
+    Process UrbanNav Tokyo Shinjuku RINEX observation files.
+
+    Two receivers: rover_trimble (Trimble) and rover_ublox (u-blox).
+    Identical file layout to Odaiba — RINEX 3 OBS with S1C direct C/N0.
+    No NMEA — position will be NaN.
+
+    Shinjuku is a dense urban canyon environment; expect significantly more
+    DEGRADED epochs than Odaiba (stronger multipath, more blockage).
+    """
+    base = Path("data/raw/public/urbannav/Tokyo/Shinjuku")
+    if not base.exists():
+        log.warning(f"Tokyo Shinjuku directory not found: {base}")
+        return pd.DataFrame()
+
+    obs_files = {
+        "trimble": base / "rover_trimble.obs",
+        "ublox":   base / "rover_ublox.obs",
+    }
+
+    rinex_parser = Rinex3ObsParser(mode="direct_s1c")
+    all_dfs = []
+
+    for receiver_name, obs_path in obs_files.items():
+        if not obs_path.exists():
+            log.warning(f"  Tokyo Shinjuku: {obs_path.name} not found")
+            continue
+
+        log.info(f"  Tokyo Shinjuku: {obs_path.name}")
+        rinex_epochs = rinex_parser.parse_file(obs_path)
+        if not rinex_epochs:
+            continue
+
+        rows = []
+        for gps_dt, data in sorted(rinex_epochs.items()):
+            utc_dt = gps_dt - timedelta(seconds=GPS_LEAP_SECONDS)
+            cnr_list = data.get("cnr_list", [])
+            rows.append({
+                "timestamp":         utc_dt,
+                "mean_cnr_epoch":    float(np.mean(cnr_list)) if cnr_list else np.nan,
+                "cycle_slips_epoch": data.get("cycle_slips", 0),
+                "lat": np.nan, "lon": np.nan, "alt": np.nan,
+                "fix_quality":    1,
+                "num_satellites": len([c for c in cnr_list if c > 0]),
+                "source":   f"tokyo_shinjuku_{receiver_name}",
+                "scenario": f"tokyo_shinjuku_{receiver_name}",
+            })
+        epoch_df = pd.DataFrame(rows)
+        feat_df = compute_features(epoch_df)
+        if not feat_df.empty:
+            all_dfs.append(feat_df)
+            log.info(
+                f"    -> {len(feat_df)} rows, labels: {feat_df['label'].value_counts().to_dict()}")
+
+    if not all_dfs:
+        log.warning("No Tokyo Shinjuku data processed.")
+        return pd.DataFrame()
+
+    combined = pd.concat(all_dfs, ignore_index=True)
+    out_dir = Path("data/processed/tokyo")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / "tokyo_shinjuku_features.csv"
+    combined.to_csv(out_path, index=False)
+    log.info(f"Saved {len(combined)} Tokyo Shinjuku rows -> {out_path}")
+    return combined
+
+
 def process_nclt() -> pd.DataFrame:
     """
     Process NCLT (University of Michigan North Campus Long-Term) GPS data.
@@ -1766,6 +1834,7 @@ def combine_all(out_path: Path = Path("data/processed/combined_dataset.csv")):
         Path("data/processed/urbannav/urbannav_hk_features.csv"),
         Path("data/processed/urbannav/urbannav_tunnel_features.csv"),
         Path("data/processed/tokyo/tokyo_odaiba_features.csv"),
+        Path("data/processed/tokyo/tokyo_shinjuku_features.csv"),
         Path("data/processed/nclt/nclt_features.csv"),
         Path("data/processed/oxford/oxford_features.csv"),
     ]
@@ -1980,6 +2049,14 @@ def main():
         if not df.empty:
             results.append(df)
             print_dataset_summary(df, "Tokyo Odaiba Summary")
+
+        log.info("\n" + "="*65)
+        log.info("PROCESSING: Tokyo Shinjuku (Trimble + u-blox)")
+        log.info("="*65)
+        df = process_tokyo_shinjuku()
+        if not df.empty:
+            results.append(df)
+            print_dataset_summary(df, "Tokyo Shinjuku Summary")
 
     if args.process_all or args.source in ("nclt", "all"):
         log.info("\n" + "="*65)

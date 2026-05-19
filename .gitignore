@@ -58,6 +58,7 @@ route_planning/analysis/**/*.png
 
 # ─── VS Code ──────────────────────────────────────────────────────────────────
 .vscode/
+Team-Pilot-Project.code-workspace
 
 # ─── Always track these regardless of above rules ────────────────────────────
 !**/.gitkeep

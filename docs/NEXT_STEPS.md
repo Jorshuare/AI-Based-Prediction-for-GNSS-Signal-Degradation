@@ -1,170 +1,191 @@
 # SENTINEL-GNSS: Next Steps Roadmap
 
-**Updated:** May 16, 2026  
+**Updated:** May 18, 2026
 **Data processing:** COMPLETE — all 8 sources processed and combined.
+**Model files:** COMPLETE — all 5 model files created.
+
+---
+
+## How to Run (Steps 1 → 2 → 3 → 4)
+
+> Run from the project root: `C:\Users\Joel\Desktop\Beihang University\Team-Pilot-Project`
+>
+> **First time?** Run the smoke-test below to verify the full pipeline works in ~2 minutes before committing to the full run.
+
+---
+
+### Smoke-test (end-to-end in ~2 min — run this first)
+
+```powershell
+# Uses 500 rows/source, 5 epochs, outputs to debug dirs — never overwrites real data
+python -m src.models.feature_prep --debug
+python -m src.models.train --debug
+python -m src.models.evaluate --debug
+```
+
+If all three complete without errors, the full pipeline is confirmed working.
+
+---
+
+### Step 1 — Install dependencies
+
+```powershell
+# Check your GPU / CUDA driver version first:
+nvidia-smi
+```
+
+Then install PyTorch for your driver (Python 3.13 requires cu118 or cu124 — cu121 has no py313 wheels):
+
+```powershell
+# CUDA 12.4+ (nvidia-smi shows 12.4 or higher):
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+
+# CUDA 11.8 (nvidia-smi shows 11.8 – 12.3):
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
+# CPU-only (no NVIDIA GPU):
+pip install torch torchvision torchaudio
+
+# All other dependencies:
+pip install -r requirements.txt
+```
+
+### Step 2 — Build feature windows _(one-time; re-run with `--force` to rebuild)_
+
+```powershell
+python -m src.models.feature_prep
+```
+
+Output: `data/processed/windows/{train,val,test}.npz` + `data/processed/scaler.pkl`
+
+### Step 3 — Train
+
+```powershell
+# Fresh run:
+python -m src.models.train
+
+# Resume from last checkpoint (if interrupted):
+python -m src.models.train --resume
+```
+
+Checkpoints saved to `results/models/checkpoints/`:
+
+- `checkpoint_best.pt` ← best val macro-F1
+- `checkpoint_epoch_NNN.pt` ← periodic (every 10 epochs)
+- `training_history.json` ← loss + F1 per epoch
+- `config.json` ← hyper-parameters used
+
+### Step 4 — Evaluate
+
+```powershell
+# Test set (default):
+python -m src.models.evaluate
+
+# Validation set:
+python -m src.models.evaluate --split val
+
+# Specific checkpoint:
+python -m src.models.evaluate --checkpoint results/models/checkpoints/checkpoint_best.pt
+```
+
+All figures saved to `results/figures/` as PDF (vector) + PNG (300 DPI).
 
 ---
 
 ## Completed ✅
 
 - [x] Scenarios A–E, Supervisor Vehicle/Drone processed → CSV
-- [x] UrbanNav HK Medium (10 receivers) processed → CSV
-- [x] **UrbanNav HK Tunnel (10 receivers) processed → CSV** ← NEW
-- [x] **Tokyo Odaiba (Trimble + u-blox) processed → CSV** ← NEW
-- [x] **NCLT Ann Arbor (2 sessions) processed → CSV** ← NEW
-- [x] **Oxford RobotCar (2 traversals) processed → CSV** ← NEW
-- [x] Combined dataset with **session-based stratified 70/15/15 split** ← REVISED
-- [x] `_assign_label()` NaN-aware (handles missing C/N0 gracefully) ← FIXED
-- [x] Separate `_apply_position_sigma_labels()` for NCLT/Oxford labeling
-- [x] `DATASET_PROCESSING_REPORT.md` — full feature/label justification
-- [x] `NEXT_STEPS.md` — this file
+- [x] UrbanNav HK Medium + Tunnel (10 receivers each) processed → CSV
+- [x] Tokyo Odaiba (Trimble + u-blox) processed → CSV
+- [x] NCLT Ann Arbor (2 sessions) processed → CSV
+- [x] Oxford RobotCar (2 traversals) processed → CSV
+- [x] Combined dataset: **66,128 rows**, session-based 70/15/15 split (seed=42)
+- [x] NMEA no-fix bug fixed — blockage epochs (quality=0) now captured as DEGRADED
+- [x] `DATASET_PROCESSING_REPORT.md` — full feature/label justification (in docs/)
+- [x] **`src/models/plot_config.py`** — single source of truth for all figures
+- [x] **`src/models/feature_prep.py`** — imputation, windowing (T=30), SMOTE
+- [x] **`src/models/transformer_lstm.py`** — Transformer-LSTM + FocalLoss
+- [x] **`src/models/train.py`** — full training loop with checkpointing
+- [x] **`src/models/evaluate.py`** — 14 evaluation analyses with references
+- [x] Root-level MD files moved to `docs/`
+- [x] `requirements.txt` created
+
+---
+
+## Phase 4: Model Files Summary
+
+| File                  | Purpose             | Key design choices                                                    |
+| --------------------- | ------------------- | --------------------------------------------------------------------- |
+| `plot_config.py`      | All figure settings | cividis primary; Okabe-Ito class colours; min 14pt fonts; IEEE widths |
+| `feature_prep.py`     | Data pipeline       | 34 features; DOP-proxy imputation; MinMax scaler (train only); SMOTE  |
+| `transformer_lstm.py` | Architecture        | Transformer (2 layers, 4 heads) → LSTM (2×128) → 3 output heads       |
+| `train.py`            | Training            | AdamW + cosine LR; focal loss γ=2; early stopping patience=20; AMP    |
+| `evaluate.py`         | Evaluation          | 14 analyses; bootstrap 95% CI; all figures publication-ready          |
+
+---
+
+## Phase 5: Evaluation Analyses Produced by evaluate.py
+
+| #   | Figure                                | Justification                                        | Reference                        |
+| --- | ------------------------------------- | ---------------------------------------------------- | -------------------------------- |
+| 1   | Confusion matrices (raw + normalised) | Per-class recall, safety-critical for DEGRADED       | Sokolova & Lapalme (2009)        |
+| 2   | Per-class metrics table               | P/R/F1/support per class × horizon                   | Manning et al. (2008)            |
+| 3   | Overall metrics (acc/F1/κ/MCC)        | MCC is best single metric for imbalanced multi-class | Chicco & Jurman (2020)           |
+| 4   | ROC curves (OvR)                      | Threshold-independent discriminability               | Fawcett (2006)                   |
+| 5   | Precision-Recall curves               | More informative than ROC for minority class         | Davis & Goadrich (2006)          |
+| 6   | Calibration curves                    | Validates P(DEGRADED) as a usable risk score         | Niculescu-Mizil & Caruana (2005) |
+| 7   | Learning curves                       | Diagnoses overfitting / underfitting                 | Standard practice                |
+| 8   | Multi-horizon comparison              | Shows prediction difficulty vs look-ahead time       | Paper 1 main result              |
+| 9   | Per-dataset heatmap                   | Cross-receiver / cross-city generalisation           | Papers 2 & 3                     |
+| 10  | Per-scenario breakdown                | Validates model on each degradation type             | Paper 1 ablation                 |
+| 11  | Lead-time histogram                   | "How many seconds warning?" — engineering value      | Paper 1 key claim                |
+| 12  | Attention heatmaps                    | Mechanistic interpretability of Transformer          | Vaswani et al. (2017)            |
+| 13  | Feature saliency (gradient)           | Which features drive the prediction                  | Simonyan et al. (2014)           |
+| 14  | Bootstrap 95% CI                      | Uncertainty quantification on all scalar metrics     | Efron & Tibshirani (1994)        |
+
+---
+
+## Phase 6: NaN Feature Handling Reference
+
+| Feature                 | NaN % | Source             | Fix applied                         |
+| ----------------------- | ----- | ------------------ | ----------------------------------- |
+| `lat`, `lon`            | 54%   | RINEX-only sources | **Excluded from model**             |
+| `alt`                   | 54%   | RINEX-only sources | Session-median imputation           |
+| `lat_std`, `lon_std`    | 85%   | No GST for most    | hdop × 2.5 proxy                    |
+| C/N0 group (5 features) | ~10%  | NCLT + Oxford      | Zero-fill + `cnr_available`=0 flag  |
+| DOP group (5 features)  | ~45%  | RINEX-only sources | 30/√N satellite-count approximation |
+| All others              | < 5%  | —                  | Forward-fill within session         |
+
+---
+
+## Phase 7: Ablation Studies (Paper 1)
+
+Run by modifying `--arch` flag (to be implemented) or editing `DEFAULT_CONFIG` in `train.py`:
+
+| Variant            | Change                               | Expected ΔMacro-F1 |
+| ------------------ | ------------------------------------ | ------------------ |
+| Full model         | Transformer(2L) → LSTM(2L)           | Baseline           |
+| LSTM-only          | Remove Transformer encoder           | −3 to −8%          |
+| Transformer-only   | Remove LSTM (use CLS token)          | −2 to −5%          |
+| Random Forest      | sklearn RF on flattened windows      | −10 to −20%        |
+| Threshold baseline | Single-feature threshold on mean_cnr | −30 to −40%        |
+
+---
+
+## Phase 8: Missing Data / Future Work
+
+| Item                                 | Priority    | Notes                                                   |
+| ------------------------------------ | ----------- | ------------------------------------------------------- |
+| Propagate source metadata per window | HIGH        | Needed for per-dataset and per-scenario breakdown plots |
+| Tokyo Shinjuku                       | Low         | No rover RINEX; skip unless data located                |
+| NCLT additional sessions             | Low         | 2012-01-08, 2012-04-29 etc. available                   |
+| Oxford additional traversals         | Low         | Multiple traversals available                           |
+| Paper writing                        | **HIGHEST** | Start after first training run completes                |
 
 ### Why Tokyo Shinjuku Was NOT Processed
 
-Only the base station OBS file exists (`base_trimble.obs`). The rover file is missing. Cannot extract signal quality features from the base station.
-
----
-
-## Phase 2: Feature Preparation for Model Training
-
-### Task 2.1 — Feature Prep Script
-
-**File to create:** `src/models/feature_prep.py`
-
-```python
-# Decisions to implement:
-EXCLUDE_FROM_MODEL = ['lat', 'lon']    # Raw coords → geographic overfitting
-IMPUTE_MEDIAN = ['alt']                # 54% NaN; fill with session median
-IMPUTE_DOP_PROXY = ['lat_std', 'lon_std']  # 85% NaN; fill as hdop * 2.5
-MASK_TO_ZERO = ['mean_cnr', 'min_cnr', 'max_cnr', 'std_cnr', 'cnr_trend']  # NaN for NCLT/Oxford
-
-# ADD: boolean flag feature
-ADD_FEATURE = 'cnr_available'  # 1 if C/N0 present, 0 if NaN — lets model know what's missing
-```
-
-**Model input:** 33 features (35 minus lat/lon) + 1 `cnr_available` flag = **34 features total**
-
-**Windowing:**
-
-- Sliding window: 30 seconds (30 time steps at 1 Hz)
-- Output labels: label at t+5s, t+15s, t+30s (look-ahead after the window)
-- No overlapping windows across session boundaries
-
-**SMOTE:** Apply on training set ONLY, after session-stratified split.
-
-- Target: ~15% WARNING, ~8% DEGRADED in training batch
-- Never apply to validation or test sets
-
-**Scaling:** Min-max [0,1] using TRAINING set statistics. Save scaler to `data/processed/scalers.pkl`.
-
----
-
-## Phase 3: Transformer-LSTM Model
-
-### Task 3.1 — Architecture
-
-**File to create:** `src/models/transformer_lstm.py`
-
-```
-Input:     (batch, 30, 34)       # 30 time steps × 34 features
-           ↓
-Positional Encoding (sinusoidal)
-           ↓
-Transformer Encoder:
-  4 attention heads, d_model=64, 2 layers, FFN dim=256, dropout=0.1
-           ↓
-2-layer LSTM: hidden_dim=128, dropout=0.1
-           ↓
-Last hidden state: (batch, 128)
-           ↓
-Three parallel output heads (each 128 → 3 → Softmax):
-  head_5s   → P(CLEAN, WARNING, DEGRADED) at t+5 seconds
-  head_15s  → P(CLEAN, WARNING, DEGRADED) at t+15 seconds
-  head_30s  → P(CLEAN, WARNING, DEGRADED) at t+30 seconds
-```
-
-### Task 3.2 — Training
-
-**File to create:** `src/models/train.py`
-
-| Parameter     | Value                                                       |
-| ------------- | ----------------------------------------------------------- |
-| Optimizer     | AdamW, lr=1e-3, weight_decay=1e-4                           |
-| Scheduler     | CosineAnnealingLR, T_max=100                                |
-| Epochs        | 100 with early stopping (patience=15, monitor val macro-F1) |
-| Batch size    | 64                                                          |
-| Loss          | Focal Loss, γ=2.0                                           |
-| Class weights | {0: 1.0, 1: 2.5, 2: 5.0}                                    |
-| Seed          | 42                                                          |
-
-### Task 3.3 — Evaluation
-
-Report for each horizon (t+5s, t+15s, t+30s):
-
-- Precision / Recall / F1 per class
-- Macro-F1 (primary metric)
-- AUC-ROC (one-vs-rest)
-- Confusion matrix
-
-**Additional analyses for papers:**
-
-1. **Lead-time histogram**: how many seconds before actual DEGRADED does first WARNING appear?
-2. **Ablation table**: Transformer-LSTM vs. LSTM-only vs. Transformer-only vs. RF vs. threshold baseline
-3. **Per-receiver breakdown**: NovAtel vs. u-blox F9P vs. Xiaomi Mi8 F1 scores → Paper 2
-4. **Leave-city-out generalization**: train without Tokyo → test on Tokyo → Paper 3
-
----
-
-## Phase 4: Train/Validation/Test Split — Reminder
-
-The split is now **session-based 70/15/15**, NOT source-based. Key rules:
-
-- Each unique session (one recording run) is assigned as a whole to one split
-- Within each source category, sessions are proportionally distributed
-- Applied in `combine_all()` with seed=42 (reproducible)
-- All three splits contain examples from ALL sources
-
-**This replaces the previous "UrbanNav = validation only" approach**, which was scientifically incorrect because it created distribution mismatch between train and test.
-
-**Leave-dataset-out experiments are SEPARATE** — run as generalization ablations, not as the primary evaluation.
-
----
-
-## Phase 5: NaN Feature Handling Reference
-
-| Feature                 | NaN % | Source             | Fix                                |
-| ----------------------- | ----- | ------------------ | ---------------------------------- |
-| `lat`, `lon`            | 54%   | RINEX-only sources | **Exclude from model**             |
-| `alt`                   | 54%   | RINEX-only sources | Impute with session median         |
-| `lat_std`, `lon_std`    | 85%   | No GST for most    | Impute as `hdop × 2.5`             |
-| C/N0 group (5 features) | ~10%  | NCLT + Oxford      | Set to 0 + `cnr_available`=0 flag  |
-| DOP group (5 features)  | ~45%  | RINEX-only sources | Impute with DOP-from-sats estimate |
-| All others              | < 5%  | —                  | OK, no action                      |
-
----
-
-## Phase 6: Missing Data / Future Work
-
-| Item                         | Priority | Notes                                    |
-| ---------------------------- | -------- | ---------------------------------------- |
-| Tokyo Shinjuku               | Low      | No rover RINEX; skip unless data located |
-| NCLT additional sessions     | Low      | 2012-01-08, 2012-04-29 etc. available    |
-| Oxford additional traversals | Low      | Multiple traversals available            |
-| Paper writing                | HIGH     | Start after first model training run     |
-
----
-
-## Completed ✅
-
-- [x] Raw data explored (scenarios A–E, supervisor vehicle/drone, UrbanNav HK)
-- [x] 35 features justified (all derivable from NMEA + RINEX, physically meaningful)
-- [x] 3-label scheme designed (CLEAN / WARNING / DEGRADED)
-- [x] Unified processing pipeline: `src/processing/process_all_datasets.py`
-- [x] All datasets processed → standardized CSVs in `data/processed/`
-- [x] Combined dataset: **28,871 rows × 41 columns**
-- [x] Labels applied: 66% CLEAN, 27.3% WARNING, 6.7% DEGRADED
-- [x] Train/validation split assigned (UrbanNav = validation)
-- [x] Labelled copy at `data/labelled/sentinel_gnss_labelled.csv`
+~~Only the base station OBS file exists (`base_trimble.obs`). The rover file is missing.~~
+**Now processed** — `rover_trimble.obs` and `rover_ublox.obs` added; Shinjuku runs through the same pipeline as Odaiba.
 
 ---
 
