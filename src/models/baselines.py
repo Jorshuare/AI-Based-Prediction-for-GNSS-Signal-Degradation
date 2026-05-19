@@ -42,14 +42,6 @@ Run:
     python -m src.models.baselines
     python -m src.models.baselines --include_ablations   # also reads DL ckpts
 """
-
-Trains Random Forest and XGBoost on flattened 30-step windows,
-predicting the same 3 horizons(5s / 15s / 30s) as the deep model.
-Uses the same train/val/test split from feature_prep.py output.
-
-Run:
-    python - m src.models.baselines
-"""
 import argparse
 import json
 import logging
@@ -72,11 +64,11 @@ except ImportError:
 log = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(levelname)-5s  %(message)s")
 
-ROOT        = Path(__file__).resolve().parents[2]
-WINDOW_DIR  = ROOT / "data" / "processed" / "windows"
+ROOT = Path(__file__).resolve().parents[2]
+WINDOW_DIR = ROOT / "data" / "processed" / "windows"
 RESULTS_DIR = ROOT / "results" / "baselines"
-CKPT_ROOT   = ROOT / "results" / "models"
-HORIZONS    = ["5s", "15s", "30s"]
+CKPT_ROOT = ROOT / "results" / "models"
+HORIZONS = ["5s", "15s", "30s"]
 CLASS_LABELS = ["CLEAN", "WARNING", "DEGRADED"]
 
 # Index of mean_cnr in the feature vector (matches FEATURE_NAMES in evaluate.py)
@@ -84,7 +76,7 @@ MEAN_CNR_IDX = 3   # "mean_cnr"
 
 # C/N₀ thresholds (dB-Hz) from GNSS signal quality literature
 CNR_DEGRADED_THRESHOLD = 30.0   # < 30  → DEGRADED
-CNR_WARNING_THRESHOLD  = 37.0   # 30–37 → WARNING, > 37 → CLEAN
+CNR_WARNING_THRESHOLD = 37.0   # 30–37 → WARNING, > 37 → CLEAN
 
 
 # ─── Data loading ─────────────────────────────────────────────────────────────
@@ -286,7 +278,8 @@ def print_comparison_table(all_results: dict) -> None:
     log.info("=" * 78)
     log.info("  Comparison Table — Test Set Macro-F1  (higher is better)")
     log.info("=" * 78)
-    log.info(f"  {'Method':<26}  {'Justification':<24}  {'  +5s':>7}  {'  +15s':>7}  {'  +30s':>7}")
+    log.info(
+        f"  {'Method':<26}  {'Justification':<24}  {'  +5s':>7}  {'  +15s':>7}  {'  +30s':>7}")
     log.info("-" * 78)
 
     descriptions = {
@@ -328,7 +321,7 @@ def run_all(windows_dir: Path = WINDOW_DIR,
 
     log.info("Loading windows …")
     train_d = load_split(windows_dir, "train")
-    test_d  = load_split(windows_dir, "test")
+    test_d = load_split(windows_dir, "test")
     log.info(f"  Train: {train_d['X'].shape}   Test: {test_d['X'].shape}")
 
     all_results: dict = {}
@@ -369,7 +362,8 @@ def run_all(windows_dir: Path = WINDOW_DIR,
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run all SENTINEL-GNSS baselines")
+    parser = argparse.ArgumentParser(
+        description="Run all SENTINEL-GNSS baselines")
     parser.add_argument("--windows_dir",        default=str(WINDOW_DIR))
     parser.add_argument("--include_ablations",  action="store_true",
                         help="Also load DL ablation results from their checkpoint dirs")
