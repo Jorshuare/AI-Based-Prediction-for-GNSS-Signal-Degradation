@@ -94,7 +94,7 @@ DEFAULT_CONFIG: dict = {
     # Class weights: inversely proportional to class frequency in training set
     # CLEAN≈67% → w=1.0, WARNING≈20% → w=3.35, DEGRADED≈13% → w=5.15
     # Rounded to round numbers for interpretability.
-    "class_weights": [1.0, 3.0, 5.0],
+    "class_weights": [1.0, 2.0, 3.0],
     # Horizon weights: all three heads weighted equally by default.
     # Increase weight for 30s if long-range prediction is the primary goal.
     "horizon_weights": {"5s": 1.0, "15s": 1.0, "30s": 1.0},
@@ -179,7 +179,7 @@ def run_epoch(
     criterion:  dict[str, FocalLoss],
     horizon_w:  dict[str, float],
     optimizer:  Optional[torch.optim.Optimizer],
-    scaler:     Optional[torch.cuda.amp.GradScaler],
+    scaler:     Optional[torch.amp.GradScaler],
     device:     torch.device,
     grad_clip:  float,
     train:      bool,
@@ -247,7 +247,7 @@ def save_checkpoint(
     model: SentinelGNSS,
     optimizer: torch.optim.Optimizer,
     scheduler: LambdaLR,
-    amp_scaler: Optional[torch.cuda.amp.GradScaler],
+    amp_scaler: Optional[torch.amp.GradScaler],
     best_metric: float,
     config: dict,
     history: dict,
@@ -285,7 +285,7 @@ def load_checkpoint(
     model: SentinelGNSS,
     optimizer: Optional[torch.optim.Optimizer] = None,
     scheduler: Optional[LambdaLR] = None,
-    amp_scaler: Optional[torch.cuda.amp.GradScaler] = None,
+    amp_scaler: Optional[torch.amp.GradScaler] = None,
     device: torch.device = torch.device("cpu"),
 ) -> tuple[int, float, dict]:
     """Load a checkpoint.  Returns (start_epoch, best_metric, config)."""
@@ -367,7 +367,7 @@ def train(
     scheduler = build_scheduler(
         optimizer, config["warmup_epochs"], config["max_epochs"])
     amp_scaler = (
-        torch.cuda.amp.GradScaler() if (config["amp"] and torch.cuda.is_available())
+        torch.amp.GradScaler("cuda") if (config["amp"] and torch.cuda.is_available())
         else None
     )
 

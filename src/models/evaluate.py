@@ -209,20 +209,15 @@ def plot_confusion_matrices(
                 cmap=CMAP_SEQUENTIAL,
                 values_format=fmt,
             )
-            title_suffix = " (row-normalised)" if norm else " (counts)"
-            ax.set_title(f"Horizon +{h}{title_suffix}",
-                         fontsize=FONT_TITLE, fontweight="bold")
+            panel = chr(ord('a') + row * len(HORIZONS) + col)
+            ax.text(0.03, 0.97, f'({panel})', transform=ax.transAxes,
+                    fontsize=FONT_TITLE, fontweight='bold', va='top')
             ax.set_xlabel("Predicted label", fontsize=FONT_AXIS_LABEL)
             ax.set_ylabel("True label", fontsize=FONT_AXIS_LABEL)
             ax.tick_params(labelsize=FONT_TICK)
             # Bold tick labels for the class names
             for text in ax.texts:
                 text.set_fontsize(FONT_ANNOTATION + 1)
-
-    fig.suptitle(
-        f"SENTINEL-GNSS — Confusion Matrices ({split} set)",
-        fontsize=FONT_SUPTITLE, fontweight="bold", y=1.01,
-    )
     plt.tight_layout()
     save_figure(fig, str(out_dir / f"confusion_matrices_{split}"))
     plt.close(fig)
@@ -342,19 +337,14 @@ def plot_roc_curves(
                 lw=1.2, label="Chance")
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1.02)
-        ax.set_title(f"{cls}", fontsize=FONT_TITLE, fontweight="bold",
-                     color=CLASS_COLORS[cls])
+        ax.text(0.03, 0.97, f'({chr(ord("a") + c_idx)})', transform=ax.transAxes,
+                fontsize=FONT_TITLE, fontweight='bold', va='top')
         ax.set_xlabel("False Positive Rate", fontsize=FONT_AXIS_LABEL)
         ax.set_ylabel("True Positive Rate",  fontsize=FONT_AXIS_LABEL)
         ax.tick_params(labelsize=FONT_TICK)
         leg = ax.legend(fontsize=FONT_LEGEND,
                         framealpha=0.9, loc="lower right")
         leg.get_title().set_fontweight("bold")
-
-    fig.suptitle(
-        f"ROC Curves — One-vs-Rest ({split} set)",
-        fontsize=FONT_SUPTITLE, fontweight="bold",
-    )
     plt.tight_layout()
     save_figure(fig, str(out_dir / f"roc_curves_{split}"))
     plt.close(fig)
@@ -400,18 +390,13 @@ def plot_pr_curves(
 
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1.05)
-        ax.set_title(f"{cls}", fontsize=FONT_TITLE, fontweight="bold",
-                     color=CLASS_COLORS[cls])
+        ax.text(0.03, 0.97, f'({chr(ord("a") + c_idx)})', transform=ax.transAxes,
+                fontsize=FONT_TITLE, fontweight='bold', va='top')
         ax.set_xlabel("Recall",    fontsize=FONT_AXIS_LABEL)
         ax.set_ylabel("Precision", fontsize=FONT_AXIS_LABEL)
         ax.tick_params(labelsize=FONT_TICK)
         leg = ax.legend(fontsize=FONT_LEGEND, framealpha=0.9)
         leg.get_title().set_fontweight("bold")
-
-    fig.suptitle(
-        f"Precision-Recall Curves ({split} set)",
-        fontsize=FONT_SUPTITLE, fontweight="bold",
-    )
     plt.tight_layout()
     save_figure(fig, str(out_dir / f"pr_curves_{split}"))
     plt.close(fig)
@@ -461,17 +446,12 @@ def plot_calibration_curves(
 
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
-        ax.set_title(f"{cls}", fontsize=FONT_TITLE, fontweight="bold",
-                     color=CLASS_COLORS[cls])
+        ax.text(0.03, 0.97, f'({chr(ord("a") + c_idx)})', transform=ax.transAxes,
+                fontsize=FONT_TITLE, fontweight='bold', va='top')
         ax.set_xlabel("Mean predicted probability", fontsize=FONT_AXIS_LABEL)
         ax.set_ylabel("Fraction of positives",      fontsize=FONT_AXIS_LABEL)
         ax.tick_params(labelsize=FONT_TICK)
         ax.legend(fontsize=FONT_LEGEND)
-
-    fig.suptitle(
-        f"Calibration Curves / Reliability Diagrams ({split} set)",
-        fontsize=FONT_SUPTITLE, fontweight="bold",
-    )
     plt.tight_layout()
     save_figure(fig, str(out_dir / f"calibration_curves_{split}"))
     plt.close(fig)
@@ -508,7 +488,8 @@ def plot_learning_curves(
             color=CLASS_COLORS["DEGRADED"], ls="--", label="Val loss")
     ax.set_xlabel("Epoch", fontsize=FONT_AXIS_LABEL)
     ax.set_ylabel("Focal Loss",   fontsize=FONT_AXIS_LABEL)
-    ax.set_title("Training Loss", fontsize=FONT_TITLE, fontweight="bold")
+    ax.text(0.03, 0.97, '(a)', transform=ax.transAxes,
+            fontsize=FONT_TITLE, fontweight='bold', va='top')
     ax.legend(fontsize=FONT_LEGEND)
     ax.tick_params(labelsize=FONT_TICK)
 
@@ -531,8 +512,8 @@ def plot_learning_curves(
     ax.set_ylim(0, 1)
     ax.set_xlabel("Epoch",      fontsize=FONT_AXIS_LABEL)
     ax.set_ylabel("Macro-F1",   fontsize=FONT_AXIS_LABEL)
-    ax.set_title("Val Macro-F1 by Horizon",
-                 fontsize=FONT_TITLE, fontweight="bold")
+    ax.text(0.03, 0.97, '(b)', transform=ax.transAxes,
+            fontsize=FONT_TITLE, fontweight='bold', va='top')
     ax.legend(fontsize=FONT_LEGEND)
     ax.tick_params(labelsize=FONT_TICK)
 
@@ -547,13 +528,11 @@ def plot_learning_curves(
     ax.set_ylim(0, 1)
     ax.set_xlabel("Epoch",              fontsize=FONT_AXIS_LABEL)
     ax.set_ylabel("Macro-F1",           fontsize=FONT_AXIS_LABEL)
-    ax.set_title("Generalisation Gap (30 s horizon)",
-                 fontsize=FONT_TITLE, fontweight="bold")
+    ax.text(0.03, 0.97, '(c)', transform=ax.transAxes,
+            fontsize=FONT_TITLE, fontweight='bold', va='top')
     ax.legend(fontsize=FONT_LEGEND)
     ax.tick_params(labelsize=FONT_TICK)
 
-    fig.suptitle("SENTINEL-GNSS — Learning Curves",
-                 fontsize=FONT_SUPTITLE, fontweight="bold")
     plt.tight_layout()
     save_figure(fig, str(out_dir / "learning_curves"))
     plt.close(fig)
@@ -597,8 +576,7 @@ def plot_multi_horizon_comparison(
     )
     ax.set_ylim(0, 1.15)
     ax.set_ylabel("F1-score", fontsize=FONT_AXIS_LABEL, fontweight="bold")
-    ax.set_title("Per-class F1 Score by Prediction Horizon",
-                 fontsize=FONT_TITLE, fontweight="bold")
+
     leg = ax.legend(
         title="Prediction horizon",
         title_fontsize=FONT_LEGEND,
@@ -665,8 +643,6 @@ def plot_per_dataset_heatmap(
     ax.set_yticklabels(sources_label, fontsize=FONT_TICK)
     ax.set_xlabel("Prediction horizon",
                   fontsize=FONT_AXIS_LABEL, fontweight="bold")
-    ax.set_title("Macro-F1 by Data Source and Horizon",
-                 fontsize=FONT_TITLE, fontweight="bold")
 
     for i in range(len(sources_label)):
         for j in range(len(HORIZONS)):
@@ -757,8 +733,7 @@ def plot_lead_time_histogram(
     ax.set_xlabel("Lead time before DEGRADED event (seconds)",
                   fontsize=FONT_AXIS_LABEL, fontweight="bold")
     ax.set_ylabel("Density", fontsize=FONT_AXIS_LABEL, fontweight="bold")
-    ax.set_title("Prediction Lead-Time Histogram",
-                 fontsize=FONT_TITLE, fontweight="bold")
+
     leg = ax.legend(fontsize=FONT_LEGEND)
     leg.get_title().set_fontweight("bold")
     ax.tick_params(labelsize=FONT_TICK)
@@ -826,11 +801,7 @@ def plot_attention_heatmap(
                       fontsize=FONT_AXIS_LABEL)
         ax.set_ylabel("Query time-step",
                       fontsize=FONT_AXIS_LABEL)
-        ax.set_title(
-            f"Mean Attention Weights — {cls_name} samples (n={len(indices)})",
-            fontsize=FONT_TITLE, fontweight="bold",
-            color=CLASS_COLORS[cls_name],
-        )
+
         ax.tick_params(labelsize=FONT_TICK)
         plt.tight_layout()
         save_figure(
@@ -891,9 +862,12 @@ def plot_feature_saliency(
         return
 
     X_deg = X[mask].requires_grad_(True)
+    # cuDNN LSTM backward requires training mode
+    model.train()
     out = model(X_deg)
     logit = out[f"logits_{horizon}"][:, DEGRADED_IDX].sum()
     logit.backward()
+    model.eval()
 
     # Saliency: mean |grad| over samples and time steps → (n_features,)
     saliency = X_deg.grad.abs().mean(dim=(0, 1)).detach().cpu().numpy()
@@ -918,10 +892,7 @@ def plot_feature_saliency(
     ax.set_yticklabels(top_names[::-1], fontsize=FONT_TICK)
     ax.set_xlabel("Normalised mean |∂ DEGRADED / ∂ feature|",
                   fontsize=FONT_AXIS_LABEL, fontweight="bold")
-    ax.set_title(
-        f"Feature Saliency — DEGRADED Class, Horizon +{horizon}",
-        fontsize=FONT_TITLE, fontweight="bold",
-    )
+
     ax.set_xlim(0, 1.05)
     ax.tick_params(labelsize=FONT_TICK)
     plt.tight_layout()
