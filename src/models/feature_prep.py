@@ -546,6 +546,12 @@ if __name__ == "__main__":
         description="Build SENTINEL-GNSS feature windows")
     parser.add_argument("--force", action="store_true",
                         help="Rebuild windows even if cached .npz files exist")
+    parser.add_argument("--no_smote", action="store_true",
+                        help="Skip SMOTE oversampling. Use when training deep models: "
+                             "SMOTE interpolates in the flattened (T×F) space, creating "
+                             "synthetic windows with incoherent temporal dynamics that "
+                             "mislead the Transformer-LSTM. Classical ML baselines should "
+                             "still use SMOTE (the default). Saves to windows_no_smote/.")
     parser.add_argument("--debug", action="store_true",
                         help="Smoke-test mode: 500 rows/source, saves to windows_debug/ "
                              "(does not overwrite real windows)")
@@ -563,7 +569,17 @@ if __name__ == "__main__":
             max_rows_per_source=500,
         )
     else:
-        data = prepare(force_rebuild=args.force)
+        if args.no_smote:
+            no_smote_out = ROOT / "data" / "processed" / "windows_no_smote"
+            log.info(
+                "=== --no_smote: saving class-weight-only windows to windows_no_smote/ ===")
+            data = prepare(
+                out_dir=no_smote_out,
+                force_rebuild=args.force,
+                smote=False,
+            )
+        else:
+            data = prepare(force_rebuild=args.force)
 
     print("\n=== Window summary ===")
     for spl, d in data.items():

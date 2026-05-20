@@ -512,6 +512,10 @@ if __name__ == "__main__":
                         help="Model architecture: full=SENTINEL-GNSS, "
                              "lstm_only=ablation (no Transformer), "
                              "transformer_only=ablation (no LSTM)")
+    parser.add_argument("--window_dir",   type=str,   default=None,
+                        help="Path to directory containing train/val/test .npz windows. "
+                             "Defaults to data/processed/windows/. "
+                             "Use data/processed/windows_no_smote/ for deep model training.")
     parser.add_argument("--debug",        action="store_true",
                         help="Smoke-test: use windows_debug/ and a debug checkpoint dir")
     args = parser.parse_args()
@@ -540,4 +544,6 @@ if __name__ == "__main__":
               ckpt_dir=debug_ckpt_dir, window_dir=debug_window_dir)
     else:
         ckpt_dir = ROOT / "results" / "models" / f"checkpoints{ckpt_suffix}"
-        train(config=cfg, resume=args.resume, ckpt_dir=ckpt_dir)
+        w_dir = Path(args.window_dir) if args.window_dir else WINDOW_DIR
+        train(config=cfg, resume=args.resume,
+              ckpt_dir=ckpt_dir, window_dir=w_dir)

@@ -145,17 +145,19 @@ python src/utils/analyze_route_testing_v2.py route_planning/Phone_b route_planni
 
 ## Data Sources
 
-| Dataset                         | Location                                      | Size (GNSS only) | Purpose                                           | Status             |
-| ------------------------------- | --------------------------------------------- | ---------------- | ------------------------------------------------- | ------------------ |
-| Our collection (Septentrio)     | `data/raw/our_collection/`                    | ~10–50 MB        | Primary labeled training data for all 5 scenarios | To be collected    |
-| Supervisor vehicle (Septentrio) | `data/raw/supervisor/vehicle/`                | ~20 MB           | Training + validation                             | Present            |
-| Supervisor drone (Septentrio)   | `data/raw/supervisor/drone/`                  | ~5 MB            | Training + validation                             | Present            |
-| UrbanNav HK-Medium-Urban-1      | `data/raw/public/urbannav/HK-Medium-Urban-1/` | ~100 MB          | Scenario B validation (urban canyon)              | Present            |
-| UrbanNav HK-Tunnel-1            | `data/raw/public/urbannav/HK-Tunnel-1/`       | ~8 MB            | Scenario A validation (complete loss)             | ✅ Extracted       |
-| UrbanNav Tokyo                  | `data/raw/public/urbannav/tokyo/`             | ~60 MB           | Cross-country generalization                      | Present            |
-| NCLT                            | `data/raw/public/nclt/`                       | ~50 MB           | Long-term stability test                          | Not yet downloaded |
-| Oxford RobotCar                 | `data/raw/public/oxford/`                     | ~50 MB           | Global generalization                             | Not yet downloaded |
-| KAIST                           | `data/raw/public/kaist/`                      | TBD              | Deferred                                          | Not downloaded     |
+| Dataset                         | Location                                      | City      | Purpose                                  | Status       |
+| ------------------------------- | --------------------------------------------- | --------- | ---------------------------------------- | ------------ |
+| Supervisor vehicle (Septentrio) | `data/raw/supervisor/vehicle/`                | Beijing   | Urban + suburban driving                 | ✅ Processed |
+| Supervisor drone (Septentrio)   | `data/raw/supervisor/drone/`                  | Beijing   | Aerial open-sky reference                | ✅ Processed |
+| Field collection — Scenarios    | `data/raw/scenarios/`                         | Beijing   | 5 controlled degradation scenarios (A–E) | ✅ Processed |
+| UrbanNav HK-Medium-Urban-1      | `data/raw/public/urbannav/HK-Medium-Urban-1/` | Hong Kong | Urban canyon (multi-receiver)            | ✅ Processed |
+| UrbanNav HK-Tunnel-1            | `data/raw/public/urbannav/HK-Tunnel-1/`       | Hong Kong | Complete signal loss (tunnel)            | ✅ Processed |
+| UrbanNav Tokyo-Odaiba           | `data/raw/public/urbannav/Tokyo/Odaiba/`      | Tokyo     | Mixed open-sky + moderate urban          | ✅ Processed |
+| UrbanNav Tokyo-Shinjuku         | `data/raw/public/urbannav/Tokyo/Shinjuku/`    | Tokyo     | Dense urban canyon (added for diversity) | ✅ Processed |
+| NCLT                            | `data/raw/public/nclt/`                       | Michigan  | Long-term campus driving                 | ✅ Processed |
+| Oxford RobotCar                 | `data/raw/public/oxford/`                     | Oxford    | Cross-continent generalization           | ✅ Processed |
+
+**Combined labelled dataset:** 97,393 rows × 41 columns across 10 source groups and 3 cities (Beijing, Hong Kong, Tokyo). Labels: CLEAN 66.8%, WARNING 20.3%, DEGRADED 12.9%.
 
 ---
 
@@ -183,7 +185,7 @@ Full RTKLIB usage documentation: `data/README.md` → section "RTKLIB Explained"
 
 ## Feature Engineering
 
-The model uses 35 standardized features extracted from each 1-second epoch of a `.pos` file. Features are grouped into 7 categories:
+The model uses **34 standardized features** extracted from each 1-second epoch of a `.pos` file (33 signal features + 1 `cnr_available` availability flag). Features are grouped into 7 categories:
 
 | Category               | Features                                                                      |
 | ---------------------- | ----------------------------------------------------------------------------- |
@@ -201,13 +203,15 @@ See `src/features/feature_extractor.py` for exact computation logic.
 
 ## Train / Validation / Test Split
 
-Time-based split (not random) — mandatory for time-series data to prevent data leakage:
+**Session-based split** — within every source group, sessions are sorted by time and assigned 70 / 15 / 15. This ensures every source type appears in all three splits (no source is test-only), while still preventing data leakage within a session.
 
-| Split      | Data source                                      | Ratio |
-| ---------- | ------------------------------------------------ | ----- |
-| Train      | Our collection (scenarios A–E) + supervisor data | 70%   |
-| Validation | UrbanNav HK + Tokyo                              | 15%   |
-| Test       | NCLT + Oxford                                    | 15%   |
+| Split      | Windows | Label distribution (5 s horizon)           |
+| ---------- | ------- | ------------------------------------------ |
+| Train      | 52,757  | CLEAN 35,223 WARNING 10,600 DEGRADED 6,934 |
+| Validation | 23,842  | CLEAN 23,035 WARNING 444 DEGRADED 363      |
+| Test       | 17,803  | CLEAN 13,740 WARNING 3,003 DEGRADED 1,060  |
+
+SMOTE is applied to the training set only (105,669 windows after oversampling). Val and test sets are never modified.
 
 Random shuffling is explicitly forbidden. GNSS data is sequential — shuffling allows the model to "see the future" during training and inflates test accuracy without real generalization.
 
