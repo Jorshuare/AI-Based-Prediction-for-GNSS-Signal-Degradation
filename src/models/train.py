@@ -179,6 +179,50 @@ def make_loaders(
     return loaders
 
 
+# ─── Balanced val subset for early stopping ──────────────────────────────────
+def make_balanced_val_loader(
+    val_loader: DataLoader,
+    batch_size: int,
+    n_per_class: int = 500,
+    seed: int = 42,
+) -> DataLoader:
+    """Return a class-balanced DataLoader sampled from the val set.
+
+    The full val set is ~97 % CLEAN, which causes early stopping to fire on a
+    degenerate distribution (model just predicts CLEAN well).  This loader
+    draws at most *n_per_class* samples per class so the stopping signal
+    equally reflects CLEAN, WARNING, and DEGRADED performance.
+
+    The full val loader still runs every epoch for loss/F1 logging.
+    """
+    ds = val_loader.dataset
+    X_all, y5_all, y15_all, y30_all, y0_all = [t.numpy() for t in ds.tensors]
+
+    rng = np.random.RandomState(seed)
+    n_take = min(n_per_class, *(int(np.sum(y5_all == c)) for c in range(3)))
+
+    indices = np.concatenate([
+        rng.choice(np.where(y5_all == c)[0], size=n_take, replace=False)
+        for c in range(3)
+    ])
+    rng.shuffle(indices)
+
+    ds_bal = TensorDataset(
+        torch.from_numpy(X_all[indices]).float(),
+        torch.from_numpy(y5_all[indices]).long(),
+        torch.from_numpy(y15_all[indices]).long(),
+        torch.from_numpy(y30_all[indices]).long(),
+        torch.from_numpy(y0_all[indices]).long(),
+    )
+    return DataLoader(
+        ds_bal,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=0,
+        pin_memory=torch.cuda.is_available(),
+    )
+
+
 # ─── Single epoch pass ────────────────────────────────────────────────────────
 def run_epoch(
     model:      SentinelGNSS,
@@ -355,8 +399,15 @@ def train(
     windows = load_windows(window_dir)
     loaders = make_loaders(
         windows, config["batch_size"], config["num_workers"])
+    # Balanced val subset: 500 samples per class (CLEAN / WARNING / DEGRADED)
+    # Used exclusively for early stopping and best-checkpoint decisions.
+    # The full val loader still runs every epoch for loss/F1 logging.
+    loaders["val_stop"] = make_balanced_val_loader(
+        loaders["val"], config["batch_size"], seed=config["seed"])
+    n_stop = len(loaders["val_stop"].dataset)
     log.info(f"  train batches: {len(loaders['train'])}  "
-             f"val batches: {len(loaders['val'])}")
+             f"val batches: {len(loaders['val'])}  "
+             f"val_stop (balanced): {n_stop} samples")
 
     # ── Model ─────────────────────────────────────────────────────────────
     model = build_model(config).to(device)
@@ -390,6 +441,7 @@ def train(
         "train_loss": [], "val_loss": [],
         "train_f1_5s": [], "train_f1_15s": [], "train_f1_30s": [],
         "val_f1_5s":   [], "val_f1_15s":   [], "val_f1_30s":   [],
+        "stop_f1_5s":  [], "stop_f1_15s":  [], "stop_f1_30s":  [],
         "lr": [],
     }
 
@@ -433,11 +485,17 @@ def train(
             optimizer, amp_scaler, device, config["grad_clip"], train=True,
             aux_weight=config.get("aux_head_weight", 0.0),
         )
-        # Validate
+        # Full val — logged every epoch (loss + F1 for learning curves)
         val_loss, val_f1 = run_epoch(
             model, loaders["val"], criterion, horizon_w,
             None, None, device, config["grad_clip"], train=False,
-            aux_weight=0.0,   # no aux loss during validation
+            aux_weight=0.0,
+        )
+        # Balanced val — early stopping signal (equal class representation)
+        _, stop_f1 = run_epoch(
+            model, loaders["val_stop"], criterion, horizon_w,
+            None, None, device, config["grad_clip"], train=False,
+            aux_weight=0.0,
         )
 
         scheduler.step()
@@ -452,16 +510,22 @@ def train(
         history["val_f1_5s"].append(val_f1["5s"])
         history["val_f1_15s"].append(val_f1["15s"])
         history["val_f1_30s"].append(val_f1["30s"])
+        history["stop_f1_5s"].append(stop_f1["5s"])
+        history["stop_f1_15s"].append(stop_f1["15s"])
+        history["stop_f1_30s"].append(stop_f1["30s"])
         history["lr"].append(current_lr)
 
-        # Primary monitor metric: mean val macro-F1 across all horizons
-        val_mean_f1 = np.mean([val_f1["5s"], val_f1["15s"], val_f1["30s"]])
+        # Primary monitor metric: balanced val macro-F1 (equal class weight)
+        # val_mean_f1 is still logged but NOT used for early stopping.
+        val_mean_f1 = np.mean([val_f1["5s"],  val_f1["15s"],  val_f1["30s"]])
+        stop_mean_f1 = np.mean([stop_f1["5s"], stop_f1["15s"], stop_f1["30s"]])
 
         elapsed = time.time() - t0
         log.info(
             f"Epoch {epoch+1:03d}/{config['max_epochs']}  "
             f"| tr_loss={tr_loss:.4f}  val_loss={val_loss:.4f}  "
             f"| val_F1(5s/15s/30s): {val_f1['5s']:.3f}/{val_f1['15s']:.3f}/{val_f1['30s']:.3f}  "
+            f"| stop_F1={stop_mean_f1:.3f}  "
             f"| lr={current_lr:.2e}  {elapsed:.1f}s"
         )
 
@@ -475,15 +539,15 @@ def train(
             log.info(f"  → Periodic checkpoint: {path.name}")
 
         # ── Best-model checkpoint ─────────────────────────────────────────
-        if val_mean_f1 > best_metric:
-            best_metric = val_mean_f1
+        if stop_mean_f1 > best_metric:
+            best_metric = stop_mean_f1
             patience_counter = 0
             save_checkpoint(
                 ckpt_dir, "best", epoch + 1, model, optimizer, scheduler,
                 amp_scaler, best_metric, config, history,
             )
             log.info(
-                f"  ★ New best val macro-F1 = {best_metric:.4f}  → checkpoint_best.pt")
+                f"  ★ New best stop macro-F1 = {best_metric:.4f}  → checkpoint_best.pt")
         else:
             patience_counter += 1
 
