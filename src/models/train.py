@@ -216,9 +216,9 @@ def run_epoch(
                     horizon_w[k] * criterion[k](out[f"logits_{k}"], targets[k])
                     for k in horizon_w
                 )
-                # Auxiliary current-state loss (multi-task regulariser)
+                # Auxiliary current-state loss (multi-task regulariser; only if model has head_0s)
                 aux_loss = criterion["5s"](
-                    out["logits_0s"], y0) if aux_weight > 0 else 0.0
+                    out["logits_0s"], y0) if (aux_weight > 0 and "logits_0s" in out) else 0.0
                 loss = prediction_loss + aux_weight * aux_loss
 
             if train and optimizer is not None:

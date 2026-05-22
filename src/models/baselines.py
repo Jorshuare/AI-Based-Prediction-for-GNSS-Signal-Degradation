@@ -309,10 +309,12 @@ def print_comparison_table(all_results: dict) -> None:
         desc = descriptions.get(model_name, "")
         f1s = []
         for h in HORIZONS:
-            if h in res:
+            if h not in res:
+                f1s.append("  n/a ")
+            elif "overall" in res[h]:
                 f1s.append(f"{res[h]['overall']['macro_f1']:.4f}")
             else:
-                f1s.append("  n/a ")
+                f1s.append(f"{res[h]['macro_f1']:.4f}")
         marker = " ◄" if model_name == "SENTINEL-GNSS" else ""
         log.info(
             f"  {model_name:<26}  {desc:<24}  "
