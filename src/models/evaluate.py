@@ -297,6 +297,76 @@ def print_metrics_table(metrics: dict, split: str = "test") -> None:
     print(f"\n{sep}\n")
 
 
+# ─── Threshold tuning ─────────────────────────────────────────────────────────
+def tune_thresholds(
+    val_results: dict,
+    n_grid: int = 20,
+) -> dict[str, np.ndarray]:
+    """Find per-class probability thresholds that maximise val macro-F1.
+
+    Instead of argmax (implicit 0.5 threshold), we sweep a grid of
+    thresholds for WARNING and DEGRADED independently.  For each candidate
+    threshold vector the argmax is replaced by: predict class c if
+    P(c) > threshold[c], with ties broken by highest probability.
+
+    This is a post-hoc, training-free improvement.
+    Ref: Hernández-Orallo, J. et al. (2012). ROC analysis in AI. AI Review.
+
+    Returns
+    -------
+    best_thresholds : dict  horizon → (3,) float array [clean, warn, degrad]
+    """
+    grid = np.linspace(0.1, 0.9, n_grid)
+    best_thresholds: dict[str, np.ndarray] = {}
+
+    for h in HORIZONS:
+        y_true = val_results[h]["y_true"]
+        y_prob = val_results[h]["y_prob"]   # (N, 3)
+
+        best_f1 = 0.0
+        best_t = np.array([0.5, 0.5, 0.5])
+
+        # Sweep WARNING and DEGRADED thresholds (CLEAN threshold is fixed at 0.5)
+        for t_warn in grid:
+            for t_deg in grid:
+                thresholds = np.array([0.5, t_warn, t_deg])
+                # Predict: class with highest prob that exceeds its threshold.
+                # Fall back to argmax if no class exceeds threshold.
+                scaled = y_prob / thresholds[None, :]
+                y_pred = scaled.argmax(axis=1)
+                f1 = f1_score(y_true, y_pred, average="macro", zero_division=0)
+                if f1 > best_f1:
+                    best_f1 = f1
+                    best_t = thresholds
+
+        best_thresholds[h] = best_t
+        log.info(
+            f"  Threshold +{h}:  WARN={best_t[1]:.2f}  DEG={best_t[2]:.2f}  "
+            f"→ val macro-F1={best_f1:.4f}"
+        )
+
+    return best_thresholds
+
+
+def apply_thresholds(
+    results: dict,
+    thresholds: dict[str, np.ndarray],
+) -> dict:
+    """Re-compute predictions using tuned thresholds."""
+    tuned = {}
+    for h in HORIZONS:
+        y_prob = results[h]["y_prob"]
+        t = thresholds[h]
+        scaled = y_prob / t[None, :]
+        y_pred_tuned = scaled.argmax(axis=1)
+        tuned[h] = {
+            "y_true": results[h]["y_true"],
+            "y_pred": y_pred_tuned,
+            "y_prob": y_prob,
+        }
+    return tuned
+
+
 # ─── 4. ROC Curves ───────────────────────────────────────────────────────────
 def plot_roc_curves(
     results: dict,
@@ -962,6 +1032,7 @@ def run_all(
     windows_dir: Path = WINDOW_DIR,
     ckpt_dir: Path = CKPT_DIR,
     n_bootstrap: int = 1000,
+    tune_thresholds_flag: bool = False,
 ) -> None:
     """Run the complete evaluation pipeline and save all figures.
 
@@ -1001,6 +1072,28 @@ def run_all(
     # ── Inference ─────────────────────────────────────────────────────────
     log.info(f"  Running inference on '{split}' split …")
     results = run_inference(model, windows, split=split, device=device)
+
+    # ── Optional: threshold tuning on val set ─────────────────────────────
+    if tune_thresholds_flag:
+        log.info("  Tuning classification thresholds on val set …")
+        val_results = run_inference(model, windows, split="val", device=device)
+        thresholds = tune_thresholds(val_results)
+        # Save thresholds for reproducibility
+        thr_path = out_dir / "tuned_thresholds.json"
+        with open(thr_path, "w") as f:
+            json.dump({h: thresholds[h].tolist()
+                      for h in HORIZONS}, f, indent=2)
+        log.info(f"  Thresholds saved → {thr_path}")
+        # Apply to test results
+        results_tuned = apply_thresholds(results, thresholds)
+        metrics_tuned = compute_metrics(results_tuned)
+        print("\n  ── With tuned thresholds ──")
+        print_metrics_table(metrics_tuned, split=f"{split}+tuned")
+        # Also save tuned metrics
+        with open(out_dir / f"metrics_{split}_tuned.json", "w") as f:
+            json.dump(metrics_tuned, f, indent=2)
+        log.info("  Using tuned-threshold predictions for figures.")
+        results = results_tuned
 
     # ── Metrics ──────────────────────────────────────────────────────────
     metrics = compute_metrics(results)
@@ -1061,11 +1154,17 @@ def run_all(
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Evaluate SENTINEL-GNSS")
-    parser.add_argument("--split",       default="test",
+    parser.add_argument("--split",             default="test",
                         choices=["val", "test"])
-    parser.add_argument("--checkpoint",  default=None,    type=Path)
-    parser.add_argument("--n_bootstrap", default=1000,    type=int)
-    parser.add_argument("--debug",       action="store_true",
+    parser.add_argument("--checkpoint",        default=None,    type=Path)
+    parser.add_argument("--n_bootstrap",       default=1000,    type=int)
+    parser.add_argument("--tune_thresholds",   action="store_true",
+                        help="Sweep per-class probability thresholds on val set "
+                             "and re-evaluate test set with optimal thresholds. "
+                             "Free improvement — no retraining needed.")
+    parser.add_argument("--window_dir",        default=None,    type=Path,
+                        help="Override window directory (default: data/processed/windows/)")
+    parser.add_argument("--debug",             action="store_true",
                         help="Smoke-test: use windows_debug/ and checkpoints_debug/")
     args = parser.parse_args()
 
@@ -1080,10 +1179,14 @@ if __name__ == "__main__":
             n_bootstrap=50,     # fast: 50 bootstrap iterations instead of 1000
             windows_dir=debug_window_dir,
             ckpt_dir=debug_ckpt_dir,
+            tune_thresholds_flag=args.tune_thresholds,
         )
     else:
+        w_dir = args.window_dir or WINDOW_DIR
         run_all(
             model_path=args.checkpoint,
             split=args.split,
             n_bootstrap=args.n_bootstrap,
+            windows_dir=w_dir,
+            tune_thresholds_flag=args.tune_thresholds,
         )

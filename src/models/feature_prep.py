@@ -293,10 +293,12 @@ def _build_windows_for_session(
         return None   # session too short
 
     xs = []
-    ys = {k: [] for k in horizons}
+    ys = {"0s": [], **{k: [] for k in horizons}}
 
     for i in range(max_start + 1):
         xs.append(rows[i: i + window_size])
+        # Current state: label of the last time-step in the window
+        ys["0s"].append(labels[i + window_size - 1])
         for key, h in horizons.items():
             ys[key].append(labels[i + window_size + h - 1])
 
@@ -320,9 +322,9 @@ def build_windows(
     }
     """
     split_data: dict[str, dict] = {
-        "train": {"X": [], "y_5s": [], "y_15s": [], "y_30s": []},
-        "val":   {"X": [], "y_5s": [], "y_15s": [], "y_30s": []},
-        "test":  {"X": [], "y_5s": [], "y_15s": [], "y_30s": []},
+        "train": {"X": [], "y_0s": [], "y_5s": [], "y_15s": [], "y_30s": []},
+        "val":   {"X": [], "y_0s": [], "y_5s": [], "y_15s": [], "y_30s": []},
+        "test":  {"X": [], "y_0s": [], "y_5s": [], "y_15s": [], "y_30s": []},
     }
 
     # Group by (source, scenario) to create per-session windows
@@ -346,7 +348,7 @@ def build_windows(
             split = "train"
 
         split_data[split]["X"].append(x_arr)
-        for k in HORIZONS:
+        for k in ("0s", *HORIZONS):
             split_data[split][f"y_{k}"].append(y_arr[k])
 
     # Concatenate along axis 0
@@ -354,7 +356,7 @@ def build_windows(
         if not split_data[spl]["X"]:
             continue
         split_data[spl]["X"] = np.concatenate(split_data[spl]["X"], axis=0)
-        for k in HORIZONS:
+        for k in ("0s", *HORIZONS):
             split_data[spl][f"y_{k}"] = np.concatenate(
                 split_data[spl][f"y_{k}"], axis=0
             )
@@ -429,7 +431,7 @@ def apply_smote(
     n_orig = n
     split_data["train"]["X"] = X_res_3d.astype(np.float32)
     split_data["train"]["y_5s"] = y_res.astype(np.int64)
-    for k in ("y_15s", "y_30s"):
+    for k in ("y_0s", "y_15s", "y_30s"):
         orig = split_data["train"][k]
         n_synth = len(y_res) - n_orig
         synth_labels = y_res[n_orig:]    # use y_5s of synthetic rows

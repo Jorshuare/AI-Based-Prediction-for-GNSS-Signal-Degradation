@@ -91,10 +91,13 @@ DEFAULT_CONFIG: dict = {
     "grad_clip":     1.0,
     "early_stop_patience": 20,
     "focal_gamma":   2.0,     # focal loss gamma  (Lin et al., 2017)
-    # Class weights: inversely proportional to class frequency in training set
-    # CLEAN≈67% → w=1.0, WARNING≈20% → w=3.35, DEGRADED≈13% → w=5.15
-    # Rounded to round numbers for interpretability.
-    "class_weights": [1.0, 2.0, 3.0],
+    # Class weights: [CLEAN, WARNING, DEGRADED]
+    # WARNING boosted to 4.0 — its boundary is the most ambiguous and
+    # its precision (0.18) is the primary macro-F1 bottleneck.
+    "class_weights": [1.0, 4.0, 3.0],
+    # Auxiliary head weight: fraction of total loss assigned to the
+    # t+0s current-state head (multi-task regulariser, Caruana 1997).
+    "aux_head_weight": 0.3,
     # Horizon weights: all three heads weighted equally by default.
     # Increase weight for 30s if long-range prediction is the primary goal.
     "horizon_weights": {"5s": 1.0, "15s": 1.0, "30s": 1.0},
@@ -161,7 +164,11 @@ def make_loaders(
         y_5s = torch.from_numpy(d["y_5s"]).long()
         y_15s = torch.from_numpy(d["y_15s"]).long()
         y_30s = torch.from_numpy(d["y_30s"]).long()
-        ds = TensorDataset(X, y_5s, y_15s, y_30s)
+        # y_0s is the current state (auxiliary multi-task label).
+        # Fall back to y_5s if missing (backward-compatible with old windows).
+        y_0s = torch.from_numpy(
+            d["y_0s"] if "y_0s" in d else d["y_5s"]).long()
+        ds = TensorDataset(X, y_5s, y_15s, y_30s, y_0s)
         loaders[spl] = DataLoader(
             ds,
             batch_size=batch_size,
@@ -183,6 +190,7 @@ def run_epoch(
     device:     torch.device,
     grad_clip:  float,
     train:      bool,
+    aux_weight: float = 0.0,
 ) -> tuple[float, dict[str, float]]:
     """Run one epoch (training or evaluation).
 
@@ -199,15 +207,19 @@ def run_epoch(
     ctx = torch.enable_grad() if train else torch.no_grad()
     with ctx:
         for batch in loader:
-            X, y5, y15, y30 = (t.to(device) for t in batch)
+            X, y5, y15, y30, y0 = (t.to(device) for t in batch)
             targets = {"5s": y5, "15s": y15, "30s": y30}
 
             with torch.amp.autocast("cuda", enabled=(scaler is not None)):
                 out = model(X)
-                loss = sum(
+                prediction_loss = sum(
                     horizon_w[k] * criterion[k](out[f"logits_{k}"], targets[k])
                     for k in horizon_w
                 )
+                # Auxiliary current-state loss (multi-task regulariser)
+                aux_loss = criterion["5s"](
+                    out["logits_0s"], y0) if aux_weight > 0 else 0.0
+                loss = prediction_loss + aux_weight * aux_loss
 
             if train and optimizer is not None:
                 optimizer.zero_grad()
@@ -419,11 +431,13 @@ def train(
         tr_loss, tr_f1 = run_epoch(
             model, loaders["train"], criterion, horizon_w,
             optimizer, amp_scaler, device, config["grad_clip"], train=True,
+            aux_weight=config.get("aux_head_weight", 0.0),
         )
         # Validate
         val_loss, val_f1 = run_epoch(
             model, loaders["val"], criterion, horizon_w,
             None, None, device, config["grad_clip"], train=False,
+            aux_weight=0.0,   # no aux loss during validation
         )
 
         scheduler.step()
@@ -506,7 +520,10 @@ if __name__ == "__main__":
     parser.add_argument("--max_epochs",   type=int,   default=None)
     parser.add_argument("--lr",           type=float, default=None)
     parser.add_argument("--dropout",      type=float, default=None)
-    parser.add_argument("--focal_gamma",  type=float, default=None)
+    parser.add_argument("--focal_gamma",   type=float, default=None)
+    parser.add_argument("--class_weights",  type=float, nargs=3,
+                        metavar=("W_CLEAN", "W_WARNING", "W_DEGRADED"), default=None,
+                        help="Per-class focal loss weights, e.g. --class_weights 1 4 3")
     parser.add_argument("--model_type",   type=str,   default="full",
                         choices=["full", "lstm_only", "transformer_only"],
                         help="Model architecture: full=SENTINEL-GNSS, "
@@ -525,6 +542,8 @@ if __name__ == "__main__":
         val = getattr(args, key)
         if val is not None:
             cfg[key] = val
+    if args.class_weights is not None:
+        cfg["class_weights"] = list(args.class_weights)
     cfg["model_type"] = args.model_type
 
     # Each model type gets its own checkpoint directory so runs don't overwrite each other

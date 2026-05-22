@@ -1176,6 +1176,24 @@ def process_supervisor_drone() -> pd.DataFrame:
         return pd.DataFrame()
 
     combined = pd.concat(all_dfs, ignore_index=True)
+
+    # Cap CLEAN rows: drone data is almost entirely open-sky CLEAN, which
+    # teaches the model to over-predict CLEAN and suppresses WARNING/DEGRADED
+    # recall.  Keep 3,000 CLEAN rows (sufficient statistical coverage) while
+    # retaining all WARNING and DEGRADED rows.
+    DRONE_CLEAN_CAP = 3000
+    clean_mask = combined["label"] == 0
+    if clean_mask.sum() > DRONE_CLEAN_CAP:
+        n_before = int(clean_mask.sum())
+        keep_clean = combined[clean_mask].sample(
+            DRONE_CLEAN_CAP, random_state=42)
+        combined = pd.concat(
+            [combined[~clean_mask], keep_clean]
+        ).sort_values("timestamp").reset_index(drop=True)
+        log.info(
+            f"  Drone CLEAN rows capped: {n_before} → {DRONE_CLEAN_CAP} "
+            f"(WARNING+DEGRADED rows unchanged)")
+
     out_dir = Path("data/processed/supervisor/drone")
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / "supervisor_drone_features.csv"

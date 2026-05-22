@@ -221,6 +221,11 @@ class SentinelGNSS(nn.Module):
         self.head_5s = self._make_head(head_in, n_classes, dropout)
         self.head_15s = self._make_head(head_in, n_classes, dropout)
         self.head_30s = self._make_head(head_in, n_classes, dropout)
+        # Auxiliary head: predict CURRENT state (t+0s) as a multi-task
+        # regulariser.  Forces the model to first learn "where am I now"
+        # before predicting future states.  Ref: Caruana (1997), §4.
+        # Used only during training; ignored at inference time.
+        self.head_0s = self._make_head(head_in, n_classes, dropout)
 
         # ── Weight initialisation ────────────────────────────────────────
         self._init_weights()
@@ -283,6 +288,7 @@ class SentinelGNSS(nn.Module):
             "logits_5s":  self.head_5s(h_last),   # (B, 3)
             "logits_15s": self.head_15s(h_last),
             "logits_30s": self.head_30s(h_last),
+            "logits_0s":  self.head_0s(h_last),   # auxiliary — current state
         }
 
     def count_parameters(self) -> int:
