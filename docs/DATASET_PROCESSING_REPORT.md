@@ -1,6 +1,6 @@
 # SENTINEL-GNSS: Dataset Processing Report
 
-> **Updated:** May 16, 2026  
+> **Updated:** May 22, 2026  
 > **Pipeline:** `src/processing/process_all_datasets.py --all`
 
 ---
@@ -11,10 +11,11 @@
 | ---------------------- | -------------- | ------------------------ | --------------------- | -------------------- | ------ |
 | **Scenarios A–E**      | Self-collected | Beijing, 2026            | Septentrio Mosaic-X5C | RINEX SNR-indicator  | 3,586  |
 | **Supervisor Vehicle** | Self-collected | Beijing, 2025            | Septentrio Mosaic-X5C | NMEA GSV (direct)    | 3,401  |
-| **Supervisor Drone**   | Self-collected | Beijing, 2024            | Unicore UB4B0         | RINEX S1C (direct)   | 14,862 |
+| **Supervisor Drone**   | Self-collected | Beijing, 2024            | Unicore UB4B0         | RINEX S1C (direct)   | 11,123 |
 | **UrbanNav HK Medium** | Downloaded     | Hong Kong, 2021          | 10 receivers          | RINEX S1C + NMEA GSV | 7,608  |
 | **UrbanNav HK Tunnel** | Downloaded     | Hong Kong, 2021          | 10 receivers          | RINEX S1C + NMEA GSV | 3,461  |
 | **Tokyo Odaiba**       | Downloaded     | Tokyo, 2021              | Trimble + u-blox      | RINEX S1C (direct)   | 18,603 |
+| **Tokyo Shinjuku**     | Downloaded     | Tokyo, 2021              | Trimble + u-blox      | RINEX S1C (direct)   | 31,265 |
 | **NCLT**               | Downloaded     | Ann Arbor USA, 2012–2013 | Unknown GPS module    | GPS CSV (no C/N0)    | 7,493  |
 | **Oxford RobotCar**    | Downloaded     | Oxford UK, 2014–2015     | NovAtel OEM6          | GPS CSV (no C/N0)    | 7,114  |
 
@@ -26,36 +27,36 @@
 
 This table directly answers: **"Will there be too many NaN?"**
 
-| Feature (Group)                    |    Scenarios     | Supervisor Veh. | Supervisor Drone  | UrbanNav Med. | UrbanNav Tunnel | Tokyo Odaiba  |        NCLT         |     Oxford      |
-| ---------------------------------- | :--------------: | :-------------: | :---------------: | :-----------: | :-------------: | :-----------: | :-----------------: | :-------------: |
-| **G1: Position**                   |                  |                 |                   |               |                 |               |                     |                 |
-| `lat` / `lon`                      |    ✓ NMEA GGA    |   ✓ NMEA GGA    |       ✗ NaN       |  ✓ NMEA GGA   |   ✓ NMEA GGA    |     ✗ NaN     |      ✓ GPS CSV      |    ✓ GPS CSV    |
-| `alt`                              |    ✓ NMEA GGA    |   ✓ NMEA GGA    |       ✗ NaN       |  ✓ NMEA GGA   |   ✓ NMEA GGA    |     ✗ NaN     |      ✓ GPS CSV      |    ✓ GPS CSV    |
-| `lat_std` / `lon_std`              |  ✓ GST sentence  |      ✗ NaN      |       ✗ NaN       |     ✓ GST     |      ✓ GST      |     ✗ NaN     |   ✓ RTK err proxy   | ✓ NovAtel sigma |
-| **G2: Signal Strength**            |                  |                 |                   |               |                 |               |                     |                 |
-| `mean_cnr` etc. (all 5)            |   ✓ RINEX SNR    |   ✓ NMEA GSV    |    ✓ RINEX S1C    |  ✓ RINEX S1C  |   ✓ RINEX S1C   |  ✓ RINEX S1C  |      **✗ NaN**      |    **✗ NaN**    |
-| **G3: Satellite Count**            |                  |                 |                   |               |                 |               |                     |                 |
-| `num_satellites`                   |   ✓ GGA / GNS    |   ✓ GGA / GSV   |   ✓ RINEX count   | ✓ GGA / RINEX |  ✓ GGA / RINEX  | ✓ RINEX count | ✗ NaN (logging bug) |    ✓ GPS CSV    |
-| `sat_mean` / `sat_min`             |     ✓ window     |    ✓ window     |     ✓ window      |   ✓ window    |    ✓ window     |   ✓ window    |        ✗ NaN        |    ✓ window     |
-| `sat_visibility` / `sat_drop_rate` |        ✓         |        ✓        |         ✓         |       ✓       |        ✓        |       ✓       |          ✗          |        ✓        |
-| **G4: DOP**                        |                  |                 |                   |               |                 |               |                     |                 |
-| `pdop` / `hdop` / `vdop`           |    ✓ NMEA GSA    |   ✓ NMEA GSA    |       ✗ NaN       | ~partial GSA  |  ~partial GSA   |     ✗ NaN     |        ✗ NaN        |      ✗ NaN      |
-| `gdop` / `dop_ratio`               |    ✓ computed    |   ✓ computed    |       ✗ NaN       |     ✗ NaN     |      ✗ NaN      |     ✗ NaN     |        ✗ NaN        |      ✗ NaN      |
-| **G5: Receiver Status**            |                  |                 |                   |               |                 |               |                     |                 |
-| `solution_status`                  |  ✓ GGA quality   |  ✓ GGA quality  | 1.0 (always good) | ✓ GGA quality |  ✓ GGA quality  |      1.0      |     ✓ fix_mode      |       1.0       |
-| `baseline_sats` / `fix_continuity` |        ✓         |        ✓        |         ✓         |       ✓       |        ✓        |       ✓       |          ✓          |        ✓        |
-| `solution_age` / `fix_transitions` |   ✓ GGA field    |   ✓ GGA field   |         0         |       ✓       |        ✓        |       0       |          0          |        0        |
-| **G6: Temporal Patterns**          |                  |                 |                   |               |                 |               |                     |                 |
-| `position_variance`                |   ✓ GST window   |   ~DOP proxy    |    ~DOP proxy     | ✓ GST window  |        ✓        |    ~proxy     |      ✓ RTK err      |     ✓ sigma     |
-| `cnr_variance` / `cnr_trend`       |        ✓         |        ✓        |         ✓         |       ✓       |        ✓        |       ✓       |        ✗ NaN        |      ✗ NaN      |
-| `elevation_violations`             |     ~ proxy      |     ~ proxy     |      ~ proxy      |    ~ proxy    |     ~ proxy     |    ~ proxy    |          ✗          |     ~ proxy     |
-| `multipath` / `clock_bias`         |        ✓         |        ✓        |         ✓         |       ✓       |        ✓        |       ✓       |       ~ proxy       |     ✓ sigma     |
-| **G7: Atmospheric Effects**        |                  |                 |                   |               |                 |               |                     |                 |
-| `iono_delay`                       | 0 (no dual-freq) |        0        |         0         |       0       |        0        |       0       |          0          |        0        |
-| `tropo_delay`                      | ✓ Hopfield proxy |        ✓        |         ✓         |       ✓       |        ✓        |       ✓       |          ✓          |        ✓        |
-| `cycle_slips`                      |   ✓ RINEX LLI    |        0        |    ✓ RINEX LLI    |  ✓ RINEX LLI  |        ✓        |  ✓ RINEX LLI  |          0          |        0        |
-| `residual_mean` / `residual_std`   |   ✓ GBS / GST    |      ✓ GST      |      ~ proxy      |       ✓       |        ✓        |    ~ proxy    |      ✓ RTK err      |     ✓ sigma     |
-| **Approx. features with data**     |    **~32/35**    |   **~30/35**    |    **~26/35**     |  **~30/35**   |   **~30/35**    |  **~24/35**   |     **~16/35**      |   **~18/35**    |
+| Feature (Group)                    |    Scenarios     | Supervisor Veh. | Supervisor Drone  | UrbanNav Med. | UrbanNav Tunnel | Tokyo (Odaiba + Shinjuku) |        NCLT         |     Oxford      |
+| ---------------------------------- | :--------------: | :-------------: | :---------------: | :-----------: | :-------------: | :-----------------------: | :-----------------: | :-------------: |
+| **G1: Position**                   |                  |                 |                   |               |                 |                           |                     |                 |
+| `lat` / `lon`                      |    ✓ NMEA GGA    |   ✓ NMEA GGA    |       ✗ NaN       |  ✓ NMEA GGA   |   ✓ NMEA GGA    |           ✗ NaN           |      ✓ GPS CSV      |    ✓ GPS CSV    |
+| `alt`                              |    ✓ NMEA GGA    |   ✓ NMEA GGA    |       ✗ NaN       |  ✓ NMEA GGA   |   ✓ NMEA GGA    |           ✗ NaN           |      ✓ GPS CSV      |    ✓ GPS CSV    |
+| `lat_std` / `lon_std`              |  ✓ GST sentence  |      ✗ NaN      |       ✗ NaN       |     ✓ GST     |      ✓ GST      |           ✗ NaN           |   ✓ RTK err proxy   | ✓ NovAtel sigma |
+| **G2: Signal Strength**            |                  |                 |                   |               |                 |                           |                     |                 |
+| `mean_cnr` etc. (all 5)            |   ✓ RINEX SNR    |   ✓ NMEA GSV    |    ✓ RINEX S1C    |  ✓ RINEX S1C  |   ✓ RINEX S1C   |        ✓ RINEX S1C        |      **✗ NaN**      |    **✗ NaN**    |
+| **G3: Satellite Count**            |                  |                 |                   |               |                 |                           |                     |                 |
+| `num_satellites`                   |   ✓ GGA / GNS    |   ✓ GGA / GSV   |   ✓ RINEX count   | ✓ GGA / RINEX |  ✓ GGA / RINEX  |       ✓ RINEX count       | ✗ NaN (logging bug) |    ✓ GPS CSV    |
+| `sat_mean` / `sat_min`             |     ✓ window     |    ✓ window     |     ✓ window      |   ✓ window    |    ✓ window     |         ✓ window          |        ✗ NaN        |    ✓ window     |
+| `sat_visibility` / `sat_drop_rate` |        ✓         |        ✓        |         ✓         |       ✓       |        ✓        |             ✓             |          ✗          |        ✓        |
+| **G4: DOP**                        |                  |                 |                   |               |                 |                           |                     |                 |
+| `pdop` / `hdop` / `vdop`           |    ✓ NMEA GSA    |   ✓ NMEA GSA    |       ✗ NaN       | ~partial GSA  |  ~partial GSA   |           ✗ NaN           |        ✗ NaN        |      ✗ NaN      |
+| `gdop` / `dop_ratio`               |    ✓ computed    |   ✓ computed    |       ✗ NaN       |     ✗ NaN     |      ✗ NaN      |           ✗ NaN           |        ✗ NaN        |      ✗ NaN      |
+| **G5: Receiver Status**            |                  |                 |                   |               |                 |                           |                     |                 |
+| `solution_status`                  |  ✓ GGA quality   |  ✓ GGA quality  | 1.0 (always good) | ✓ GGA quality |  ✓ GGA quality  |            1.0            |     ✓ fix_mode      |       1.0       |
+| `baseline_sats` / `fix_continuity` |        ✓         |        ✓        |         ✓         |       ✓       |        ✓        |             ✓             |          ✓          |        ✓        |
+| `solution_age` / `fix_transitions` |   ✓ GGA field    |   ✓ GGA field   |         0         |       ✓       |        ✓        |             0             |          0          |        0        |
+| **G6: Temporal Patterns**          |                  |                 |                   |               |                 |                           |                     |                 |
+| `position_variance`                |   ✓ GST window   |   ~DOP proxy    |    ~DOP proxy     | ✓ GST window  |        ✓        |          ~proxy           |      ✓ RTK err      |     ✓ sigma     |
+| `cnr_variance` / `cnr_trend`       |        ✓         |        ✓        |         ✓         |       ✓       |        ✓        |             ✓             |        ✗ NaN        |      ✗ NaN      |
+| `elevation_violations`             |     ~ proxy      |     ~ proxy     |      ~ proxy      |    ~ proxy    |     ~ proxy     |          ~ proxy          |          ✗          |     ~ proxy     |
+| `multipath` / `clock_bias`         |        ✓         |        ✓        |         ✓         |       ✓       |        ✓        |             ✓             |       ~ proxy       |     ✓ sigma     |
+| **G7: Atmospheric Effects**        |                  |                 |                   |               |                 |                           |                     |                 |
+| `iono_delay`                       | 0 (no dual-freq) |        0        |         0         |       0       |        0        |             0             |          0          |        0        |
+| `tropo_delay`                      | ✓ Hopfield proxy |        ✓        |         ✓         |       ✓       |        ✓        |             ✓             |          ✓          |        ✓        |
+| `cycle_slips`                      |   ✓ RINEX LLI    |        0        |    ✓ RINEX LLI    |  ✓ RINEX LLI  |        ✓        |        ✓ RINEX LLI        |          0          |        0        |
+| `residual_mean` / `residual_std`   |   ✓ GBS / GST    |      ✓ GST      |      ~ proxy      |       ✓       |        ✓        |          ~ proxy          |      ✓ RTK err      |     ✓ sigma     |
+| **Approx. features with data**     |    **~32/35**    |   **~30/35**    |    **~26/35**     |  **~30/35**   |   **~30/35**    |        **~24/35**         |     **~16/35**      |   **~18/35**    |
 
 ### What "NaN" means for the model
 
@@ -105,21 +106,22 @@ For NCLT and Oxford, C/N0 is unavailable. Labels use **position uncertainty** di
 | ---------------------- | --------- | --------- | --------- | ---------- | --------------------------------------------------------------------------------- |
 | **UrbanNav HK Medium** | **2.7%**  | **74.0%** | **23.3%** | **7,608**  | 10 receivers; NovAtel best, phones worst                                          |
 | **UrbanNav HK Tunnel** | **11.2%** | **42.9%** | **46.0%** | **3,461**  | Complete tunnel traversal; in-tunnel no-fix epochs now correctly DEGRADED         |
-| **Tokyo Odaiba**       | **65.0%** | **11.4%** | **0.4%**  | **18,603** | ~65% CLEAN — mostly open Odaiba waterfront; 12,398 Trimble + 6,205 u-blox         |
+| **Tokyo Odaiba**       | **98.4%** | **1.1%**  | **0.4%**  | **18,603** | Mostly open/moderate urban; 12,398 Trimble + 6,205 u-blox                         |
+| **Tokyo Shinjuku**     | **93.5%** | **5.2%**  | **1.3%**  | **31,265** | Dense urban canyon route; 20,790 Trimble + 10,475 u-blox                          |
 | **NCLT**               | **82.0%** | **10.0%** | **8.0%**  | **7,493**  | Michigan campus; 2012 session much cleaner (mean RTK err 2.82m) than 2013 (6.81m) |
 | **Oxford**             | **3.6%**  | **43.9%** | **52.5%** | **7,114**  | GPS-only 2014 hardware; avg sigma 6m → mostly DEGRADED/WARNING                    |
 
 ### 3.3 Combined Dataset Summary (Session-Based 70/15/15 Split)
 
-**Total: 66,128 rows across 8 sources** _(+1,613 rows from NMEA no-fix fix)_
+**Total: 97,393 rows across 10 source groups**
 
 > Note: The epoch-level split percentages reflect session assignments; exact row counts per split depend on session sizes. The split is correct at session level (70% of sessions → train), which is the right unit to prevent temporal leakage.
 
 | Class        | Count  | %     |
 | ------------ | ------ | ----- |
-| **CLEAN**    | 44,141 | 66.8% |
-| **WARNING**  | 13,455 | 20.3% |
-| **DEGRADED** | 8,532  | 12.9% |
+| **CLEAN**    | 73,370 | 75.3% |
+| **WARNING**  | 15,075 | 15.5% |
+| **DEGRADED** | 8,948  | 9.2%  |
 
 ### 3.4 Comparison With Colleague's Label Distribution
 
@@ -185,7 +187,7 @@ Total sessions ≈ 50:
   Supervisor drone   4 sessions
   UrbanNav Medium   10 sessions (one per receiver)
   UrbanNav Tunnel   10 sessions (one per receiver)
-  Tokyo Odaiba       2 sessions (Trimble + u-blox)
+  Tokyo Odaiba + Shinjuku  4 sessions (Trimble + u-blox)
   NCLT               2 sessions (2012, 2013)
   Oxford             2 sessions (2014, 2015)
 
@@ -318,9 +320,14 @@ This dataset enables the **cross-receiver generalization study** (Paper 2).
 
 Same 10-receiver setup but in the **Cross-Harbour Tunnel** (Tung Chung Tunnel route). Complete signal loss inside tunnel. Provides the clearest DEGRADED examples.
 
-### 7.6 Tokyo Odaiba (UrbanNav Tokyo, 2021)
+### 7.6 UrbanNav Tokyo (Odaiba + Shinjuku, 2021)
 
-Trimble survey-grade receiver + u-blox F9P on the same vehicle. RINEX obs with S1C. Urban area with good sky visibility (Odaiba is a waterfront area). Mixed urban/open conditions. **Shinjuku is NOT processed** — only the base station obs file is present; no rover obs file for Shinjuku.
+Trimble survey-grade receiver + u-blox F9P on the same vehicle family. RINEX obs with S1C. Both **Odaiba and Shinjuku are processed** in the current pipeline.
+
+- **Odaiba:** mixed open-sky + moderate urban.
+- **Shinjuku:** denser urban canyon geometry (added for scenario diversity).
+
+Both routes are included in `data/labelled/sentinel_gnss_labelled.csv` and flow through the same processing and labeling pipeline.
 
 ### 7.7 NCLT — University of Michigan North Campus Long-Term Dataset
 
@@ -351,6 +358,7 @@ Autonomous vehicle with NovAtel OEM6 GPS (GPS-only, single-frequency, 2014 hardw
 | UrbanNav HK Medium           | NO (third-party)           | YES (transforms OK)             | Hsu et al. 2021               |
 | UrbanNav HK Tunnel           | NO                         | YES                             | Hsu et al. 2021               |
 | Tokyo Odaiba                 | NO                         | YES                             | UrbanNav Tokyo paper          |
+| Tokyo Shinjuku               | NO                         | YES                             | UrbanNav Tokyo paper          |
 | NCLT                         | NO                         | YES                             | Carlevaris-Bianco et al. 2016 |
 | Oxford RobotCar              | NO                         | YES                             | Maddern et al. 2017           |
 

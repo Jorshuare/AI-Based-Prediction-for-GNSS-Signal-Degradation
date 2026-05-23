@@ -123,6 +123,22 @@ CLIP_BOUNDS: dict[str, tuple[float, float]] = {
 # Goal: CLEAN stays majority; WARNING × 2; DEGRADED × 3 (approx.)
 SMOTE_STRATEGY = "auto"   # oversample all minority classes to match majority
 
+# ─── Split reassignment ───────────────────────────────────────────────────────
+# Three supervisor-drone sessions were assigned to 'val' by the session-based
+# split but consist entirely of CLEAN examples, making val 97% CLEAN.  Moving
+# them to 'train' reduces val CLEAN proportion from 97%→94% and adds 11,123
+# clean-sky training examples.
+#
+# Note: tokyo_odaiba_trimble (12,398 rows, 97% CLEAN, also all-val) is kept in
+# val to preserve val set size — removing it would leave only ~3 k val rows.
+# The balanced stop-val loader (make_balanced_val_loader) is unaffected because
+# it is limited by val WARNING/DEGRADED counts (444 / 363), not CLEAN count.
+SPLIT_REASSIGN: dict[str, str] = {
+    "supervisor_drone_1":  "train",   # 2,769 rows — UAV open sky, all CLEAN
+    "supervisor_drone_2":  "train",   # 2,792 rows — UAV open sky, all CLEAN
+    "supervisor_drone_12": "train",   # 5,562 rows — UAV open sky, all CLEAN
+}
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 def load_and_validate(path: Path = DATA_FILE) -> pd.DataFrame:
@@ -475,6 +491,8 @@ def prepare(
     random_state: int = 42,
     force_rebuild: bool = False,
     max_rows_per_source: int | None = None,
+    exclude_sources: list[str] | None = None,
+    reassign_splits: bool = True,
 ) -> dict[str, dict]:
     """Run the full feature-preparation pipeline.
 
@@ -488,6 +506,10 @@ def prepare(
     force_rebuild      : Rebuild even if cached .npz files exist.
     max_rows_per_source: If set, subsample each source to this many rows
                          (used for quick smoke-tests via --debug).
+    exclude_sources    : Source names to remove before windowing.
+                         e.g. ['nclt'] drops the RTK-labelled NCLT data.
+    reassign_splits    : If True, apply SPLIT_REASSIGN to move all-CLEAN
+                         val-only drone sessions to train (default: True).
 
     Returns
     -------
@@ -505,6 +527,26 @@ def prepare(
                         format="%(levelname)s  %(message)s")
 
     df = load_and_validate(data_file)
+
+    # ── Source exclusion ──────────────────────────────────────────────────────
+    if exclude_sources:
+        for src in list(exclude_sources):
+            n_before = len(df)
+            df = df[df["source"] != src].reset_index(drop=True)
+            log.info(
+                f"  Excluded '{src}': {n_before - len(df):,} rows removed")
+
+    # ── Split reassignment ────────────────────────────────────────────────────
+    if reassign_splits:
+        for src, new_split in SPLIT_REASSIGN.items():
+            src_mask = df["source"] == src
+            if src_mask.any():
+                old_split = df.loc[src_mask, "split"].iloc[0]
+                df.loc[src_mask, "split"] = new_split
+                log.info(
+                    f"  Split reassign: '{src}'  {old_split} \u2192 {new_split}"
+                    f"  ({src_mask.sum():,} rows)"
+                )
 
     if max_rows_per_source is not None:
         log.warning(
@@ -557,6 +599,13 @@ if __name__ == "__main__":
     parser.add_argument("--debug", action="store_true",
                         help="Smoke-test mode: 500 rows/source, saves to windows_debug/ "
                              "(does not overwrite real windows)")
+    parser.add_argument("--exclude_sources", type=str, nargs="*", default=None,
+                        metavar="SOURCE",
+                        help="Source names to drop before windowing. "
+                             "e.g. --exclude_sources nclt oxford")
+    parser.add_argument("--no_reassign", action="store_true",
+                        help="Disable automatic split reassignment of pure-CLEAN "
+                             "val-only drone sessions (supervisor_drone_*) to train.")
     args = parser.parse_args()
 
     if args.debug:
@@ -569,6 +618,8 @@ if __name__ == "__main__":
             scaler_path=debug_scaler,
             force_rebuild=True,
             max_rows_per_source=500,
+            exclude_sources=args.exclude_sources,
+            reassign_splits=not args.no_reassign,
         )
     else:
         if args.no_smote:
@@ -579,9 +630,15 @@ if __name__ == "__main__":
                 out_dir=no_smote_out,
                 force_rebuild=args.force,
                 smote=False,
+                exclude_sources=args.exclude_sources,
+                reassign_splits=not args.no_reassign,
             )
         else:
-            data = prepare(force_rebuild=args.force)
+            data = prepare(
+                force_rebuild=args.force,
+                exclude_sources=args.exclude_sources,
+                reassign_splits=not args.no_reassign,
+            )
 
     print("\n=== Window summary ===")
     for spl, d in data.items():

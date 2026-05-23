@@ -1,7 +1,7 @@
 # SENTINEL-GNSS: Next Steps Roadmap
 
-**Updated:** May 18, 2026
-**Data processing:** COMPLETE — all 8 sources processed and combined.
+**Updated:** May 22, 2026
+**Data processing:** COMPLETE — all 10 source groups processed and combined (including Tokyo Shinjuku).
 **Model files:** COMPLETE — all 5 model files created.
 
 ---
@@ -97,9 +97,10 @@ All figures saved to `results/figures/` as PDF (vector) + PNG (300 DPI).
 - [x] Scenarios A–E, Supervisor Vehicle/Drone processed → CSV
 - [x] UrbanNav HK Medium + Tunnel (10 receivers each) processed → CSV
 - [x] Tokyo Odaiba (Trimble + u-blox) processed → CSV
+- [x] Tokyo Shinjuku (Trimble + u-blox) processed → CSV
 - [x] NCLT Ann Arbor (2 sessions) processed → CSV
 - [x] Oxford RobotCar (2 traversals) processed → CSV
-- [x] Combined dataset: **66,128 rows**, session-based 70/15/15 split (seed=42)
+- [x] Combined dataset: **97,393 rows**, session-based 70/15/15 split (seed=42)
 - [x] NMEA no-fix bug fixed — blockage epochs (quality=0) now captured as DEGRADED
 - [x] `DATASET_PROCESSING_REPORT.md` — full feature/label justification (in docs/)
 - [x] **`src/models/plot_config.py`** — single source of truth for all figures
@@ -177,15 +178,14 @@ Run by modifying `--arch` flag (to be implemented) or editing `DEFAULT_CONFIG` i
 | Item                                 | Priority    | Notes                                                   |
 | ------------------------------------ | ----------- | ------------------------------------------------------- |
 | Propagate source metadata per window | HIGH        | Needed for per-dataset and per-scenario breakdown plots |
-| Tokyo Shinjuku                       | Low         | No rover RINEX; skip unless data located                |
+| Tokyo Shinjuku                       | Completed   | Processed with rover_trimble.obs + rover_ublox.obs      |
 | NCLT additional sessions             | Low         | 2012-01-08, 2012-04-29 etc. available                   |
 | Oxford additional traversals         | Low         | Multiple traversals available                           |
 | Paper writing                        | **HIGHEST** | Start after first training run completes                |
 
-### Why Tokyo Shinjuku Was NOT Processed
+### Tokyo Shinjuku Processing Status
 
-~~Only the base station OBS file exists (`base_trimble.obs`). The rover file is missing.~~
-**Now processed** — `rover_trimble.obs` and `rover_ublox.obs` added; Shinjuku runs through the same pipeline as Odaiba.
+**Processed** — `rover_trimble.obs` and `rover_ublox.obs` are integrated, and Shinjuku now runs through the same pipeline as Odaiba.
 
 ---
 

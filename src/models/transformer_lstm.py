@@ -113,11 +113,13 @@ class FocalLoss(nn.Module):
         gamma: float = 2.0,
         weight: Optional[torch.Tensor] = None,
         reduction: str = "mean",
+        label_smoothing: float = 0.0,
     ):
         super().__init__()
         self.gamma = gamma
         self.weight = weight
         self.reduction = reduction
+        self.label_smoothing = label_smoothing
 
     def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         """
@@ -126,16 +128,21 @@ class FocalLoss(nn.Module):
         logits  : (B, C) — raw unnormalised scores from the model.
         targets : (B,)   — integer class labels in [0, C-1].
         """
-        log_p = F.log_softmax(logits, dim=-1)
-        p = log_p.exp()
-        p_t = p.gather(dim=1, index=targets.unsqueeze(1)).squeeze(1)
-        ce = -log_p.gather(dim=1, index=targets.unsqueeze(1)).squeeze(1)
-        focal = (1.0 - p_t) ** self.gamma * ce
+        # Focal weight from the un-smoothed probability of the true class
+        with torch.no_grad():
+            p_t = F.softmax(logits, dim=-1).gather(
+                dim=1, index=targets.unsqueeze(1)).squeeze(1)
 
-        if self.weight is not None:
-            w = self.weight.to(logits.device)
-            wt = w.gather(0, targets)
-            focal = focal * wt
+        weight = self.weight.to(
+            logits.device) if self.weight is not None else None
+        # Label-smoothed CE prevents the model becoming overconfident on minority classes
+        ce = F.cross_entropy(
+            logits, targets,
+            weight=weight,
+            reduction="none",
+            label_smoothing=self.label_smoothing,
+        )
+        focal = (1.0 - p_t) ** self.gamma * ce
 
         if self.reduction == "mean":
             return focal.mean()

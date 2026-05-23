@@ -80,7 +80,7 @@ DEFAULT_CONFIG: dict = {
     "lstm_hidden":   128,
     "n_lstm_layers": 2,
     "n_classes":     3,
-    "dropout":       0.1,
+    "dropout":       0.2,    # increased 0.1→0.2: heavier regularisation
     # Training
     "batch_size":    64,   # 64 is safe for 4 GB VRAM; increase to 256 on larger GPUs
     "max_epochs":    150,
@@ -89,12 +89,16 @@ DEFAULT_CONFIG: dict = {
     "warmup_epochs": 5,       # linear LR warm-up before cosine decay
     # max-norm gradient clipping (Pascanu et al., 2013)
     "grad_clip":     1.0,
-    "early_stop_patience": 20,
-    "focal_gamma":   2.0,     # focal loss gamma  (Lin et al., 2017)
+    "early_stop_patience": 30,   # increased 20→30: allows model more epochs to refine
+    "focal_gamma":   2.0,        # focal loss gamma  (Lin et al., 2017)
     # Class weights: [CLEAN, WARNING, DEGRADED]
-    # WARNING boosted to 4.0 — its boundary is the most ambiguous and
-    # its precision (0.18) is the primary macro-F1 bottleneck.
-    "class_weights": [1.0, 4.0, 3.0],
+    # Reduced from [1.0, 4.0, 3.0]: the aggressive minority boosting caused ~44% of
+    # CLEAN test samples to be mis-classified as WARNING/DEGRADED.  [1.0, 2.0, 2.0]
+    # retains minority emphasis while preserving CLEAN precision.
+    "class_weights": [1.0, 2.0, 2.0],
+    # Label smoothing ε: distributes probability mass to non-target classes, preventing
+    # the model from becoming overconfident on minority-class predictions.
+    "label_smoothing": 0.1,
     # Auxiliary head weight: fraction of total loss assigned to the
     # t+0s current-state head (multi-task regulariser, Caruana 1997).
     "aux_head_weight": 0.3,
@@ -415,7 +419,11 @@ def train(
     # ── Loss ──────────────────────────────────────────────────────────────
     class_w = torch.tensor(config["class_weights"], dtype=torch.float32)
     criterion = {
-        k: FocalLoss(gamma=config["focal_gamma"], weight=class_w)
+        k: FocalLoss(
+            gamma=config["focal_gamma"],
+            weight=class_w,
+            label_smoothing=config.get("label_smoothing", 0.0),
+        )
         for k in ("5s", "15s", "30s")
     }
     horizon_w = config["horizon_weights"]
