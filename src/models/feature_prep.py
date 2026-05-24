@@ -123,21 +123,29 @@ CLIP_BOUNDS: dict[str, tuple[float, float]] = {
 # Goal: CLEAN stays majority; WARNING × 2; DEGRADED × 3 (approx.)
 SMOTE_STRATEGY = "auto"   # oversample all minority classes to match majority
 
-# ─── Split reassignment ───────────────────────────────────────────────────────
-# Three supervisor-drone sessions were assigned to 'val' by the session-based
-# split but consist entirely of CLEAN examples, making val 97% CLEAN.  Moving
-# them to 'train' reduces val CLEAN proportion from 97%→94% and adds 11,123
-# clean-sky training examples.
+# ─── Default source exclusions ──────────────────────────────────────────────
+# Drone sessions are excluded by default because:
+#  1. DOMAIN MISMATCH — UAVs fly in unobstructed open sky; the model is designed
+#     for ground vehicles navigating urban canyons, tunnels, and partial blockages.
+#     GNSS signal dynamics (multipath, obstruction, elevation mask) are fundamentally
+#     different in aerial vs vehicular environments.
+#  2. ALL CLEAN labels (11,123 rows, 0 WARNING, 0 DEGRADED) — zero discriminative
+#     value for learning GNSS degradation patterns.
+#  3. Val distribution — these rows were originally in 'val'.  Removing them rather
+#     than reassigning (previous approach) keeps val at 93.7% CLEAN (same effect as
+#     the old SPLIT_REASSIGN) while also removing non-vehicular signal from training.
 #
-# Note: tokyo_odaiba_trimble (12,398 rows, 97% CLEAN, also all-val) is kept in
-# val to preserve val set size — removing it would leave only ~3 k val rows.
-# The balanced stop-val loader (make_balanced_val_loader) is unaffected because
-# it is limited by val WARNING/DEGRADED counts (444 / 363), not CLEAN count.
-SPLIT_REASSIGN: dict[str, str] = {
-    "supervisor_drone_1":  "train",   # 2,769 rows — UAV open sky, all CLEAN
-    "supervisor_drone_2":  "train",   # 2,792 rows — UAV open sky, all CLEAN
-    "supervisor_drone_12": "train",   # 5,562 rows — UAV open sky, all CLEAN
-}
+# To include drone sessions: pass exclude_sources=None or --include_drones CLI flag.
+DEFAULT_EXCLUDE_SOURCES: list[str] = [
+    "supervisor_drone_1",    # 2,769 rows — UAV open sky, all CLEAN
+    "supervisor_drone_2",    # 2,792 rows — UAV open sky, all CLEAN
+    "supervisor_drone_12",   # 5,562 rows — UAV open sky, all CLEAN
+]
+
+# ─── Split reassignment ───────────────────────────────────────────────────────
+# Drone sessions formerly reassigned val→train are now excluded entirely (see above).
+# SPLIT_REASSIGN is kept for future use if other val-heavy sources need reassigning.
+SPLIT_REASSIGN: dict[str, str] = {}  # currently empty
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -601,12 +609,28 @@ if __name__ == "__main__":
                              "(does not overwrite real windows)")
     parser.add_argument("--exclude_sources", type=str, nargs="*", default=None,
                         metavar="SOURCE",
-                        help="Source names to drop before windowing. "
+                        help="Additional source names to drop before windowing "
+                             "(drone sessions are always excluded by default). "
                              "e.g. --exclude_sources nclt oxford")
+    parser.add_argument("--include_drones", action="store_true",
+                        help="Include supervisor_drone_* sessions (excluded by default). "
+                             "Not recommended: drone data is non-vehicular open-sky only.")
     parser.add_argument("--no_reassign", action="store_true",
-                        help="Disable automatic split reassignment of pure-CLEAN "
-                             "val-only drone sessions (supervisor_drone_*) to train.")
+                        help="Disable SPLIT_REASSIGN (currently empty; reserved for "
+                             "future use).")
     args = parser.parse_args()
+
+    # Build the effective exclude list: always exclude drones unless --include_drones,
+    # then add any extra sources the user listed via --exclude_sources.
+    effective_exclude = [] if args.include_drones else list(DEFAULT_EXCLUDE_SOURCES)
+    if args.exclude_sources:
+        for s in args.exclude_sources:
+            if s not in effective_exclude:
+                effective_exclude.append(s)
+    effective_exclude = effective_exclude or None   # None = no exclusion
+
+    if effective_exclude:
+        log.info(f"Excluding sources: {effective_exclude}")
 
     if args.debug:
         debug_out = ROOT / "data" / "processed" / "windows_debug"
@@ -618,7 +642,7 @@ if __name__ == "__main__":
             scaler_path=debug_scaler,
             force_rebuild=True,
             max_rows_per_source=500,
-            exclude_sources=args.exclude_sources,
+            exclude_sources=effective_exclude,
             reassign_splits=not args.no_reassign,
         )
     else:
@@ -630,13 +654,13 @@ if __name__ == "__main__":
                 out_dir=no_smote_out,
                 force_rebuild=args.force,
                 smote=False,
-                exclude_sources=args.exclude_sources,
+                exclude_sources=effective_exclude,
                 reassign_splits=not args.no_reassign,
             )
         else:
             data = prepare(
                 force_rebuild=args.force,
-                exclude_sources=args.exclude_sources,
+                exclude_sources=effective_exclude,
                 reassign_splits=not args.no_reassign,
             )
 

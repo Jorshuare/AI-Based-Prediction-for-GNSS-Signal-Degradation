@@ -90,12 +90,14 @@ DEFAULT_CONFIG: dict = {
     # max-norm gradient clipping (Pascanu et al., 2013)
     "grad_clip":     1.0,
     "early_stop_patience": 30,   # increased 20→30: allows model more epochs to refine
-    "focal_gamma":   2.0,        # focal loss gamma  (Lin et al., 2017)
+    "focal_gamma":   1.0,        # reduced 2.0→1.0: γ=2 + class weights was double-penalising
+                                 # minority classes, causing P(DEGRADED)>0.86 for 46%
+                                 # of test samples (severe miscalibration).
     # Class weights: [CLEAN, WARNING, DEGRADED]
-    # Reduced from [1.0, 4.0, 3.0]: the aggressive minority boosting caused ~44% of
-    # CLEAN test samples to be mis-classified as WARNING/DEGRADED.  [1.0, 2.0, 2.0]
-    # retains minority emphasis while preserving CLEAN precision.
-    "class_weights": [1.0, 2.0, 2.0],
+    # [1.0, 2.0, 1.5]: DEGRADED reduced from 2.0→1.5.  Run 3 showed DEGRADED precision
+    # of only 9.7% (model predicted DEGRADED for 46% of test).  Lower DEGRADED weight
+    # combined with reduced focal gamma addresses the miscalibration.
+    "class_weights": [1.0, 2.0, 1.5],
     # Label smoothing ε: distributes probability mass to non-target classes, preventing
     # the model from becoming overconfident on minority-class predictions.
     "label_smoothing": 0.1,
@@ -397,6 +399,12 @@ def train(
     log.info(f"Device: {device}")
     if torch.cuda.is_available():
         log.info(f"  GPU: {torch.cuda.get_device_name(0)}")
+    else:
+        log.warning("=" * 60)
+        log.warning("  NO GPU DETECTED — training on CPU (~220 s/epoch).")
+        log.warning("  In Colab: Runtime ▸ Change runtime type ▸ T4 GPU")
+        log.warning("  Results will be significantly worse than GPU training.")
+        log.warning("=" * 60)
 
     # ── Data ─────────────────────────────────────────────────────────────
     log.info("Loading windows …")
@@ -482,6 +490,9 @@ def train(
         f"  Training SENTINEL-GNSS  |  {model.count_parameters():,} parameters")
     log.info(
         f"  Epochs: {start_epoch} → {config['max_epochs']}  |  Patience: {config['early_stop_patience']}")
+    log.info(
+        f"  class_weights={config['class_weights']}  focal_gamma={config['focal_gamma']}"
+        f"  label_smoothing={config.get('label_smoothing', 0.0)}  dropout={config['dropout']}")
     log.info(f"{'='*60}\n")
 
     for epoch in range(start_epoch, config["max_epochs"]):
