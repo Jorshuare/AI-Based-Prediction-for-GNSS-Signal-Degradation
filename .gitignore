@@ -41,6 +41,7 @@ data/labelled/**
 # ─── Banks (archive/scratch) — never push ─────────────────────────────────────
 banks/
 josh_processed_data
+runs/
 # ─── Media (photos)  ──────────────────────────────────────
 
 
