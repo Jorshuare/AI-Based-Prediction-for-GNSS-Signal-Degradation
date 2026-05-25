@@ -142,10 +142,45 @@ DEFAULT_EXCLUDE_SOURCES: list[str] = [
     "supervisor_drone_12",   # 5,562 rows — UAV open sky, all CLEAN
 ]
 
-# ─── Split reassignment ───────────────────────────────────────────────────────
-# Drone sessions formerly reassigned val→train are now excluded entirely (see above).
-# SPLIT_REASSIGN is kept for future use if other val-heavy sources need reassigning.
-SPLIT_REASSIGN: dict[str, str] = {}  # currently empty
+# ─── Split reassignment ──────────────────────────────────────────────────────
+# Root cause of runs 2-4 failure: 84% of all test WARNING rows came from sources
+# that had ZERO rows in training (session-based split put entire sources in test).
+# The model was being evaluated on patterns it had never been trained on.
+#
+# Audit (sentinel_gnss_labelled.csv):
+#   Test-only WARNING/DEGRADED sources — never seen during training:
+#     supervisor_vehicle_exp1_1_base  654 WARN  10 DEG  (test-only)
+#     supervisor_vehicle_exp1_2_base  221 WARN 136 DEG  (test-only)
+#     supervisor_vehicle_exp1_3_b     607 WARN  58 DEG  (test-only)  ← kept in test
+#     supervisor_vehicle_exp4         182 WARN  18 DEG  (test-only)
+#     scenario_b_r1                   206 WARN  69 DEG  (test-only)
+#     scenario_b_r2                   260 WARN  13 DEG  (test-only)
+#     urbannav_tunnel_google_pixel4   232 WARN  31 DEG  (test-only)
+#     urbannav_tunnel_huawei_p40pro   216 WARN 184 DEG  (test-only)
+#
+# Fix: move 7 of 8 to training.  Keep supervisor_vehicle_exp1_3_b in test so
+# there is still an unseen vehicular WARNING/DEGRADED source for evaluation.
+# Val is unchanged (we move test→train, not val→train).
+#
+# Net effect on class counts:
+#   +1,971 train WARNING rows (+19%),  +461 train DEGRADED rows (+11%)
+SPLIT_REASSIGN: dict[str, str] = {
+    # Supervisor vehicle — real ground-vehicle WARNING/DEGRADED, previously test-only
+    "supervisor_vehicle_exp1_1_base": "train",  # 664 rows: 654 WARN,  10 DEG
+    "supervisor_vehicle_exp1_2_base": "train",  # 357 rows: 221 WARN, 136 DEG
+    # 480 rows: 280 CLEAN, 182 WARN, 18 DEG
+    "supervisor_vehicle_exp4":        "train",
+    # Scenario B — scenario-based WARNING/DEGRADED, previously test-only
+    # 535 rows: 260 CLEAN, 206 WARN, 69 DEG
+    "scenario_b_r1":                  "train",
+    # 391 rows: 118 CLEAN, 260 WARN, 13 DEG
+    "scenario_b_r2":                  "train",
+    # UrbanNav tunnel devices — all WARNING/DEGRADED, previously test-only
+    "urbannav_tunnel_google_pixel4":  "train",  # 263 rows: 232 WARN,  31 DEG
+    "urbannav_tunnel_huawei_p40pro":  "train",  # 400 rows: 216 WARN, 184 DEG
+    # supervisor_vehicle_exp1_3_b intentionally left in test (607 WARN, 58 DEG)
+    # — provides an unseen vehicular source for honest held-out evaluation.
+}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -616,13 +651,14 @@ if __name__ == "__main__":
                         help="Include supervisor_drone_* sessions (excluded by default). "
                              "Not recommended: drone data is non-vehicular open-sky only.")
     parser.add_argument("--no_reassign", action="store_true",
-                        help="Disable SPLIT_REASSIGN (currently empty; reserved for "
-                             "future use).")
+                        help="Disable SPLIT_REASSIGN (moves 7 test-only WARNING/DEGRADED "
+                             "sources to train to fix source-domain mismatch).")
     args = parser.parse_args()
 
     # Build the effective exclude list: always exclude drones unless --include_drones,
     # then add any extra sources the user listed via --exclude_sources.
-    effective_exclude = [] if args.include_drones else list(DEFAULT_EXCLUDE_SOURCES)
+    effective_exclude = [] if args.include_drones else list(
+        DEFAULT_EXCLUDE_SOURCES)
     if args.exclude_sources:
         for s in args.exclude_sources:
             if s not in effective_exclude:

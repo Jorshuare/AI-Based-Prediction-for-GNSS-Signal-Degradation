@@ -1,4 +1,5 @@
-import json, os
+import json
+import os
 
 nb_path = r"c:\Users\Joel\Desktop\Beihang University\Team-Pilot-Project\colab_train.ipynb"
 
