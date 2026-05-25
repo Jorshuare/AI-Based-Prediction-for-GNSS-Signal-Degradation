@@ -72,9 +72,11 @@ HISTORY_FILE = CKPT_DIR / "training_history.json"
 # ─── Hyper-parameters (expert-recommended defaults) ──────────────────────────
 DEFAULT_CONFIG: dict = {
     # Model
-    "n_features":    36,     # 34→36: +pdop_delta, +hdop_delta (auto-inferred at runtime)
+    # 34→36: +pdop_delta, +hdop_delta (auto-inferred at runtime)
+    "n_features":    36,
     "d_model":       128,    # 64→128: wider Transformer for more representational capacity
-    "n_heads":       8,      # 4→8: more attention patterns (must divide d_model)
+    # 4→8: more attention patterns (must divide d_model)
+    "n_heads":       8,
     "n_tf_layers":   2,      # unchanged
     "d_ff":          512,    # 256→512: larger FFN sub-layer
     "lstm_hidden":   256,    # 128→256: more LSTM state capacity
@@ -413,7 +415,8 @@ def train(
     # delta features (pdop_delta, hdop_delta) bump F from 34→36; this avoids a hard-coded mismatch.
     config = dict(config)   # don't mutate caller's dict
     config["n_features"] = int(windows["train"]["X"].shape[2])
-    log.info(f"  n_features={config['n_features']} (auto-inferred from windows)")
+    log.info(
+        f"  n_features={config['n_features']} (auto-inferred from windows)")
     loaders = make_loaders(
         windows, config["batch_size"], config["num_workers"])
     # Balanced val subset: 500 samples per class (CLEAN / WARNING / DEGRADED)
