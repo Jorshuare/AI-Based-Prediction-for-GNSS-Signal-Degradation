@@ -117,7 +117,15 @@ CLIP_BOUNDS: dict[str, tuple[float, float]] = {
     "alt":               (-100, 9000),
     "lat_std":           (0,  200),
     "lon_std":           (0,  200),
+    # Delta (rate-of-change) features added in Run 6
+    "pdop_delta":        (-15.0, 15.0),
+    "hdop_delta":        (-15.0, 15.0),
 }
+
+# Features for which within-session first differences are computed.
+# Gradient saliency from Run 5 confirmed pdop and hdop are the two most
+# informative raw features; their rate of change is a leading degradation signal.
+DELTA_FEATURE_COLS: list[str] = ["pdop", "hdop"]
 
 # SMOTE target ratios (applied to training set only)
 # Goal: CLEAN stays majority; WARNING × 2; DEGRADED × 3 (approx.)
@@ -293,6 +301,29 @@ def clip_features(df: pd.DataFrame) -> pd.DataFrame:
     for col, (lo, hi) in CLIP_BOUNDS.items():
         if col in df.columns:
             df[col] = df[col].clip(lo, hi)
+    return df
+
+
+def add_delta_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Add within-session first-difference features for key DOP signals.
+
+    delta_col[t] = col[t] - col[t-1]   (first row per session = 0.0)
+
+    Rationale: the rate of change of PDOP/HDOP is a leading indicator of
+    imminent GNSS geometry deterioration — a rapid positive spike signals
+    satellites are being obscured.  Gradient-based saliency from Run 5
+    confirmed pdop and hdop are the two highest-importance raw features;
+    adding their deltas gives the model an explicit trend signal.
+
+    Must be called AFTER clip_features() and BEFORE fit_and_scale() so the
+    delta values are properly clipped and scaled.
+    """
+    df = df.copy()
+    for col in DELTA_FEATURE_COLS:
+        if col not in df.columns:
+            continue
+        delta = df.groupby("source")[col].diff().fillna(0.0)
+        df[f"{col}_delta"] = delta.astype(np.float32)
     return df
 
 
@@ -608,6 +639,7 @@ def prepare(
 
     df = impute(df)
     df = clip_features(df)
+    df = add_delta_features(df)   # adds pdop_delta, hdop_delta (Run 6)
 
     feature_cols = _get_feature_cols(df)
     log.info(f"Feature columns ({len(feature_cols)}): {feature_cols}")

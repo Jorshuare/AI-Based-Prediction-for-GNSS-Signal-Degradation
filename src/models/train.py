@@ -72,15 +72,15 @@ HISTORY_FILE = CKPT_DIR / "training_history.json"
 # ─── Hyper-parameters (expert-recommended defaults) ──────────────────────────
 DEFAULT_CONFIG: dict = {
     # Model
-    "n_features":    34,
-    "d_model":       64,
-    "n_heads":       4,
-    "n_tf_layers":   2,
-    "d_ff":          256,
-    "lstm_hidden":   128,
+    "n_features":    36,     # 34→36: +pdop_delta, +hdop_delta (auto-inferred at runtime)
+    "d_model":       128,    # 64→128: wider Transformer for more representational capacity
+    "n_heads":       8,      # 4→8: more attention patterns (must divide d_model)
+    "n_tf_layers":   2,      # unchanged
+    "d_ff":          512,    # 256→512: larger FFN sub-layer
+    "lstm_hidden":   256,    # 128→256: more LSTM state capacity
     "n_lstm_layers": 2,
     "n_classes":     3,
-    "dropout":       0.2,    # increased 0.1→0.2: heavier regularisation
+    "dropout":       0.3,    # 0.2→0.3: stronger regularisation for the larger model
     # Training
     "batch_size":    64,   # 64 is safe for 4 GB VRAM; increase to 256 on larger GPUs
     "max_epochs":    150,
@@ -89,7 +89,7 @@ DEFAULT_CONFIG: dict = {
     "warmup_epochs": 5,       # linear LR warm-up before cosine decay
     # max-norm gradient clipping (Pascanu et al., 2013)
     "grad_clip":     1.0,
-    "early_stop_patience": 30,   # increased 20→30: allows model more epochs to refine
+    "early_stop_patience": 50,   # 30→50: larger model needs more room to converge
     "focal_gamma":   1.0,        # reduced 2.0→1.0: γ=2 + class weights was double-penalising
                                  # minority classes, causing P(DEGRADED)>0.86 for 46%
                                  # of test samples (severe miscalibration).
@@ -409,6 +409,11 @@ def train(
     # ── Data ─────────────────────────────────────────────────────────────
     log.info("Loading windows …")
     windows = load_windows(window_dir)
+    # Auto-infer n_features from data so config stays correct when feature_prep changes.
+    # delta features (pdop_delta, hdop_delta) bump F from 34→36; this avoids a hard-coded mismatch.
+    config = dict(config)   # don't mutate caller's dict
+    config["n_features"] = int(windows["train"]["X"].shape[2])
+    log.info(f"  n_features={config['n_features']} (auto-inferred from windows)")
     loaders = make_loaders(
         windows, config["batch_size"], config["num_workers"])
     # Balanced val subset: 500 samples per class (CLEAN / WARNING / DEGRADED)
