@@ -93,6 +93,11 @@ DEFAULT_CONFIG: dict = {
     # max-norm gradient clipping (Pascanu et al., 2013)
     "grad_clip":     1.0,
     "early_stop_patience": 50,   # 30→50: larger model needs more room to converge
+    # Run 7 best checkpoint was at epoch 2 — the balanced val happened to score 0.8169
+    # early because scenario_a/tunnel DEGRADED patterns are easy to detect with barely-
+    # trained weights.  Locking in epoch=2 as "best" means 50 patience epochs are wasted.
+    # Run 8 fix: don't save best checkpoint or count patience until epoch >= 15.
+    "min_epoch_for_best": 15,
     "focal_gamma":   1.0,        # reduced 2.0→1.0: γ=2 + class weights was double-penalising
                                  # minority classes, causing P(DEGRADED)>0.86 for 46%
                                  # of test samples (severe miscalibration).
@@ -104,7 +109,11 @@ DEFAULT_CONFIG: dict = {
     # DEGRADED is the true minority → weight 3.0 to maintain detection sensitivity.
     # Previous [1.0, 2.0, 1.5] was tuned for the Oxford-inflated DEGRADED class; raising
     # DEGRADED to 3.0 restores the correct relative emphasis after Oxford is removed.
-    "class_weights": [1.0, 2.0, 3.0],
+    # Run 8: DEGRADED weight raised 3.0 → 5.0.  Run 7 produced 0 DEGRADED predictions
+    # at +5s and +30s despite 3,207 DEGRADED training windows.  The model was assigning
+    # elevated P(WARNING) to DEGRADED inputs without ever crossing the DEGRADED threshold.
+    # A higher focal weight pushes more gradient signal into the DEGRADED boundary.
+    "class_weights": [1.0, 2.0, 5.0],
     # Label smoothing ε: distributes probability mass to non-target classes, preventing
     # the model from becoming overconfident on minority-class predictions.
     "label_smoothing": 0.1,
@@ -571,7 +580,16 @@ def train(
             log.info(f"  → Periodic checkpoint: {path.name}")
 
         # ── Best-model checkpoint ─────────────────────────────────────────
-        if stop_mean_f1 > best_metric:
+        # Skip best-checkpoint tracking until min_epoch_for_best is reached.
+        # Early epochs can score deceptively high on the balanced val subset
+        # (barely-trained weights happen to separate easy DEGRADED examples)
+        # while not generalising at all on the test set.
+        min_epoch_for_best = config.get("min_epoch_for_best", 1)
+        if epoch + 1 < min_epoch_for_best:
+            log.info(
+                f"  (epoch {epoch+1} < min_epoch_for_best={min_epoch_for_best}; "
+                f"stop_F1={stop_mean_f1:.4f} noted but not saved as best)")
+        elif stop_mean_f1 > best_metric:
             best_metric = stop_mean_f1
             patience_counter = 0
             save_checkpoint(

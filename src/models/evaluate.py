@@ -302,27 +302,34 @@ def tune_thresholds(
     val_results: dict,
     n_grid: int = 20,
     min_precision: float = 0.30,
+    min_precision_degraded: float = 0.10,
 ) -> dict[str, np.ndarray]:
-    """Find per-class probability thresholds that maximise val macro-F1.
+    """Find per-class probability thresholds using a safety-weighted objective.
 
-    Instead of argmax (implicit 0.5 threshold), we sweep a grid of
-    thresholds for WARNING and DEGRADED independently.  For each candidate
-    threshold vector the argmax is replaced by: predict class c if
+    Sweeps WARNING and DEGRADED thresholds independently on a grid.
+    For each candidate the argmax is replaced by: predict class c if
     P(c) > threshold[c], with ties broken by highest probability.
 
-    A precision floor (min_precision=0.30 by default) is enforced so that
-    no single class can be over-predicted to boost its recall at the expense
-    of precision.  Runs 4–5 showed the unconstrained tuner collapsed WARNING
-    precision to 0.14–0.16 by setting t_warn extremely low.  The floor
-    prevents this whack-a-mole behaviour.
+    Objective (Run 8 safety-weighted):
+      score = 0.30 × CLEAN_F1 + 0.35 × WARNING_F1 + 0.35 × DEGRADED_Fβ(β=2)
 
-    This is a post-hoc, training-free improvement.
+    DEGRADED uses F-beta (β=2) which weights recall 4× more than precision.
+    In a safety-critical AV application, a missed DEGRADED event (false negative)
+    is far more dangerous than a false alarm (false positive).
+
+    Precision floors:
+      - CLEAN / WARNING:  min_precision=0.30  (same as Run 7, prevents collapse)
+      - DEGRADED:         min_precision=0.10  (permissive — allow aggressive recall)
+
     Ref: Hernández-Orallo, J. et al. (2012). ROC analysis in AI. AI Review.
+    Ref: Rijsbergen, C. J. (1979). Information Retrieval (Fβ definition).
 
     Returns
     -------
     best_thresholds : dict  horizon → (3,) float array [clean, warn, degrad]
     """
+    from sklearn.metrics import fbeta_score
+
     grid = np.linspace(0.1, 0.9, n_grid)
     best_thresholds: dict[str, np.ndarray] = {}
 
@@ -330,49 +337,59 @@ def tune_thresholds(
         y_true = val_results[h]["y_true"]
         y_prob = val_results[h]["y_prob"]   # (N, 3)
 
-        best_f1 = 0.0
+        best_score = 0.0
         best_t = np.array([0.5, 0.5, 0.5])
-        best_f1_unconstrained = 0.0
+        best_score_unconstrained = 0.0
         best_t_unconstrained = np.array([0.5, 0.5, 0.5])
         n_feasible = 0
 
-        # Sweep WARNING and DEGRADED thresholds (CLEAN threshold is fixed at 0.5)
+        # Sweep WARNING and DEGRADED thresholds (CLEAN threshold fixed at 0.5)
         for t_warn in grid:
             for t_deg in grid:
                 thresholds = np.array([0.5, t_warn, t_deg])
-                # Predict: class with highest prob that exceeds its threshold.
-                # Fall back to argmax if no class exceeds threshold.
                 scaled = y_prob / thresholds[None, :]
                 y_pred = scaled.argmax(axis=1)
-                f1 = f1_score(y_true, y_pred, average="macro", zero_division=0)
 
-                # Track unconstrained best as fallback
-                if f1 > best_f1_unconstrained:
-                    best_f1_unconstrained = f1
+                # Per-class F1 and DEGRADED F-beta (β=2)
+                per_class_f1 = f1_score(
+                    y_true, y_pred, average=None, zero_division=0, labels=[0, 1, 2])
+                deg_f2 = fbeta_score(
+                    y_true, y_pred, beta=2.0, average=None,
+                    zero_division=0, labels=[0, 1, 2])[2]
+
+                # Safety-weighted objective: DEGRADED recall counts 4× over precision
+                score = (0.30 * per_class_f1[0]
+                         + 0.35 * per_class_f1[1]
+                         + 0.35 * deg_f2)
+
+                if score > best_score_unconstrained:
+                    best_score_unconstrained = score
                     best_t_unconstrained = thresholds
 
-                # Enforce per-class precision floor — prevents one class from
-                # being over-predicted to boost recall at precision's expense.
+                # Per-class precision floors
                 per_class_prec = precision_score(
-                    y_true, y_pred, average=None, zero_division=0)
-                if np.all(per_class_prec >= min_precision):
+                    y_true, y_pred, average=None, zero_division=0, labels=[0, 1, 2])
+                clean_warn_ok = (per_class_prec[0] >= min_precision
+                                 and per_class_prec[1] >= min_precision)
+                deg_ok = per_class_prec[2] >= min_precision_degraded
+                if clean_warn_ok and deg_ok:
                     n_feasible += 1
-                    if f1 > best_f1:
-                        best_f1 = f1
+                    if score > best_score:
+                        best_score = score
                         best_t = thresholds
 
         if n_feasible == 0:
             log.warning(
-                f"  +{h}: no threshold found with all-class P >= {min_precision:.2f}; "
-                f"falling back to unconstrained best (val macro-F1={best_f1_unconstrained:.4f})."
+                f"  +{h}: no feasible threshold found; "
+                f"falling back to unconstrained best (score={best_score_unconstrained:.4f})."
             )
             best_t = best_t_unconstrained
-            best_f1 = best_f1_unconstrained
+            best_score = best_score_unconstrained
 
         best_thresholds[h] = best_t
         log.info(
             f"  Threshold +{h}:  WARN={best_t[1]:.2f}  DEG={best_t[2]:.2f}  "
-            f"→ val macro-F1={best_f1:.4f}  (feasible={n_feasible}/{n_grid**2})"
+            f"→ safety-score={best_score:.4f}  (feasible={n_feasible}/{n_grid**2})"
         )
 
     return best_thresholds

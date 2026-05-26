@@ -42,6 +42,7 @@ data/labelled/**
 banks/
 josh_processed_data
 runs/
+.tmp/
 # ─── Media (photos)  ──────────────────────────────────────
 
 
