@@ -72,8 +72,9 @@ HISTORY_FILE = CKPT_DIR / "training_history.json"
 # ─── Hyper-parameters (expert-recommended defaults) ──────────────────────────
 DEFAULT_CONFIG: dict = {
     # Model
-    # 34→36: +pdop_delta, +hdop_delta (auto-inferred at runtime)
-    "n_features":    36,
+    # 34→36 (Run 6: +pdop_delta, +hdop_delta) → 37 (Run 7: +receiver_tier)
+    # Overwritten at runtime by the actual window shape — always correct.
+    "n_features":    37,
     "d_model":       128,    # 64→128: wider Transformer for more representational capacity
     # 4→8: more attention patterns (must divide d_model)
     "n_heads":       8,
@@ -96,10 +97,14 @@ DEFAULT_CONFIG: dict = {
                                  # minority classes, causing P(DEGRADED)>0.86 for 46%
                                  # of test samples (severe miscalibration).
     # Class weights: [CLEAN, WARNING, DEGRADED]
-    # [1.0, 2.0, 1.5]: DEGRADED reduced from 2.0→1.5.  Run 3 showed DEGRADED precision
-    # of only 9.7% (model predicted DEGRADED for 46% of test).  Lower DEGRADED weight
-    # combined with reduced focal gamma addresses the miscalibration.
-    "class_weights": [1.0, 2.0, 1.5],
+    # Run 7 redistribution: removing Oxford/Tokyo/NCLT from training flips the class
+    # balance.  New effective training distribution ≈ 42% CLEAN / 41% WARNING / 17% DEGRADED
+    # (vs old 73/15/9).  CLEAN and WARNING are now roughly equal → set their weights 1:2
+    # (WARNING still needs a modest boost because it is the hardest class to recall).
+    # DEGRADED is the true minority → weight 3.0 to maintain detection sensitivity.
+    # Previous [1.0, 2.0, 1.5] was tuned for the Oxford-inflated DEGRADED class; raising
+    # DEGRADED to 3.0 restores the correct relative emphasis after Oxford is removed.
+    "class_weights": [1.0, 2.0, 3.0],
     # Label smoothing ε: distributes probability mass to non-target classes, preventing
     # the model from becoming overconfident on minority-class predictions.
     "label_smoothing": 0.1,

@@ -15,7 +15,8 @@ Pipeline
 
 Model input
 -----------
-  X      : (N, 30, 34)  — 30 time-steps × 34 features (33 signal + cnr_available)
+  X      : (N, 30, 37)  — 30 time-steps × 37 features
+             (33 signal + cnr_available + pdop_delta + hdop_delta + receiver_tier)
   y_5s   : (N,)          — label 5 s after window end
   y_15s  : (N,)          — label 15 s after window end
   y_30s  : (N,)          — label 30 s after window end
@@ -120,6 +121,8 @@ CLIP_BOUNDS: dict[str, tuple[float, float]] = {
     # Delta (rate-of-change) features added in Run 6
     "pdop_delta":        (-15.0, 15.0),
     "hdop_delta":        (-15.0, 15.0),
+    # Receiver tier feature added in Run 7
+    "receiver_tier":     (0.0, 4.0),
 }
 
 # Features for which within-session first differences are computed.
@@ -132,62 +135,148 @@ DELTA_FEATURE_COLS: list[str] = ["pdop", "hdop"]
 SMOTE_STRATEGY = "auto"   # oversample all minority classes to match majority
 
 # ─── Default source exclusions ──────────────────────────────────────────────
-# Drone sessions are excluded by default because:
-#  1. DOMAIN MISMATCH — UAVs fly in unobstructed open sky; the model is designed
-#     for ground vehicles navigating urban canyons, tunnels, and partial blockages.
-#     GNSS signal dynamics (multipath, obstruction, elevation mask) are fundamentally
-#     different in aerial vs vehicular environments.
-#  2. ALL CLEAN labels (11,123 rows, 0 WARNING, 0 DEGRADED) — zero discriminative
-#     value for learning GNSS degradation patterns.
-#  3. Val distribution — these rows were originally in 'val'.  Removing them rather
-#     than reassigning (previous approach) keeps val at 93.7% CLEAN (same effect as
-#     the old SPLIT_REASSIGN) while also removing non-vehicular signal from training.
+# Sources are excluded when they introduce label inconsistency or feature noise
+# that is incompatible with the primary C/N0-based labelling scheme.
 #
-# To include drone sessions: pass exclude_sources=None or --include_drones CLI flag.
+# Drone sessions: domain mismatch (aerial vs vehicular), 100% CLEAN, no value.
+# Oxford RobotCar: 2014 GPS-only hardware (no GLONASS/Galileo). Labels derived
+#   from position sigma (average ~6 m) — a hardware-limitation artefact, not a
+#   signal physics label. 96% DEGRADED/WARNING; no C/N0 data. Including it
+#   teaches the model "Oxford-receiver noise = DEGRADED", the wrong association.
+# NCLT: 2012 GPS module with a logging bug — num_satellites is always 0, so every
+#   DOP proxy value is 30/√0 = undefined → imputed as noise. No C/N0 data.
+#   Labels based on RTK error vs LiDAR SLAM (different mechanism from C/N0).
+# Tokyo Shinjuku / Odaiba u-blox: 31,265 + 6,205 rows, 91–100% CLEAN, with DOP
+#   imputed from satellite count (no NMEA GSA sentences). These rows dominated the
+#   CLEAN class (51% of dataset) and caused the model to learn "Tokyo-like imputed
+#   DOP = CLEAN", suppressing WARNING recall. Retained as a SEPARATE cross-city
+#   evaluation set (tokyo_odaiba_trimble stays in val to provide CLEAN val signal).
+#
+# To include any of these: pass --include_drones / --include_legacy / --include_tokyo
+# on the CLI, or pass exclude_sources=[] to prepare().
 DEFAULT_EXCLUDE_SOURCES: list[str] = [
-    "supervisor_drone_1",    # 2,769 rows — UAV open sky, all CLEAN
-    "supervisor_drone_2",    # 2,792 rows — UAV open sky, all CLEAN
-    "supervisor_drone_12",   # 5,562 rows — UAV open sky, all CLEAN
+    # Aerial / non-vehicular
+    "supervisor_drone_1",         # 2,769 rows — UAV open sky, all CLEAN
+    "supervisor_drone_2",         # 2,792 rows — UAV open sky, all CLEAN
+    "supervisor_drone_12",        # 5,562 rows — UAV open sky, all CLEAN
+    # Legacy hardware — incompatible label mechanisms
+    "oxford",                     # 7,114 rows — 2014 GPS-only, position-sigma labels
+    "nclt",                       # 7,493 rows — 2012 GPS, satellite count always 0 (bug)
+    # Tokyo cross-city evaluation set (kept separate to preserve geographic generalization claim)
+    "tokyo_shinjuku_trimble",     # 20,790 rows — train split, 94% CLEAN, DOP imputed
+    "tokyo_shinjuku_ublox",       # 10,475 rows — train split, 92% CLEAN, DOP imputed
+    "tokyo_odaiba_ublox",         #  6,205 rows — test split, 100% CLEAN, DOP imputed
+    # tokyo_odaiba_trimble is intentionally NOT excluded: it stays in val (12,398 rows,
+    # 97.7% CLEAN) and provides the CLEAN examples the balanced val early-stopping
+    # subset needs.  It is a proxy for "professional receiver, open/moderate urban".
 ]
 
 # ─── Split reassignment ──────────────────────────────────────────────────────
-# Root cause of runs 2-4 failure: 84% of all test WARNING rows came from sources
-# that had ZERO rows in training (session-based split put entire sources in test).
-# The model was being evaluated on patterns it had never been trained on.
+# Resolves two classes of problem:
 #
-# Audit (sentinel_gnss_labelled.csv):
-#   Test-only WARNING/DEGRADED sources — never seen during training:
-#     supervisor_vehicle_exp1_1_base  654 WARN  10 DEG  (test-only)
-#     supervisor_vehicle_exp1_2_base  221 WARN 136 DEG  (test-only)
-#     supervisor_vehicle_exp1_3_b     607 WARN  58 DEG  (test-only)  ← kept in test
-#     supervisor_vehicle_exp4         182 WARN  18 DEG  (test-only)
-#     scenario_b_r1                   206 WARN  69 DEG  (test-only)
-#     scenario_b_r2                   260 WARN  13 DEG  (test-only)
-#     urbannav_tunnel_google_pixel4   232 WARN  31 DEG  (test-only)
-#     urbannav_tunnel_huawei_p40pro   216 WARN 184 DEG  (test-only)
+# CLASS 1 — Test-only WARNING/DEGRADED (runs 2-4 root cause):
+#   84% of test WARNING rows came from sources with ZERO training rows.
+#   Fix: move those sources to training, keep one per-type in test.
 #
-# Fix: move 7 of 8 to training.  Keep supervisor_vehicle_exp1_3_b in test so
-# there is still an unseen vehicular WARNING/DEGRADED source for evaluation.
-# Val is unchanged (we move test→train, not val→train).
+# CLASS 2 — Instant-blockage gap (new, run 7):
+#   Scenario A (3 runs, all in 'validation') was NEVER in training, so the
+#   model had no examples of the sudden complete-blockage pattern.  Moving
+#   r1+r2 to train while keeping r3 in val gives training coverage AND
+#   preserves a DEGRADED signal for the balanced-val early-stopping subset.
 #
-# Net effect on class counts:
-#   +1,971 train WARNING rows (+19%),  +461 train DEGRADED rows (+11%)
+# CLASS 3 — Useless all-CLEAN test sessions (run 7):
+#   supervisor_vehicle_exp1_4b, exp2_1b, exp2_2_b, exp2_3b are all 100%
+#   CLEAN.  Having them in test only inflates CLEAN test accuracy without
+#   improving minority-class evaluation.  Move to training; keep exp1_3_b,
+#   exp1_4b, and exp3 in test for a balanced hold-out (37% CLEAN / 57% WARN
+#   / 6% DEG).
+#
+# Resulting test set (Beijing campus hold-out):
+#   supervisor_vehicle_exp1_3_b  665 rows: 607 WARN,  58 DEG,   0 CLEAN
+#   supervisor_vehicle_exp1_4b   397 rows:   0 WARN,   0 DEG, 397 CLEAN
+#   supervisor_vehicle_exp3      392 rows:   0 WARN,   0 DEG, 392 CLEAN
+#   ────────────────────────────────────────────────────────────────────
+#   TOTAL                      1,454 rows: 607 WARN,  58 DEG, 789 CLEAN
+#
 SPLIT_REASSIGN: dict[str, str] = {
-    # Supervisor vehicle — real ground-vehicle WARNING/DEGRADED, previously test-only
+    # ── CLASS 1: WARNING/DEGRADED sources moved from test → train ───────────
     "supervisor_vehicle_exp1_1_base": "train",  # 664 rows: 654 WARN,  10 DEG
     "supervisor_vehicle_exp1_2_base": "train",  # 357 rows: 221 WARN, 136 DEG
-    # 480 rows: 280 CLEAN, 182 WARN, 18 DEG
-    "supervisor_vehicle_exp4":        "train",
-    # Scenario B — scenario-based WARNING/DEGRADED, previously test-only
-    # 535 rows: 260 CLEAN, 206 WARN, 69 DEG
-    "scenario_b_r1":                  "train",
-    # 391 rows: 118 CLEAN, 260 WARN, 13 DEG
-    "scenario_b_r2":                  "train",
-    # UrbanNav tunnel devices — all WARNING/DEGRADED, previously test-only
+    "supervisor_vehicle_exp4":        "train",  # 480 rows: 280 CLEAN, 182 WARN, 18 DEG
+    "scenario_b_r1":                  "train",  # 535 rows: 260 CLEAN, 206 WARN, 69 DEG
+    "scenario_b_r2":                  "train",  # 391 rows: 118 CLEAN, 260 WARN, 13 DEG
     "urbannav_tunnel_google_pixel4":  "train",  # 263 rows: 232 WARN,  31 DEG
     "urbannav_tunnel_huawei_p40pro":  "train",  # 400 rows: 216 WARN, 184 DEG
-    # supervisor_vehicle_exp1_3_b intentionally left in test (607 WARN, 58 DEG)
-    # — provides an unseen vehicular source for honest held-out evaluation.
+    # supervisor_vehicle_exp1_3_b intentionally kept in test (607 WARN, 58 DEG).
+    # supervisor_vehicle_exp1_4b intentionally kept in test (397 CLEAN) for balance.
+    # supervisor_vehicle_exp3    intentionally kept in test (392 CLEAN) for balance.
+
+    # ── CLASS 2: Scenario A moved from val → train ───────────────────────────
+    # Instant-blockage pattern was completely absent from training.  r3 stays
+    # in val so the balanced early-stopping subset retains DEGRADED signal.
+    "scenario_a_r1":                  "train",  #  47 rows: 33 DEG, 11 CLEAN, 3 WARN
+    "scenario_a_r2":                  "train",  #  53 rows: 41 DEG,  9 CLEAN, 3 WARN
+
+    # ── CLASS 3: All-CLEAN test sessions moved to train ──────────────────────
+    "supervisor_vehicle_exp2_1b":     "train",  # 174 rows: all CLEAN
+    "supervisor_vehicle_exp2_2_b":    "train",  # 132 rows: all CLEAN
+    "supervisor_vehicle_exp2_3b":     "train",  # 140 rows: all CLEAN
+}
+
+
+# ─── Receiver tier mapping ───────────────────────────────────────────────────
+# A single integer (0–4) that encodes hardware quality class.  Added as a
+# constant feature per session so the model can distinguish "C/N0 = 38 dBHz on
+# a Septentrio" (= CLEAN) from "C/N0 = 38 dBHz on a u-blox M8T" (= WARNING).
+# Without this context the model cannot reconcile contradictory CLEAN/WARNING
+# labels that arise purely from receiver hardware differences.
+#
+#   0 = professional multi-constellation  (Septentrio, NovAtel, Trimble survey)
+#   1 = high-precision dual-frequency     (u-blox F9P)
+#   2 = prosumer single-frequency         (u-blox M8T)
+#   3 = consumer phone                    (Pixel 4, Huawei P40 Pro, Mi8, Note8)
+#   4 = legacy GPS-only                   (NCLT 2012, Oxford 2014 — excluded from
+#                                          primary training but kept for reference)
+#
+RECEIVER_TIER_MAP: dict[str, int] = {
+    # ── Professional (tier 0) — Septentrio Mosaic-X5C, Beijing ──────────────
+    "scenario_a_r1": 0, "scenario_a_r2": 0, "scenario_a_r3": 0,
+    "scenario_b_r1": 0, "scenario_b_r2": 0,
+    "scenario_c_r1": 0, "scenario_c_r2": 0,
+    "scenario_d_r1": 0,
+    "scenario_e_r1": 0, "scenario_e_r2": 0, "scenario_e_r3": 0,
+    "scenario_e_master": 0,
+    "supervisor_car_ref":           0,
+    "supervisor_vehicle_exp1_1_base": 0, "supervisor_vehicle_exp1_2_base": 0,
+    "supervisor_vehicle_exp1_3_b":  0,   "supervisor_vehicle_exp1_4b":    0,
+    "supervisor_vehicle_exp2_1b":   0,   "supervisor_vehicle_exp2_2_b":   0,
+    "supervisor_vehicle_exp2_3b":   0,   "supervisor_vehicle_exp3":       0,
+    "supervisor_vehicle_exp4":      0,
+    # Unicore UB4B0 drone (military-grade, aerial) — excluded from primary training
+    "supervisor_drone_1": 0, "supervisor_drone_2": 0, "supervisor_drone_12": 0,
+    # Professional — NovAtel FlexPak6, UrbanNav HK
+    "urbannav_novatel_flexpak6":        0,
+    "urbannav_tunnel_novatel_flexpak6": 0,
+    # Professional — Trimble survey grade, Tokyo
+    "tokyo_odaiba_trimble":   0,
+    "tokyo_shinjuku_trimble": 0,
+    # ── High-precision dual-frequency (tier 1) — u-blox F9P ─────────────────
+    "urbannav_ublox_f9p":              1, "urbannav_ublox_f9p_splitter":         1,
+    "urbannav_tunnel_ublox_f9p":       1, "urbannav_tunnel_ublox_f9p_splitter":  1,
+    "tokyo_odaiba_ublox":              1, "tokyo_shinjuku_ublox":                1,
+    # ── Prosumer single-frequency (tier 2) — u-blox M8T ─────────────────────
+    "urbannav_ublox_m8t_GC":           2, "urbannav_ublox_m8t_GEJ":             2,
+    "urbannav_ublox_m8t_GR":           2,
+    "urbannav_tunnel_ublox_m8t_GC":    2, "urbannav_tunnel_ublox_m8t_GEJ":      2,
+    "urbannav_tunnel_ublox_m8t_GRJ":   2,
+    # ── Consumer phone (tier 3) ──────────────────────────────────────────────
+    "urbannav_google_pixel4":          3, "urbannav_huawei_p40pro":              3,
+    "urbannav_xiaomi_mi8":             3, "urbannav_samsung_note8":              3,
+    "urbannav_tunnel_google_pixel4":   3, "urbannav_tunnel_huawei_p40pro":       3,
+    "urbannav_tunnel_xiaomi_mi8":      3, "urbannav_tunnel_samsung_note8":       3,
+    # ── Legacy GPS-only (tier 4) — excluded from primary training ────────────
+    "nclt":   4,
+    "oxford": 4,
 }
 
 
@@ -327,6 +416,31 @@ def add_delta_features(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def add_receiver_tier(df: pd.DataFrame) -> pd.DataFrame:
+    """Add a constant-per-session receiver_tier integer feature (0–4).
+
+    Maps each source to a hardware quality class so the model can distinguish
+    "C/N0 = 38 dBHz on Septentrio (CLEAN)" from "C/N0 = 38 dBHz on u-blox M8T
+    (WARNING)".  Without this the model cannot reconcile contradictory labels
+    that arise from receiver hardware differences across the multi-source dataset.
+
+    Tier assignment:
+        0 — professional multi-constellation (Septentrio, NovAtel, Trimble)
+        1 — high-precision dual-frequency    (u-blox F9P)
+        2 — prosumer single-frequency        (u-blox M8T)
+        3 — consumer phone                   (Pixel 4, Huawei P40, Mi8, Note8)
+        4 — legacy GPS-only                  (NCLT 2012, Oxford 2014)
+
+    Unknown sources default to tier 2 (prosumer mid-point) rather than 0 or 4
+    to avoid erroneously anchoring new sources at the extremes.
+    """
+    df = df.copy()
+    df["receiver_tier"] = (
+        df["source"].map(RECEIVER_TIER_MAP).fillna(2).astype(np.float32)
+    )
+    return df
+
+
 def fit_and_scale(
     df: pd.DataFrame,
     feature_cols: list[str],
@@ -406,7 +520,7 @@ def build_windows(
     Returns
     -------
     {
-      'train': {'X': ndarray (N,30,34), 'y_5s': ndarray, 'y_15s': ..., 'y_30s': ...},
+      'train': {'X': ndarray (N,30,37), 'y_5s': ndarray, 'y_15s': ..., 'y_30s': ...},
       'val':   {...},
       'test':  {...},
     }
@@ -640,6 +754,7 @@ def prepare(
     df = impute(df)
     df = clip_features(df)
     df = add_delta_features(df)   # adds pdop_delta, hdop_delta (Run 6)
+    df = add_receiver_tier(df)    # adds receiver_tier 0–4 constant per session (Run 7)
 
     feature_cols = _get_feature_cols(df)
     log.info(f"Feature columns ({len(feature_cols)}): {feature_cols}")
@@ -682,19 +797,42 @@ if __name__ == "__main__":
     parser.add_argument("--include_drones", action="store_true",
                         help="Include supervisor_drone_* sessions (excluded by default). "
                              "Not recommended: drone data is non-vehicular open-sky only.")
+    parser.add_argument("--include_legacy", action="store_true",
+                        help="Include NCLT and Oxford in all splits (excluded by default). "
+                             "Not recommended for primary training: 2012-2015 GPS-only "
+                             "hardware with position-error labels incompatible with C/N0-based "
+                             "labelling. Use --include_legacy for cross-era generalization eval.")
+    parser.add_argument("--include_tokyo", action="store_true",
+                        help="Include Tokyo Shinjuku and Odaiba u-blox in all splits "
+                             "(excluded by default from primary training). Use for cross-city "
+                             "generalization evaluation. tokyo_odaiba_trimble remains in "
+                             "validation regardless of this flag.")
     parser.add_argument("--no_reassign", action="store_true",
                         help="Disable SPLIT_REASSIGN (moves 7 test-only WARNING/DEGRADED "
                              "sources to train to fix source-domain mismatch).")
     args = parser.parse_args()
 
-    # Build the effective exclude list: always exclude drones unless --include_drones,
-    # then add any extra sources the user listed via --exclude_sources.
-    effective_exclude = [] if args.include_drones else list(
-        DEFAULT_EXCLUDE_SOURCES)
+    # Build the effective exclude list starting from DEFAULT_EXCLUDE_SOURCES,
+    # then selectively remove groups that the user wants to include back.
+    effective_exclude = list(DEFAULT_EXCLUDE_SOURCES)
+
+    if args.include_drones:
+        for src in ["supervisor_drone_1", "supervisor_drone_2", "supervisor_drone_12"]:
+            effective_exclude = [s for s in effective_exclude if s != src]
+
+    if args.include_legacy:
+        for src in ["nclt", "oxford"]:
+            effective_exclude = [s for s in effective_exclude if s != src]
+
+    if args.include_tokyo:
+        for src in ["tokyo_shinjuku_trimble", "tokyo_shinjuku_ublox", "tokyo_odaiba_ublox"]:
+            effective_exclude = [s for s in effective_exclude if s != src]
+
     if args.exclude_sources:
         for s in args.exclude_sources:
             if s not in effective_exclude:
                 effective_exclude.append(s)
+
     effective_exclude = effective_exclude or None   # None = no exclusion
 
     if effective_exclude:
