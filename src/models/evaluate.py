@@ -123,11 +123,12 @@ SPLITS = ["val", "test"]
 # ─── Inference ───────────────────────────────────────────────────────────────
 @torch.no_grad()
 def run_inference(
-    model:   SentinelGNSS,
-    windows: dict,
-    split:   str = "test",
-    batch_size: int = 512,
-    device:  Optional[torch.device] = None,
+    model:       SentinelGNSS,
+    windows:     dict,
+    split:       str = "test",
+    batch_size:  int = 512,
+    device:      Optional[torch.device] = None,
+    temperature: float = 1.0,
 ) -> dict[str, dict[str, np.ndarray]]:
     """Run the model on a split and collect predictions + probabilities.
 
@@ -153,7 +154,8 @@ def run_inference(
     )
     loader = DataLoader(ds, batch_size=batch_size, shuffle=False)
 
-    results = {h: {"y_true": [], "y_pred": [], "y_prob": []} for h in HORIZONS}
+    results = {h: {"y_true": [], "y_pred": [], "y_prob": [], "y_logit": []}
+               for h in HORIZONS}
 
     for X_b, y5, y15, y30 in loader:
         X_b = X_b.to(device)
@@ -161,18 +163,55 @@ def run_inference(
         targets = {"5s": y5, "15s": y15, "30s": y30}
         for h in HORIZONS:
             logits = out[f"logits_{h}"]
-            probs = torch.softmax(logits, dim=-1).cpu().numpy()
+            probs = torch.softmax(logits / temperature, dim=-1).cpu().numpy()
             preds = probs.argmax(axis=1)
             results[h]["y_true"].extend(targets[h].numpy())
             results[h]["y_pred"].extend(preds)
             results[h]["y_prob"].extend(probs)
+            results[h]["y_logit"].extend(logits.detach().cpu().numpy())
 
     for h in HORIZONS:
-        results[h]["y_true"] = np.array(results[h]["y_true"])
-        results[h]["y_pred"] = np.array(results[h]["y_pred"])
-        results[h]["y_prob"] = np.array(results[h]["y_prob"])
+        results[h]["y_true"]  = np.array(results[h]["y_true"])
+        results[h]["y_pred"]  = np.array(results[h]["y_pred"])
+        results[h]["y_prob"]  = np.array(results[h]["y_prob"])
+        results[h]["y_logit"] = np.array(results[h]["y_logit"])
 
     return results
+
+
+def find_temperature(val_results: dict) -> float:
+    """Find optimal temperature T minimising NLL on val set (+5s horizon).
+
+    Temperature scaling (Guo et al. 2017):  logits_scaled = logits / T
+      T > 1 → softer probabilities (less confident DEGRADED predictions)
+      T < 1 → sharper probabilities
+
+    For our problem T > 1 is expected: the model is over-confident about
+    DEGRADED for borderline WARNING windows, causing 28% W→DEG false alarms.
+    Calibration reduces P(DEGRADED) for low-confidence predictions while
+    preserving high P(DEGRADED) for true DEGRADED windows.
+
+    Ref: Guo, C. et al. (2017). On calibration of modern neural networks. ICML.
+         https://arxiv.org/abs/1706.04599
+    """
+    from scipy.optimize import minimize_scalar
+
+    logits = val_results["5s"]["y_logit"]         # (N, 3) raw logits
+    y_true = val_results["5s"]["y_true"].astype(int)
+
+    def neg_log_likelihood(log_T: float) -> float:
+        T = float(np.exp(log_T))
+        scaled = logits / T
+        exp = np.exp(scaled - scaled.max(axis=1, keepdims=True))
+        probs = exp / exp.sum(axis=1, keepdims=True)
+        nll = -np.log(
+            np.clip(probs[np.arange(len(y_true)), y_true], 1e-10, 1.0)
+        ).mean()
+        return float(nll)
+
+    result = minimize_scalar(neg_log_likelihood, bounds=(-1.5, 2.0), method="bounded")
+    T = float(np.exp(result.x))
+    return T
 
 
 # ─── 1. Confusion Matrices ────────────────────────────────────────────────────
@@ -298,11 +337,17 @@ def print_metrics_table(metrics: dict, split: str = "test") -> None:
 
 
 # ─── Threshold tuning ─────────────────────────────────────────────────────────
+# Horizon-specific W→DEG FPR caps (Run 11).
+# +5s is the direct intervention horizon (SWITCH NOW) → tightest constraint.
+# +30s is the planning horizon (REROUTE) → more false alarms tolerable.
+_FPR_CAP_PER_HORIZON = {"5s": 0.15, "15s": 0.20, "30s": 0.25}
+
+
 def tune_thresholds(
     val_results: dict,
     n_grid: int = 20,
     min_precision: float = 0.30,
-    max_warn_as_deg_fpr: float = 0.15,
+    max_warn_as_deg_fpr: float = 0.15,   # kept for API compat; overridden per horizon
 ) -> dict[str, np.ndarray]:
     """Find per-class probability thresholds using a safety-weighted objective.
 
@@ -344,7 +389,8 @@ def tune_thresholds(
         y_prob = val_results[h]["y_prob"]   # (N, 3)
 
         n_warning_val = int(np.sum(y_true == 1))
-        max_warn_as_deg = max(1, int(np.floor(max_warn_as_deg_fpr * n_warning_val)))
+        fpr_cap = _FPR_CAP_PER_HORIZON.get(h, max_warn_as_deg_fpr)
+        max_warn_as_deg = max(1, int(np.floor(fpr_cap * n_warning_val)))
 
         best_score = 0.0
         best_t = np.array([0.5, 0.5, 0.5])
@@ -1086,24 +1132,29 @@ def bootstrap_metrics(
 
 # ─── Master evaluation runner ─────────────────────────────────────────────────
 def run_all(
-    model_path: Optional[Path] = None,
-    split: str = "test",
-    out_dir: Path = FIG_DIR,
-    windows_dir: Path = WINDOW_DIR,
-    ckpt_dir: Path = CKPT_DIR,
-    n_bootstrap: int = 1000,
+    model_path:           Optional[Path] = None,
+    split:                str = "test",
+    out_dir:              Path = FIG_DIR,
+    windows_dir:          Path = WINDOW_DIR,
+    ckpt_dir:             Path = CKPT_DIR,
+    n_bootstrap:          int = 1000,
     tune_thresholds_flag: bool = False,
+    model_type:           str = "",
+    temperature_scaling:  bool = False,
 ) -> None:
     """Run the complete evaluation pipeline and save all figures.
 
     Parameters
     ----------
-    model_path  : Path to a .pt checkpoint.  Defaults to best checkpoint.
-    split       : 'val' or 'test'.
-    out_dir     : Root directory for output figures.
-    windows_dir : Directory containing .npz window files.
-    ckpt_dir    : Checkpoint directory (used to locate training_history.json).
-    n_bootstrap : Bootstrap iterations for CI computation.
+    model_path          : Path to a .pt checkpoint.  Defaults to best checkpoint.
+    split               : 'val' or 'test'.
+    out_dir             : Root directory for output figures.
+    windows_dir         : Directory containing .npz window files.
+    ckpt_dir            : Checkpoint directory (used to locate training_history.json).
+    n_bootstrap         : Bootstrap iterations for CI computation.
+    model_type          : If set (e.g. 'lstm_only'), load from checkpoints_{model_type}/
+                          and save metrics to metrics_test_{model_type}.json.
+    temperature_scaling : Find optimal temperature on val set before threshold tuning.
     """
     logging.basicConfig(level=logging.INFO,
                         format="%(levelname)s  %(message)s")
@@ -1112,6 +1163,13 @@ def run_all(
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     log.info(f"Device: {device}")
+
+    # ── Resolve checkpoint and ckpt_dir from model_type ──────────────────
+    if model_type:
+        ablation_ckpt_dir = ROOT / "results" / "models" / f"checkpoints_{model_type}"
+        ckpt_dir = ablation_ckpt_dir
+        if model_path is None:
+            model_path = ablation_ckpt_dir / "checkpoint_best.pt"
 
     # ── Load model ────────────────────────────────────────────────────────
     if model_path is None:
@@ -1129,14 +1187,25 @@ def run_all(
     # ── Load windows ──────────────────────────────────────────────────────
     windows = load_windows(windows_dir)
 
+    # ── Optional: temperature calibration on val set ──────────────────────
+    temperature = 1.0
+    if temperature_scaling:
+        log.info("  Finding optimal calibration temperature on val set …")
+        val_raw = run_inference(model, windows, split="val", device=device)
+        temperature = find_temperature(val_raw)
+        log.info(f"  Optimal temperature T={temperature:.4f}  "
+                 f"({'softer' if temperature > 1 else 'sharper'} probabilities)")
+
     # ── Inference ─────────────────────────────────────────────────────────
     log.info(f"  Running inference on '{split}' split …")
-    results = run_inference(model, windows, split=split, device=device)
+    results = run_inference(model, windows, split=split, device=device,
+                            temperature=temperature)
 
     # ── Optional: threshold tuning on val set ─────────────────────────────
     if tune_thresholds_flag:
         log.info("  Tuning classification thresholds on val set …")
-        val_results = run_inference(model, windows, split="val", device=device)
+        val_results = run_inference(model, windows, split="val", device=device,
+                                    temperature=temperature)
         thresholds = tune_thresholds(val_results)
         # Save thresholds for reproducibility
         thr_path = out_dir / "tuned_thresholds.json"
@@ -1159,8 +1228,9 @@ def run_all(
     metrics = compute_metrics(results)
     print_metrics_table(metrics, split)
 
-    # Save metrics JSON
-    metrics_path = out_dir / f"metrics_{split}.json"
+    # Save metrics JSON (model-type-specific filename for ablation runs)
+    suffix = f"_{model_type}" if model_type else ""
+    metrics_path = out_dir / f"metrics_{split}{suffix}.json"
     with open(metrics_path, "w") as f:
         json.dump(metrics, f, indent=2)
     log.info(f"  Metrics saved → {metrics_path}")
@@ -1224,6 +1294,13 @@ if __name__ == "__main__":
                              "Free improvement — no retraining needed.")
     parser.add_argument("--window_dir",        default=None,    type=Path,
                         help="Override window directory (default: data/processed/windows/)")
+    parser.add_argument("--model_type",        default="",
+                        choices=["", "lstm_only", "transformer_only"],
+                        help="Ablation model type.  Loads checkpoints_{model_type}/ "
+                             "and saves metrics_test_{model_type}.json")
+    parser.add_argument("--temperature_scaling", action="store_true",
+                        help="Find optimal calibration temperature on val set "
+                             "(Guo et al. 2017) and apply before threshold tuning.")
     parser.add_argument("--debug",             action="store_true",
                         help="Smoke-test: use windows_debug/ and checkpoints_debug/")
     args = parser.parse_args()
@@ -1249,4 +1326,6 @@ if __name__ == "__main__":
             n_bootstrap=args.n_bootstrap,
             windows_dir=w_dir,
             tune_thresholds_flag=args.tune_thresholds,
+            model_type=args.model_type,
+            temperature_scaling=args.temperature_scaling,
         )
