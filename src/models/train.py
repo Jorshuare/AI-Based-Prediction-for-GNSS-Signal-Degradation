@@ -109,20 +109,24 @@ DEFAULT_CONFIG: dict = {
     # DEGRADED is the true minority → weight 3.0 to maintain detection sensitivity.
     # Previous [1.0, 2.0, 1.5] was tuned for the Oxford-inflated DEGRADED class; raising
     # DEGRADED to 3.0 restores the correct relative emphasis after Oxford is removed.
-    # Run 8: DEGRADED weight raised 3.0 → 5.0.  Run 7 produced 0 DEGRADED predictions
-    # at +5s and +30s despite 3,207 DEGRADED training windows.  The model was assigning
-    # elevated P(WARNING) to DEGRADED inputs without ever crossing the DEGRADED threshold.
-    # A higher focal weight pushes more gradient signal into the DEGRADED boundary.
-    "class_weights": [1.0, 2.0, 5.0],
+    # Run 8: DEGRADED weight raised 3.0 → 5.0.  Achieved 58% DEGRADED recall at +5s,
+    # but 158/551 WARNING samples were falsely predicted as DEGRADED (only 16.8% precision).
+    # Run 9: DEGRADED weight reduced 5.0 → 4.0 — compromise that retains DEGRADED detection
+    # while reducing WARNING→DEGRADED false alarms.  The 158 false alarms originated from
+    # borderline WARNING windows (near the degraded segment) with temporarily elevated DOP.
+    # A lower weight reduces the gradient pressure that was over-fitting the DEGRADED boundary.
+    "class_weights": [1.0, 2.0, 4.0],
     # Label smoothing ε: distributes probability mass to non-target classes, preventing
     # the model from becoming overconfident on minority-class predictions.
     "label_smoothing": 0.1,
     # Auxiliary head weight: fraction of total loss assigned to the
     # t+0s current-state head (multi-task regulariser, Caruana 1997).
     "aux_head_weight": 0.3,
-    # Horizon weights: all three heads weighted equally by default.
-    # Increase weight for 30s if long-range prediction is the primary goal.
-    "horizon_weights": {"5s": 1.0, "15s": 1.0, "30s": 1.0},
+    # Horizon weights: Run 8 showed +30s WARNING recall dropped to 50% (vs 88% at +5s).
+    # Equal weights give insufficient gradient to the harder +30s head.
+    # Run 9: upweight +30s (1.0→1.2) and slightly downweight +5s (1.0→0.8) to direct
+    # more gradient toward long-range prediction without abandoning short-range accuracy.
+    "horizon_weights": {"5s": 0.8, "15s": 1.0, "30s": 1.2},
     # Misc
     "seed":          42,
     "amp":           True,    # automatic mixed precision (GPU only)

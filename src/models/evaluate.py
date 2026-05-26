@@ -302,7 +302,7 @@ def tune_thresholds(
     val_results: dict,
     n_grid: int = 20,
     min_precision: float = 0.30,
-    min_precision_degraded: float = 0.10,
+    min_precision_degraded: float = 0.20,
 ) -> dict[str, np.ndarray]:
     """Find per-class probability thresholds using a safety-weighted objective.
 
@@ -310,7 +310,7 @@ def tune_thresholds(
     For each candidate the argmax is replaced by: predict class c if
     P(c) > threshold[c], with ties broken by highest probability.
 
-    Objective (Run 8 safety-weighted):
+    Objective (Run 8/9 safety-weighted):
       score = 0.30 × CLEAN_F1 + 0.35 × WARNING_F1 + 0.35 × DEGRADED_Fβ(β=2)
 
     DEGRADED uses F-beta (β=2) which weights recall 4× more than precision.
@@ -319,7 +319,8 @@ def tune_thresholds(
 
     Precision floors:
       - CLEAN / WARNING:  min_precision=0.30  (same as Run 7, prevents collapse)
-      - DEGRADED:         min_precision=0.10  (permissive — allow aggressive recall)
+      - DEGRADED:         min_precision=0.20  (Run 9: raised from 0.10 to reduce the
+                          158 WARNING→DEGRADED false alarms seen in Run 8)
 
     Ref: Hernández-Orallo, J. et al. (2012). ROC analysis in AI. AI Review.
     Ref: Rijsbergen, C. J. (1979). Information Retrieval (Fβ definition).
