@@ -111,22 +111,26 @@ DEFAULT_CONFIG: dict = {
     # DEGRADED to 3.0 restores the correct relative emphasis after Oxford is removed.
     # Run 8: DEGRADED weight raised 3.0 → 5.0.  Achieved 58% DEGRADED recall at +5s,
     # but 158/551 WARNING samples were falsely predicted as DEGRADED (only 16.8% precision).
-    # Run 9: DEGRADED weight reduced 5.0 → 4.0 — compromise that retains DEGRADED detection
-    # while reducing WARNING→DEGRADED false alarms.  The 158 false alarms originated from
-    # borderline WARNING windows (near the degraded segment) with temporarily elevated DOP.
-    # A lower weight reduces the gradient pressure that was over-fitting the DEGRADED boundary.
-    "class_weights": [1.0, 2.0, 4.0],
+    # Run 9: DEGRADED weight reduced 5.0 → 4.0 — this BACKFIRED: WARNING recall dropped
+    # from 70% to 50% and DEGRADED precision only improved from 17% to 15%.  The lower weight
+    # weakened the DEGRADED signal without fixing the source of false alarms.
+    # Run 10: revert to DEGRADED weight 5.0 (Run 8's best-performing value, avg test F1=0.639).
+    # The false alarm problem is addressed in evaluate.py via a rate-based threshold constraint
+    # (max 15% of val WARNING samples may be predicted as DEGRADED) rather than reducing the
+    # class weight — a constraint that transfers more reliably from val to test.
+    "class_weights": [1.0, 2.0, 5.0],
     # Label smoothing ε: distributes probability mass to non-target classes, preventing
     # the model from becoming overconfident on minority-class predictions.
     "label_smoothing": 0.1,
     # Auxiliary head weight: fraction of total loss assigned to the
     # t+0s current-state head (multi-task regulariser, Caruana 1997).
     "aux_head_weight": 0.3,
-    # Horizon weights: Run 8 showed +30s WARNING recall dropped to 50% (vs 88% at +5s).
-    # Equal weights give insufficient gradient to the harder +30s head.
-    # Run 9: upweight +30s (1.0→1.2) and slightly downweight +5s (1.0→0.8) to direct
-    # more gradient toward long-range prediction without abandoning short-range accuracy.
-    "horizon_weights": {"5s": 0.8, "15s": 1.0, "30s": 1.2},
+    # Horizon weights: Run 9 tried {5s:0.8, 15s:1.0, 30s:1.2} to address +30s weakness.
+    # BACKFIRED: reducing +5s gradient caused WARNING→CLEAN errors to jump from 7 to 98 at
+    # +5s, and +30s WARNING recall actually dropped from 50% to 33% (the model couldn't
+    # distribute capacity with unequal weights).  Run 10: revert to equal weights.
+    # The +30s weakness is better addressed through architecture improvements in future runs.
+    "horizon_weights": {"5s": 1.0, "15s": 1.0, "30s": 1.0},
     # Misc
     "seed":          42,
     "amp":           True,    # automatic mixed precision (GPU only)

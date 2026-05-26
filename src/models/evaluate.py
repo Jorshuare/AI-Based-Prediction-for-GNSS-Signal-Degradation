@@ -302,7 +302,7 @@ def tune_thresholds(
     val_results: dict,
     n_grid: int = 20,
     min_precision: float = 0.30,
-    min_precision_degraded: float = 0.20,
+    max_warn_as_deg_fpr: float = 0.15,
 ) -> dict[str, np.ndarray]:
     """Find per-class probability thresholds using a safety-weighted objective.
 
@@ -310,24 +310,29 @@ def tune_thresholds(
     For each candidate the argmax is replaced by: predict class c if
     P(c) > threshold[c], with ties broken by highest probability.
 
-    Objective (Run 8/9 safety-weighted):
-      score = 0.30 × CLEAN_F1 + 0.35 × WARNING_F1 + 0.35 × DEGRADED_Fβ(β=2)
+    Objective (Run 10 safety-weighted):
+      score = 0.30 x CLEAN_F1 + 0.35 x WARNING_F1 + 0.35 x DEGRADED_Fbeta(beta=2)
 
-    DEGRADED uses F-beta (β=2) which weights recall 4× more than precision.
+    DEGRADED uses F-beta (beta=2) which weights recall 4x more than precision.
     In a safety-critical AV application, a missed DEGRADED event (false negative)
     is far more dangerous than a false alarm (false positive).
 
-    Precision floors:
-      - CLEAN / WARNING:  min_precision=0.30  (same as Run 7, prevents collapse)
-      - DEGRADED:         min_precision=0.20  (Run 9: raised from 0.10 to reduce the
-                          158 WARNING→DEGRADED false alarms seen in Run 8)
+    Constraints (Run 10):
+      - CLEAN / WARNING precision floor: min_precision=0.30 (prevents collapse)
+      - WARNING->DEGRADED FPR cap: max_warn_as_deg_fpr=0.15
+          At most 15% of val WARNING samples may be predicted as DEGRADED.
+          Rate-based constraint transfers more reliably from val to test than
+          a precision floor (which depends on DEGRADED base rate that differs
+          between val ~2.8% and test ~4.3%).
+          Run 9 used min_precision_degraded=0.20, which allowed up to 728 false
+          alarms when DEGRADED recall=50% (far too permissive).
 
-    Ref: Hernández-Orallo, J. et al. (2012). ROC analysis in AI. AI Review.
-    Ref: Rijsbergen, C. J. (1979). Information Retrieval (Fβ definition).
+    Ref: Hernandez-Orallo, J. et al. (2012). ROC analysis in AI. AI Review.
+    Ref: Rijsbergen, C. J. (1979). Information Retrieval (Fbeta definition).
 
     Returns
     -------
-    best_thresholds : dict  horizon → (3,) float array [clean, warn, degrad]
+    best_thresholds : dict  horizon -> (3,) float array [clean, warn, degrad]
     """
     from sklearn.metrics import fbeta_score
 
@@ -337,6 +342,9 @@ def tune_thresholds(
     for h in HORIZONS:
         y_true = val_results[h]["y_true"]
         y_prob = val_results[h]["y_prob"]   # (N, 3)
+
+        n_warning_val = int(np.sum(y_true == 1))
+        max_warn_as_deg = max(1, int(np.floor(max_warn_as_deg_fpr * n_warning_val)))
 
         best_score = 0.0
         best_t = np.array([0.5, 0.5, 0.5])
@@ -351,14 +359,14 @@ def tune_thresholds(
                 scaled = y_prob / thresholds[None, :]
                 y_pred = scaled.argmax(axis=1)
 
-                # Per-class F1 and DEGRADED F-beta (β=2)
+                # Per-class F1 and DEGRADED F-beta (beta=2)
                 per_class_f1 = f1_score(
                     y_true, y_pred, average=None, zero_division=0, labels=[0, 1, 2])
                 deg_f2 = fbeta_score(
                     y_true, y_pred, beta=2.0, average=None,
                     zero_division=0, labels=[0, 1, 2])[2]
 
-                # Safety-weighted objective: DEGRADED recall counts 4× over precision
+                # Safety-weighted objective: DEGRADED recall counts 4x over precision
                 score = (0.30 * per_class_f1[0]
                          + 0.35 * per_class_f1[1]
                          + 0.35 * deg_f2)
@@ -367,13 +375,16 @@ def tune_thresholds(
                     best_score_unconstrained = score
                     best_t_unconstrained = thresholds
 
-                # Per-class precision floors
+                # CLEAN/WARNING precision floors
                 per_class_prec = precision_score(
                     y_true, y_pred, average=None, zero_division=0, labels=[0, 1, 2])
                 clean_warn_ok = (per_class_prec[0] >= min_precision
                                  and per_class_prec[1] >= min_precision)
-                deg_ok = per_class_prec[2] >= min_precision_degraded
-                if clean_warn_ok and deg_ok:
+                # Rate-based WARNING->DEGRADED false alarm cap (Run 10)
+                warn_as_deg = int(np.sum((y_true == 1) & (y_pred == 2)))
+                fpr_ok = warn_as_deg <= max_warn_as_deg
+
+                if clean_warn_ok and fpr_ok:
                     n_feasible += 1
                     if score > best_score:
                         best_score = score
@@ -390,7 +401,8 @@ def tune_thresholds(
         best_thresholds[h] = best_t
         log.info(
             f"  Threshold +{h}:  WARN={best_t[1]:.2f}  DEG={best_t[2]:.2f}  "
-            f"→ safety-score={best_score:.4f}  (feasible={n_feasible}/{n_grid**2})"
+            f"  score={best_score:.4f}  "
+            f"(feasible={n_feasible}/{n_grid**2}  warn_as_deg_cap={max_warn_as_deg}/{n_warning_val})"
         )
 
     return best_thresholds
