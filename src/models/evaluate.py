@@ -941,6 +941,14 @@ def plot_attention_heatmap(
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device).eval()
 
+    # Skip for ablation models that have no Transformer (e.g. LSTMOnlyModel)
+    if not (hasattr(model, "pos_enc") and hasattr(model, "transformer")):
+        log.info(
+            "  plot_attention_heatmap: model has no Transformer encoder; "
+            "skipping attention heatmap (not applicable for LSTM-only ablation)."
+        )
+        return
+
     d = windows["test"]
     X = torch.from_numpy(d["X"]).float()
     y = d["y_5s"]
