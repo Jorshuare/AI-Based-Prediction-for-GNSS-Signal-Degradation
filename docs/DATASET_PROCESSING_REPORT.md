@@ -1,7 +1,8 @@
 # SENTINEL-GNSS: Dataset Processing Report
 
-> **Updated:** May 22, 2026  
+> **Updated:** May 27, 2026  
 > **Pipeline:** `src/processing/process_all_datasets.py --all`
+> **Current rows:** 97,393 (pre-Deep/Harsh) → ~130,000+ after Run 12
 
 ---
 
@@ -9,15 +10,17 @@
 
 | Source                 | Type           | Location                 | Receiver              | C/N0 Method          | Epochs |
 | ---------------------- | -------------- | ------------------------ | --------------------- | -------------------- | ------ |
-| **Scenarios A–E**      | Self-collected | Beijing, 2026            | Septentrio Mosaic-X5C | RINEX SNR-indicator  | 3,586  |
-| **Supervisor Vehicle** | Self-collected | Beijing, 2025            | Septentrio Mosaic-X5C | NMEA GSV (direct)    | 3,401  |
-| **Supervisor Drone**   | Self-collected | Beijing, 2024            | Unicore UB4B0         | RINEX S1C (direct)   | 11,123 |
-| **UrbanNav HK Medium** | Downloaded     | Hong Kong, 2021          | 10 receivers          | RINEX S1C + NMEA GSV | 7,608  |
-| **UrbanNav HK Tunnel** | Downloaded     | Hong Kong, 2021          | 10 receivers          | RINEX S1C + NMEA GSV | 3,461  |
-| **Tokyo Odaiba**       | Downloaded     | Tokyo, 2021              | Trimble + u-blox      | RINEX S1C (direct)   | 18,603 |
-| **Tokyo Shinjuku**     | Downloaded     | Tokyo, 2021              | Trimble + u-blox      | RINEX S1C (direct)   | 31,265 |
-| **NCLT**               | Downloaded     | Ann Arbor USA, 2012–2013 | Unknown GPS module    | GPS CSV (no C/N0)    | 7,493  |
-| **Oxford RobotCar**    | Downloaded     | Oxford UK, 2014–2015     | NovAtel OEM6          | GPS CSV (no C/N0)    | 7,114  |
+| **Scenarios A–E**          | Self-collected | Beijing, 2026            | Septentrio Mosaic-X5C | RINEX SNR-indicator  | 3,586     |
+| **Supervisor Vehicle**     | Self-collected | Beijing, 2025            | Septentrio Mosaic-X5C | NMEA GSV (direct)    | 3,401     |
+| **Supervisor Drone**       | Self-collected | Beijing, 2024            | Unicore UB4B0         | RINEX S1C (direct)   | 11,123    |
+| **UrbanNav HK Medium**     | Downloaded     | Hong Kong, 2021          | 10 receivers          | RINEX S1C + NMEA GSV | 7,608     |
+| **UrbanNav HK Tunnel**     | Downloaded     | Hong Kong, 2021          | 10 receivers          | RINEX S1C + NMEA GSV | 3,461     |
+| **UrbanNav HK Deep** 🆕    | Downloaded     | Hong Kong, 2023          | 10 receivers          | RINEX S1C + NMEA GSV | ~14,000 est.|
+| **UrbanNav HK Harsh** 🆕   | Downloaded     | Hong Kong, 2021/2023     | 10 receivers          | RINEX S1C + NMEA GSV | ~30,000 est.|
+| **Tokyo Odaiba**           | Downloaded     | Tokyo, 2021              | Trimble + u-blox      | RINEX S1C (direct)   | 18,603    |
+| **Tokyo Shinjuku**         | Downloaded     | Tokyo, 2021              | Trimble + u-blox      | RINEX S1C (direct)   | 31,265    |
+| **NCLT**                   | Downloaded     | Ann Arbor USA, 2012–2013 | Unknown GPS module    | GPS CSV (no C/N0)    | 7,493     |
+| **Oxford RobotCar**        | Downloaded     | Oxford UK, 2014–2015     | NovAtel OEM6          | GPS CSV (no C/N0)    | 7,114     |
 
 > **Publishing note:** Only Scenarios A–E and Supervisor data (self-collected) may be redistributed. All other sources are third-party datasets. For code/data release: publish the processing scripts + raw Scenarios A–E + all processed CSV features (transforming a downloaded dataset ≠ redistributing the raw data, which is standard practice in ML papers). Cite the original papers for NCLT, Oxford, UrbanNav.
 
@@ -104,8 +107,10 @@ For NCLT and Oxford, C/N0 is unavailable. Labels use **position uncertainty** di
 
 | Dataset                | CLEAN     | WARNING   | DEGRADED  | Total      | Notes                                                                             |
 | ---------------------- | --------- | --------- | --------- | ---------- | --------------------------------------------------------------------------------- |
-| **UrbanNav HK Medium** | **2.7%**  | **74.0%** | **23.3%** | **7,608**  | 10 receivers; NovAtel best, phones worst                                          |
-| **UrbanNav HK Tunnel** | **11.2%** | **42.9%** | **46.0%** | **3,461**  | Complete tunnel traversal; in-tunnel no-fix epochs now correctly DEGRADED         |
+| **UrbanNav HK Medium** | **2.7%**   | **74.0%** | **23.3%** | **7,608**     | 10 receivers; NovAtel best, phones worst                                          |
+| **UrbanNav HK Tunnel** | **11.2%**  | **42.9%** | **46.0%** | **3,461**     | Complete tunnel traversal; in-tunnel no-fix epochs now correctly DEGRADED         |
+| **UrbanNav HK Deep** 🆕 | **~15–25%** | **~40–55%** | **~25–35%** | **~14,000 est.** | Whampoa dense canyon; primary contribution: diverse WARNING + moderate DEGRADED |
+| **UrbanNav HK Harsh** 🆕 | **~5–15%** | **~40–55%** | **~35–45%** | **~30,000 est.** | Mong Kok extreme canyon; most severe WARNING+DEGRADED in full dataset           |
 | **Tokyo Odaiba**       | **98.4%** | **1.1%**  | **0.4%**  | **18,603** | Mostly open/moderate urban; 12,398 Trimble + 6,205 u-blox                         |
 | **Tokyo Shinjuku**     | **93.5%** | **5.2%**  | **1.3%**  | **31,265** | Dense urban canyon route; 20,790 Trimble + 10,475 u-blox                          |
 | **NCLT**               | **82.0%** | **10.0%** | **8.0%**  | **7,493**  | Michigan campus; 2012 session much cleaner (mean RTK err 2.82m) than 2013 (6.81m) |
@@ -318,9 +323,67 @@ This dataset enables the **cross-receiver generalization study** (Paper 2).
 
 ### 7.5 UrbanNav HK Tunnel (Hong Kong, May 2021)
 
-Same 10-receiver setup but in the **Cross-Harbour Tunnel** (Tung Chung Tunnel route). Complete signal loss inside tunnel. Provides the clearest DEGRADED examples.
+Same 10-receiver setup but in the **Cross-Harbour Tunnel** (Tung Chung Tunnel route). Complete signal loss inside tunnel. Provides the clearest DEGRADED examples — closely mirrors Scenarios A (instant blockage) and E (approaching blockage) from the Beijing campus collection.
 
-### 7.6 UrbanNav Tokyo (Odaiba + Shinjuku, 2021)
+**Key label pattern:** ~11% CLEAN / ~43% WARNING (approach/exit) / **~46% DEGRADED** (inside tunnel). This is the DEGRADED-richest dataset in the pipeline before adding Deep/Harsh.
+
+Consumer phone sessions (google_pixel4, huawei_p40pro) are assigned to training via SPLIT_REASSIGN — these have the highest DEGRADED ratio. Professional NovAtel stays in val for cross-receiver evaluation.
+
+### 7.6 UrbanNav HK-Deep-Urban-1 (Whampoa, Hong Kong, Dec 2023) 🆕
+
+**10-receiver simultaneous setup** — identical hardware to Medium and Tunnel.
+Route: Whampoa district, Kowloon, HK. Route length ~4.5 km, duration ~1,500 s.
+
+Whampoa features taller and more densely packed residential and commercial buildings than the Medium Urban route. This creates:
+- **More extensive sky blockage** — fewer satellites consistently visible
+- **Stronger canyon multipath** — C/N0 degradation without complete signal loss
+- **Frequent partial blockage transitions** — receiver alternates between WARNING and DEGRADED
+
+**Expected label distribution (per receiver, before windowing):**
+- CLEAN ~15–25 % — short open segments at major intersections
+- WARNING ~40–55 % — canyon signal degradation, moderate multipath (dominant class)
+- DEGRADED ~25–35 % — severe blockage, frequent sats < 4
+
+**Important distinction from Tunnel:** Unlike the Cross-Harbour Tunnel (abrupt complete blockage), Whampoa produces _graded_ degradation with rapid transitions. This is the same environment as campus Scenario B (urban canyon) but at a more extreme level. The model will benefit from this additional diversity in WARNING-class patterns rather than primarily gaining DEGRADED examples.
+
+**File naming:** New UrbanNav 2023 format — `UrbanNav-HK-Deep-Urban-1.{receiver}.obs/.nmea`. NovAtel FlexPak6 has .obs only (no NMEA companion).
+
+**Source tags:** `urbannav_deep_{receiver_name}` (e.g., `urbannav_deep_google_pixel4`)
+
+Consumer phones assigned to training via SPLIT_REASSIGN. NovAtel and F9P kept in val for cross-receiver evaluation.
+
+Reference: Hsu et al. (2023) NAVIGATION doi:10.33012/navi.602
+
+### 7.6b UrbanNav HK-Harsh-Urban-1 (Mong Kok, Hong Kong, 2021/2023) 🆕
+
+**10-receiver simultaneous setup** — identical hardware to Medium, Tunnel, Deep.
+Route: Mong Kok, Kowloon, HK. Route length ~4.9 km, duration ~3,400 s.
+
+Mong Kok is one of the world's highest-density urban areas (population density ~130,000/km²). The building canyon effect is extreme:
+- Sky visibility often < 30° above horizon — far fewer usable satellites
+- Severe multipath from all directions simultaneously
+- Frequent short-lived complete blockages at building intersections
+- Notable feature for the model: **rapid sequential WARNING↔DEGRADED transitions** at high temporal density
+
+**Expected label distribution (per receiver, before windowing):**
+- CLEAN ~5–15 % — very short open segments near MTR stations
+- WARNING ~40–55 % — extreme canyon multipath (dominant class, same as Deep)
+- DEGRADED ~35–45 % — severe blockage, frequent sats < 4
+
+**File naming quirk:** The Harsh directory contains a **mix of 2021 and 2023 naming conventions**:
+```
+20210518.dense-urban.mk.google.pixel4.obs    (2021 format, old)
+UrbanNav-HK-Harsh-Urban-1.google.pixel4.nmea (2023 format, new)
+```
+Both conventions extract to the same receiver key (`google_pixel4`) via `_extract_urbannav_receiver_name()`. The processor pairs obs and nmea by receiver name, preferring the new-format file when duplicates exist.
+
+**Source tags:** `urbannav_harsh_{receiver_name}` (e.g., `urbannav_harsh_huawei_p40pro`)
+
+All consumer phones and M8T (prosumer) sessions assigned to training via SPLIT_REASSIGN. NovAtel FlexPak6 kept in val for cross-receiver evaluation.
+
+Reference: Hsu et al. (2023) NAVIGATION doi:10.33012/navi.602
+
+### 7.7 UrbanNav Tokyo (Odaiba + Shinjuku, 2021)
 
 Trimble survey-grade receiver + u-blox F9P on the same vehicle family. RINEX obs with S1C. Both **Odaiba and Shinjuku are processed** in the current pipeline.
 
@@ -355,8 +418,10 @@ Autonomous vehicle with NovAtel OEM6 GPS (GPS-only, single-frequency, 2014 hardw
 | ---------------------------- | -------------------------- | ------------------------------- | ----------------------------- |
 | Scenarios A–E                | **YES** — self-collected   | YES                             | Our own paper                 |
 | Supervisor (vehicle + drone) | **YES** — self-collected   | YES                             | Our own paper                 |
-| UrbanNav HK Medium           | NO (third-party)           | YES (transforms OK)             | Hsu et al. 2021               |
-| UrbanNav HK Tunnel           | NO                         | YES                             | Hsu et al. 2021               |
+| UrbanNav HK Medium           | NO (third-party)           | YES (transforms OK)             | Hsu et al. 2023 (NAVIGATION)  |
+| UrbanNav HK Tunnel           | NO                         | YES                             | Hsu et al. 2023 (NAVIGATION)  |
+| UrbanNav HK Deep             | NO                         | YES                             | Hsu et al. 2023 (NAVIGATION)  |
+| UrbanNav HK Harsh            | NO                         | YES                             | Hsu et al. 2023 (NAVIGATION)  |
 | Tokyo Odaiba                 | NO                         | YES                             | UrbanNav Tokyo paper          |
 | Tokyo Shinjuku               | NO                         | YES                             | UrbanNav Tokyo paper          |
 | NCLT                         | NO                         | YES                             | Carlevaris-Bianco et al. 2016 |

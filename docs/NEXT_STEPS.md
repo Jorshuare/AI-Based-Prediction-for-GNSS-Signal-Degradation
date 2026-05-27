@@ -1,8 +1,8 @@
 # SENTINEL-GNSS: Next Steps Roadmap
 
-**Updated:** May 22, 2026
-**Data processing:** COMPLETE — all 10 source groups processed and combined (including Tokyo Shinjuku).
-**Model files:** COMPLETE — all 5 model files created.
+**Updated:** May 27, 2026
+**Current best result:** Run 10 — MacroF1 = 0.687 (+5s), MCC = 0.761
+**Next run:** Run 12 — adds HK Deep + Harsh urban datasets, ~30,000+ new rows
 
 ---
 
@@ -34,7 +34,7 @@ If all three complete without errors, the full pipeline is confirmed working.
 nvidia-smi
 ```
 
-Then install PyTorch for your driver (Python 3.13 requires cu118 or cu124 — cu121 has no py313 wheels):
+Then install PyTorch for your driver (Python 3.13 requires cu118 or cu124):
 
 ```powershell
 # CUDA 12.4+ (nvidia-smi shows 12.4 or higher):
@@ -50,42 +50,82 @@ pip install torch torchvision torchaudio
 pip install -r requirements.txt
 ```
 
-### Step 2 — Build feature windows _(one-time; re-run with `--force` to rebuild)_
+### Step 2 — Process new datasets (Deep + Harsh) — Run 12 prerequisite
 
 ```powershell
-python -m src.models.feature_prep
+# Process the two new HK urban datasets
+python src/processing/process_all_datasets.py --source urbannav_deep
+python src/processing/process_all_datasets.py --source urbannav_harsh
+
+# Re-combine all sources into labelled CSV
+python src/processing/process_all_datasets.py --combine
+```
+
+Expected output:
+- `data/processed/urbannav/urbannav_deep_features.csv` — ~14,000 rows
+- `data/processed/urbannav/urbannav_harsh_features.csv` — ~30,000 rows
+- `data/labelled/sentinel_gnss_labelled.csv` — ~130,000+ rows
+
+Verify sources are present:
+```powershell
+python -c "
+import pandas as pd
+df = pd.read_csv('data/labelled/sentinel_gnss_labelled.csv')
+print(df['source'].value_counts())
+# Should include urbannav_deep_* and urbannav_harsh_* sources
+"
+```
+
+### Step 3 — Rebuild feature windows (force-rebuild when dataset changes)
+
+```powershell
+python -m src.models.feature_prep --force
 ```
 
 Output: `data/processed/windows/{train,val,test}.npz` + `data/processed/scaler.pkl`
 
-### Step 3 — Train
+After rebuild, check DEGRADED count in training set:
+```powershell
+python -c "
+import numpy as np
+d = np.load('data/processed/windows/train.npz')
+import collections
+print('y_5s dist:', collections.Counter(d['y_5s'].tolist()))
+# DEGRADED (class 2) should be >> 555 (before SMOTE)
+"
+```
+
+### Step 4 — Train (Run 12)
 
 ```powershell
-# Fresh run:
+# Full Transformer-LSTM:
 python -m src.models.train
 
-# Resume from last checkpoint (if interrupted):
-python -m src.models.train --resume
+# Ablation: LSTM-only (no Transformer encoder):
+python -m src.models.train --arch lstm_only
+
+# Ablation: Transformer-only (no LSTM):
+python -m src.models.train --arch transformer_only
 ```
 
 Checkpoints saved to `results/models/checkpoints/`:
-
 - `checkpoint_best.pt` ← best val macro-F1
 - `checkpoint_epoch_NNN.pt` ← periodic (every 10 epochs)
 - `training_history.json` ← loss + F1 per epoch
 - `config.json` ← hyper-parameters used
 
-### Step 4 — Evaluate
+### Step 5 — Evaluate all three architectures
 
 ```powershell
-# Test set (default):
-python -m src.models.evaluate
+# Full model:
+python -m src.models.evaluate --tune_thresholds --temperature_scaling
 
-# Validation set:
-python -m src.models.evaluate --split val
+# Ablation models (each reads its own checkpoints_{model_type}/ directory):
+python -m src.models.evaluate --model_type lstm_only       --tune_thresholds
+python -m src.models.evaluate --model_type transformer_only --tune_thresholds
 
-# Specific checkpoint:
-python -m src.models.evaluate --checkpoint results/models/checkpoints/checkpoint_best.pt
+# All baselines (loads same test.npz as neural net):
+python -m src.models.baselines --include_ablations
 ```
 
 All figures saved to `results/figures/` as PDF (vector) + PNG (300 DPI).
@@ -94,38 +134,129 @@ All figures saved to `results/figures/` as PDF (vector) + PNG (300 DPI).
 
 ## Completed ✅
 
+### Data Pipeline
 - [x] Scenarios A–E, Supervisor Vehicle/Drone processed → CSV
-- [x] UrbanNav HK Medium + Tunnel (10 receivers each) processed → CSV
+- [x] UrbanNav HK Medium (10 receivers) processed → CSV
+- [x] UrbanNav HK Tunnel (10 receivers) processed → CSV  ← critical for DEGRADED class
 - [x] Tokyo Odaiba (Trimble + u-blox) processed → CSV
 - [x] Tokyo Shinjuku (Trimble + u-blox) processed → CSV
 - [x] NCLT Ann Arbor (2 sessions) processed → CSV
 - [x] Oxford RobotCar (2 traversals) processed → CSV
-- [x] Combined dataset: **97,393 rows**, session-based 70/15/15 split (seed=42)
-- [x] NMEA no-fix bug fixed — blockage epochs (quality=0) now captured as DEGRADED
-- [x] `DATASET_PROCESSING_REPORT.md` — full feature/label justification (in docs/)
-- [x] **`src/models/plot_config.py`** — single source of truth for all figures
-- [x] **`src/models/feature_prep.py`** — imputation, windowing (T=30), SMOTE
-- [x] **`src/models/transformer_lstm.py`** — Transformer-LSTM + FocalLoss
-- [x] **`src/models/train.py`** — full training loop with checkpointing
-- [x] **`src/models/evaluate.py`** — 14 evaluation analyses with references
-- [x] Root-level MD files moved to `docs/`
-- [x] `requirements.txt` created
+- [x] Combined dataset: **97,393 rows** across 10 source groups (pre-Deep/Harsh)
+- [x] NMEA no-fix bug fixed — blockage epochs (quality=0) captured as DEGRADED
+- [x] Session-based 70/15/15 split (seed=42) — prevents temporal data leakage
+- [x] SPLIT_REASSIGN mechanism — moves high-DEGRADED sessions to training
+
+### Model Architecture (Run 10/11 final config)
+- [x] Transformer encoder: 2 layers, 8 heads, d_model=128, d_ff=512
+- [x] LSTM decoder: 2 layers, hidden=256
+- [x] 37 features: 33 signal + cnr_available + pdop_delta + hdop_delta + receiver_tier
+- [x] 3 output heads (t+5s, t+15s, t+30s) + 1 aux head (t+0s, weight=0.3)
+- [x] Focal loss γ=1.0 + class weights [1.0, 2.0, 5.0] for [CLEAN, WARNING, DEGRADED]
+- [x] Label smoothing ε=0.1
+- [x] SMOTE on training set only (strategy="auto")
+- [x] Constrained threshold tuning: FPR caps 5s≤0.15, 15s≤0.20, 30s≤0.25
+- [x] Temperature calibration (Guo et al. 2017) — Run 11
+
+### Results (Run 10, checkpoint_best.pt, epoch 23 of 73)
+- [x] +5s: Accuracy=0.8528, MacroF1=0.6868, MCC=0.7614, CI=[0.658, 0.715]
+- [x] +15s: Accuracy=0.7980, MacroF1=0.6330, MCC=0.6949, CI=[0.608, 0.657]
+- [x] +30s: Accuracy=0.8262, MacroF1=0.6309, MCC=0.7176, CI=[0.608, 0.654]
+- [x] Best val MacroF1=0.7768
+- [x] Ablation val results: lstm_only=0.7898, transformer_only=0.7552
+
+### Documentation
+- [x] `DATASET_PROCESSING_REPORT.md` — full feature/label justification
+- [x] `PAPER_TOPICS.md` — 4-paper publication roadmap
+- [x] All model source files documented with references
 
 ---
 
-## Phase 4: Model Files Summary
+## In Progress / Run 12 Prerequisites 🔄
 
-| File                  | Purpose             | Key design choices                                                    |
-| --------------------- | ------------------- | --------------------------------------------------------------------- |
-| `plot_config.py`      | All figure settings | cividis primary; Okabe-Ito class colours; min 14pt fonts; IEEE widths |
-| `feature_prep.py`     | Data pipeline       | 34 features; DOP-proxy imputation; MinMax scaler (train only); SMOTE  |
-| `transformer_lstm.py` | Architecture        | Transformer (2 layers, 4 heads) → LSTM (2×128) → 3 output heads       |
-| `train.py`            | Training            | AdamW + cosine LR; focal loss γ=2; early stopping patience=20; AMP    |
-| `evaluate.py`         | Evaluation          | 14 analyses; bootstrap 95% CI; all figures publication-ready          |
+- [ ] **Process UrbanNav HK-Deep-Urban-1** (Whampoa, 10 receivers) → Phase 1 ✅ (code added)
+- [ ] **Process UrbanNav HK-Harsh-Urban-1** (Mong Kok, 10 receivers) → Phase 1 ✅ (code added)
+- [ ] **Rebuild combined dataset + windows** with Deep+Harsh included
+- [ ] **Run 12 training** with expanded DEGRADED/WARNING training pool
 
 ---
 
-## Phase 5: Evaluation Analyses Produced by evaluate.py
+## Known Issues to Address 🐛
+
+### Issue 1: DEGRADED class bottleneck (primary model weakness)
+- **Problem:** DEGRADED F1 at +5s = 0.261. Only 55 test windows (4.3% of test).
+- **Root cause:** The test set is campus (Beijing) data only, biased to Scenarios B/C (mild WARNING). Scenario A/E have very few test windows.
+- **Fix (Run 12):** Add Deep+Harsh to training. DEGRADED training rows grow from ~555 → ~5,000+.
+- **Expected improvement:** DEGRADED F1 at +5s → 0.40–0.55.
+
+### Issue 2: Val-test MacroF1 gap (9 points)
+- **Problem:** Best val MacroF1=0.7768 vs test MacroF1=0.6868 (9-point gap).
+- **Root cause:** Val uses balanced class subset (500/class) for early stopping; test is naturally imbalanced (52.5% CLEAN, 43.3% WARNING, 4.3% DEGRADED).
+- **This is NOT a bug** — it reflects the real deployment challenge.
+- **Fix in paper:** Document explicitly. Val metric = "balanced performance ceiling". Test metric = "real-world performance". Both are important.
+
+### Issue 3: Ablation metrics look identical in Colab output
+- **Problem:** All three architectures (full, lstm_only, transformer_only) may show same test metrics.
+- **Root cause:** The ablation checkpoint evaluation JSON files may not exist yet. `evaluate.py` saves to `metrics_test_lstm_only.json` correctly — they just haven't been run yet.
+- **Fix:** Run `python -m src.models.evaluate --model_type lstm_only` and `--model_type transformer_only` separately to generate their metrics files.
+
+### Issue 4: DEGRADED precision still low (false alarms)
+- **Problem:** DEGRADED precision = 0.168 at +5s (many false alarms).
+- **Root cause:** With only 55 DEGRADED test cases, even a few false alarms dominate the precision metric.
+- **Fix (Run 12):** More natural DEGRADED training examples should improve precision. After retraining:
+  - If DEGRADED precision > 0.40: reduce class weight from 5.0 → 3.5
+  - If DEGRADED precision < 0.30: keep 5.0
+
+---
+
+## Run 12 — Full Colab Instructions
+
+Run in this exact order:
+
+```bash
+# === Step 1: Process new datasets (on local machine, upload results) ===
+python src/processing/process_all_datasets.py --source urbannav_deep
+python src/processing/process_all_datasets.py --source urbannav_harsh
+
+# === Step 2: Rebuild combined CSV + windows ===
+python src/processing/process_all_datasets.py --combine
+python -m src.models.feature_prep --force
+
+# Verify DEGRADED count increased:
+python -c "
+import numpy as np, collections
+d = np.load('data/processed/windows/train.npz')
+print('y_5s before SMOTE:', collections.Counter(d['y_5s'].tolist()))
+# Expect DEGRADED (2) >> 555
+"
+
+# === Step 3: Train full model ===
+python -m src.models.train
+# Expected: best val MacroF1 should improve from 0.7768
+
+# === Step 4: Run ablations ===
+python -m src.models.train --arch lstm_only
+python -m src.models.train --arch transformer_only
+
+# === Step 5: Evaluate ===
+python -m src.models.evaluate --tune_thresholds --temperature_scaling
+python -m src.models.evaluate --model_type lstm_only       --tune_thresholds
+python -m src.models.evaluate --model_type transformer_only --tune_thresholds
+
+# === Step 6: Baselines (comparison table) ===
+python -m src.models.baselines --include_ablations
+```
+
+### Class weight tuning for Run 12
+
+After seeing DEGRADED precision from Run 12:
+- **If precision > 0.40:** Reduce to `class_weights=[1.0, 2.0, 3.5]` in `train.py` DEFAULT_CONFIG
+- **If precision < 0.30:** Keep `[1.0, 2.0, 5.0]`
+- **If false-alarm rate (FPR) for DEGRADED is > 10%:** Tighten threshold cap in `tune_thresholds_constrained()` in evaluate.py
+
+---
+
+## Phase 5 Analysis Produced by evaluate.py
 
 | #   | Figure                                | Justification                                        | Reference                        |
 | --- | ------------------------------------- | ---------------------------------------------------- | -------------------------------- |
@@ -146,7 +277,7 @@ All figures saved to `results/figures/` as PDF (vector) + PNG (300 DPI).
 
 ---
 
-## Phase 6: NaN Feature Handling Reference
+## Feature NaN Handling Reference
 
 | Feature                 | NaN % | Source             | Fix applied                         |
 | ----------------------- | ----- | ------------------ | ----------------------------------- |
@@ -159,196 +290,14 @@ All figures saved to `results/figures/` as PDF (vector) + PNG (300 DPI).
 
 ---
 
-## Phase 7: Ablation Studies (Paper 1)
+## References
 
-Run by modifying `--arch` flag (to be implemented) or editing `DEFAULT_CONFIG` in `train.py`:
-
-| Variant            | Change                               | Expected ΔMacro-F1 |
-| ------------------ | ------------------------------------ | ------------------ |
-| Full model         | Transformer(2L) → LSTM(2L)           | Baseline           |
-| LSTM-only          | Remove Transformer encoder           | −3 to −8%          |
-| Transformer-only   | Remove LSTM (use CLS token)          | −2 to −5%          |
-| Random Forest      | sklearn RF on flattened windows      | −10 to −20%        |
-| Threshold baseline | Single-feature threshold on mean_cnr | −30 to −40%        |
-
----
-
-## Phase 8: Missing Data / Future Work
-
-| Item                                 | Priority    | Notes                                                   |
-| ------------------------------------ | ----------- | ------------------------------------------------------- |
-| Propagate source metadata per window | HIGH        | Needed for per-dataset and per-scenario breakdown plots |
-| Tokyo Shinjuku                       | Completed   | Processed with rover_trimble.obs + rover_ublox.obs      |
-| NCLT additional sessions             | Low         | 2012-01-08, 2012-04-29 etc. available                   |
-| Oxford additional traversals         | Low         | Multiple traversals available                           |
-| Paper writing                        | **HIGHEST** | Start after first training run completes                |
-
-### Tokyo Shinjuku Processing Status
-
-**Processed** — `rover_trimble.obs` and `rover_ublox.obs` are integrated, and Shinjuku now runs through the same pipeline as Odaiba.
-
----
-
-## Phase 2: Model Training
-
-### Task 2.1 — Feature Preparation
-
-**File to create:** `src/models/feature_prep.py`
-
-Key decisions to implement:
-
-1. **Drop `lat`, `lon` from model inputs** — raw coordinates cause geographic overfitting
-2. **Impute `alt` NaN** → fill with training median (~50 m)
-3. **Impute `lat_std`, `lon_std` NaN** → `hdop × 2.5` (DOP-to-error proxy, ±3 m)
-4. **Scale all features to [0,1]** using training-set min/max — save `scalers.pkl` for inference
-5. **SMOTE on training set only** — target 20% WARNING, 10% DEGRADED in balanced set
-6. **Create 30-second sliding windows** → `(batch, 30, 33)` input tensors
-
-Expected training input shape: `(N, 30, 33)` — 30 time steps, 33 features (35 minus lat/lon)
-
----
-
-### Task 2.2 — Transformer-LSTM Architecture
-
-**File to create:** `src/models/transformer_lstm.py`
-
-Architecture specification (from paper design):
-
-```
-Input:     (batch, 30, 33)
-           ↓
-Positional encoding (sinusoidal, seq_len=30)
-           ↓
-Transformer Encoder:
-  - 4 attention heads
-  - d_model = 64
-  - 2 layers
-  - FFN dim = 256
-  - dropout = 0.1
-           ↓
-Reshape for LSTM: (batch, 30, 64)
-           ↓
-LSTM Decoder:
-  - 2 layers
-  - hidden_dim = 128
-  - dropout = 0.1
-           ↓
-Take last hidden state: (batch, 128)
-           ↓
-3 parallel output heads:
-  Head_t5:  Linear(128 → 3) + Softmax  → P(CLEAN, WARNING, DEGRADED) at t+5s
-  Head_t15: Linear(128 → 3) + Softmax  → P(CLEAN, WARNING, DEGRADED) at t+15s
-  Head_t30: Linear(128 → 3) + Softmax  → P(CLEAN, WARNING, DEGRADED) at t+30s
-```
-
----
-
-### Task 2.3 — Training Pipeline
-
-**File to create:** `src/models/train.py`
-
-Hyperparameters:
-
-- Optimizer: `AdamW`, lr = 1e-3, weight_decay = 1e-4
-- Scheduler: `CosineAnnealingLR`, T_max = 100
-- Epochs: 100, early stopping patience = 15
-- Batch size: 64
-- Loss: Focal Loss, γ = 2.0
-- Class weights: `{0: 1.0, 1: 2.5, 2: 5.0}`
-- Seed: 42
-
----
-
-### Task 2.4 — Evaluation & Analysis
-
-Report for each of 3 prediction horizons (t+5s, t+15s, t+30s):
-
-- Precision, Recall, F1 per class (CLEAN / WARNING / DEGRADED)
-- Macro-F1
-- AUC-ROC (one-vs-rest)
-- Confusion matrix
-
-Additional analyses for papers:
-
-- **Lead time plot** — histogram of how many seconds before actual DEGRADED the model issues first WARNING
-- **Per-receiver breakdown** — NovAtel vs u-blox F9P vs Xiaomi Mi8 (validates cross-receiver paper)
-- **Ablation table** — Transformer-LSTM vs. LSTM-only vs. RF vs. rule-based threshold baseline
-
----
-
-## Phase 3: Missing Public Datasets
-
-These will form the **held-out test set** — critical for Paper 1 generalization claim.
-
-### Task 3.1 — NCLT Dataset
-
-- **Source:** http://robots.engin.umich.edu/nclt/
-- **Download:** `2012-08-04` and `2013-04-05` traversals (GPS data only needed)
-- **Extractor:** `src/extraction/nclt_extractor.py` (exists, verify it works)
-- **Output:** `data/processed/nclt/nclt_features.csv`
-- **Use:** Test generalization to different city + different platform (ground robot)
-
-### Task 3.2 — Oxford RobotCar Dataset
-
-- **Source:** https://robotcar-dataset.robots.ox.ac.uk/
-- **Download:** 4 traversals from January 2019
-- **Extractor:** `src/extraction/oxford_extractor.py` (exists)
-- **Output:** `data/processed/oxford/oxford_features.csv`
-- **Use:** Test generalization to European city + different vehicle
-
-### Task 3.3 — UrbanNav Tokyo (Optional — Paper 3)
-
-- **Source:** UrbanNav Dataset — Tokyo traversal
-- **Purpose:** Geographic generalization: Beijing → Hong Kong → Tokyo
-- **Use:** Paper 3 argument (pan-Asian city generalization)
-
----
-
-## Phase 4: Documentation & Paper Writing
-
-### Task 4.1 — Feature Justification Table
-
-Full academic table linking each feature to a GNSS degradation mechanism. Suitable for insertion into Paper 1 Section 3 (Feature Engineering).  
-→ See `docs/DATASET_PROCESSING_REPORT.md` Section 3 for draft content.
-
-### Task 4.2 — Threshold Justification
-
-Document why CLEAN ≥ 35 dBHz (not 38) for SNR-indicator data. Cite ITU-R and GNSS literature on typical urban C/N0 distributions.
-
-### Task 4.3 — Dataset Novelty Table (Paper 4)
-
-Summary table comparing our dataset against KAIST Urban, Oxford RobotCar, UrbanNav, NUDT Urban GNSS. Show that no existing dataset covers all 5 scenario types + multi-receiver + labelled + multi-city.
-
----
-
-## Class Imbalance — Quick Reference
-
-| Approach                | Where Applied                                         |
-| ----------------------- | ----------------------------------------------------- |
-| SMOTE                   | Training set only                                     |
-| Focal Loss (γ=2)        | Training loss function                                |
-| Class weights (1:2.5:5) | Both loss and evaluation reporting                    |
-| Drone downsampling      | Reduce 14,862 CLEAN drone rows to ~2,000 before SMOTE |
-
-**⚠️ Important:** Apply SMOTE AFTER train/val split. Never SMOTE on validation or test data.
-
----
-
-## NaN Handling — Quick Reference
-
-| Feature               | NaN Rate | Cause               | Fix                         |
-| --------------------- | -------- | ------------------- | --------------------------- |
-| `lat`, `lon`          | 54%      | RINEX-only sources  | Drop from model input       |
-| `alt`                 | 54%      | RINEX-only sources  | Impute with training median |
-| `lat_std`, `lon_std`  | 85%      | Only Septentrio GST | Impute as `hdop × 2.5`      |
-| All other 30 features | 0%       | Fully present       | No action needed            |
-
----
-
-## Priority Order
-
-1. **Feature prep + windowing script** (2.1) — prerequisite for everything else
-2. **Transformer-LSTM implementation** (2.2)
-3. **Training + evaluation pipeline** (2.3 + 2.4)
-4. **NCLT and Oxford processing** (3.1, 3.2)
-5. **Paper writing** (4.x)
+- Bergmeir & Benitez (2012). On the use of cross-validation for time series predictor evaluation. Neural Networks, 32, 182–192. ← temporal split justification
+- Chawla et al. (2002). SMOTE: Synthetic minority over-sampling technique. JAIR, 16, 321–357.
+- Chicco & Jurman (2020). The advantages of the Matthews correlation coefficient (MCC) over F1 score. BMC Genomics, 21, 6.
+- Guo et al. (2017). On calibration of modern neural networks. ICML. ← temperature scaling
+- Hsu et al. (2023). UrbanNav: An open-sourced multisensory dataset. NAVIGATION, 70(1). doi:10.33012/navi.602
+- Lin et al. (2017). Focal loss for dense object detection. ICCV. arXiv:1708.02002
+- Loshchilov & Hutter (2019). Decoupled weight decay regularization. ICLR. ← AdamW
+- Müller et al. (2019). When does label smoothing help? NeurIPS.
+- Vaswani et al. (2017). Attention is all you need. NeurIPS. ← Transformer architecture

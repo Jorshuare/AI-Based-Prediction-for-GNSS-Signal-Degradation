@@ -77,24 +77,69 @@ The choice of Transformer-LSTM over pure LSTM or pure Transformer is deliberate.
 
 ### Datasets Used
 
-| Dataset                                                    | Role                     | Why                                                             |
-| ---------------------------------------------------------- | ------------------------ | --------------------------------------------------------------- |
-| Your own field data (Scenarios A–E, Septentrio MOSAIC-X5C) | **Primary training set** | You know the exact environment and timing of every transition   |
-| Supervisor vehicle (exp1–exp4)                             | Training supplement      | Adds route diversity and different driving dynamics             |
-| Supervisor drone                                           | Training supplement      | Unique elevated sky-view geometry                               |
-| UrbanNav HK-Medium-Urban-1                                 | **Held-out validation**  | Never seen during training, different city, different receivers |
-| NCLT (2 dates)                                             | **Held-out test**        | Different continent, long routes, ground truth error available  |
-| Oxford RobotCar (4 traversals)                             | **Held-out test**        | Seasonal variation, repeated routes                             |
+| Dataset                                                    | Role                        | Why                                                             |
+| ---------------------------------------------------------- | --------------------------- | --------------------------------------------------------------- |
+| Your own field data (Scenarios A–E, Septentrio MOSAIC-X5C) | **Primary training set**    | You know the exact environment and timing of every transition   |
+| Supervisor vehicle (exp1–exp4)                             | Training supplement         | Adds route diversity and different driving dynamics             |
+| Supervisor drone                                           | Excluded (all CLEAN)        | No degradation signal; excluded via DEFAULT_EXCLUDE_SOURCES     |
+| UrbanNav HK-Tunnel-1                                       | Training supplement         | Complete signal loss (cross-harbour tunnel) — matches Scenario A/E physics |
+| **UrbanNav HK-Deep-Urban-1** (NEW — Whampoa)               | Training supplement         | Dense urban canyon; more WARNING+DEGRADED than Medium           |
+| **UrbanNav HK-Harsh-Urban-1** (NEW — Mong Kok)             | Training supplement         | Extreme canyon; most severe WARNING+DEGRADED in dataset         |
+| UrbanNav HK-Medium-Urban-1                                 | Val/test                    | Cross-city, cross-receiver generalisation                       |
+| Tokyo Odaiba + Shinjuku                                    | Val/test                    | Geographic diversity (Japan)                                    |
+| NCLT (2 dates)                                             | Excluded (GPS-only bug)     | num_satellites=0 artifact; excluded via DEFAULT_EXCLUDE_SOURCES |
+| Oxford RobotCar                                            | Excluded (2014 GPS-only)    | Position-sigma labels only; excluded via DEFAULT_EXCLUDE_SOURCES|
 
-The key evaluation claim is: _model trained in Beijing on a Septentrio receiver achieves >X% macro-F1 on Hong Kong UrbanNav data without any fine-tuning._ This proves the model generalises, not just memorises.
+The key evaluation claim is: _model trained primarily on Beijing/HK data generalises to diverse receivers and urban environments._ Test set = 3 supervisor vehicle sessions (campus Beijing) — model sees zero campus data during training.
 
-### Key Results to Report
+### Key Results (Run 10, checkpoint_best.pt, epoch 23 of 73)
 
-1. **Prediction accuracy at each horizon** — Precision, Recall, F1, AUC-ROC for each class at t+5s, t+15s, t+30s. Expected pattern: t+5s > t+15s > t+30s accuracy.
-2. **Lead time analysis** — How many seconds before actual signal loss does the model first issue a WARNING? Report mean and distribution over all Scenario A and E test cases.
-3. **Ablation table** — Transformer-LSTM vs. LSTM-only vs. RF vs. threshold classifier. Shows each component contributes.
-4. **Navigation RMSE** — Compare three conditions: (a) raw GNSS-only, (b) standard fixed-R EKF, (c) adaptive EKF driven by your model predictions. Show RMSE drops in condition (c) during degradation events.
-5. **Confusion matrix** — Where does the model get confused? Expected: C vs. E are the hardest pair.
+**Test set: 1,277 sliding-window samples — Beijing campus (supervisor vehicle exp1_3_b, exp1_4b, exp3)**
+
+| Horizon | Accuracy | Macro-F1 | MCC    | Bootstrap 95% CI (MacroF1) |
+| ------- | -------- | -------- | ------ | -------------------------- |
+| +5s     | 0.8528   | 0.6868   | 0.7614 | [0.658, 0.715]             |
+| +15s    | 0.7980   | 0.6330   | 0.6949 | [0.608, 0.657]             |
+| +30s    | 0.8262   | 0.6309   | 0.7176 | [0.608, 0.654]             |
+
+Best val MacroF1 = 0.7768 (epoch 23). Val uses balanced subset 500/class for early stopping.
+
+**Per-class F1 at +5s (test):**
+| Class    | Precision | Recall | F1    | Support |
+| -------- | --------- | ------ | ----- | ------- |
+| CLEAN    | 0.878     | 0.926  | 0.901 | 671     |
+| WARNING  | 0.882     | 0.851  | 0.866 | 551     |
+| DEGRADED | 0.168     | 0.745  | 0.274 | 55      |
+
+**DEGRADED bottleneck:** F1=0.274 at +5s. Primary bottleneck is the combination of (a) only 55 DEGRADED test windows (4.3% of test set) and (b) the model's low precision (0.168) due to too few natural DEGRADED training examples. Expected improvement after Run 12 (adding Deep+Harsh): DEGRADED F1 → 0.40–0.55.
+
+**Ablation val results (Run 10):**
+| Architecture        | Val MacroF1 | ΔvsFull |
+| ------------------- | ----------- | ------- |
+| Full (Transformer+LSTM) | 0.7768  | —       |
+| LSTM-only           | 0.7898      | +0.013  |
+| Transformer-only    | 0.7552      | -0.022  |
+
+Note: LSTM-only slightly outperforms full model on val at Run 10. This may reverse after Run 12 with more training data — the Transformer benefits more from diverse training signal. Report all three in the ablation table with 95% CIs.
+
+### Detailed Results for Paper 1 Sections
+
+**1. Prediction accuracy** — Report Table 2 (per-class × horizon from above). State explicitly: "accuracy improves at shorter horizons as expected; +5s MacroF1=0.687 [CI: 0.658–0.715], +30s MacroF1=0.631."
+
+**2. Lead time analysis** — Run on Scenario A/E test cases only. Expected: model issues WARNING 5–20 s before satellite count crashes to 0. Report histogram over all Scenario A/E blockage events.
+
+**3. Ablation table** — Use baselines.py output after Run 12. Compare: MajorityClass, CNR_Threshold, RandomForest, XGBoost, LSTM-only, Transformer-only, SENTINEL-GNSS (full).
+
+**4. Navigation RMSE** — Adaptive EKF experiment. Compare: (a) raw GNSS-only, (b) standard fixed-R EKF, (c) adaptive EKF that increases Q and lowers R trust when P(DEGRADED) > 0.5. Show RMSE during blockage events.
+
+**5. Confusion matrix** — At +5s: CLEAN/WARNING boundary is the primary confusion (both high-signal states). DEGRADED has high recall (0.745) but low precision (0.168) — the model is cautious (fires early) but also fires on difficult WARNING→DEGRADED transitions.
+
+### Current Known Issues (Disclose in Paper)
+
+1. **DEGRADED test class size:** Only 55 DEGRADED windows (4.3% of test). Confidence intervals on DEGRADED-specific metrics are wide. Will improve after Run 12.
+2. **Val-test gap:** Val MacroF1=0.777 vs test MacroF1=0.687 (9-point gap). Due to balanced val subset for early stopping vs imbalanced real-world test. Disclose in Section 4 experimental setup: "val metric reflects balanced class performance; test metric reflects realistic class imbalance."
+3. **Test set geographic scope:** Test set is Beijing campus only (3 supervisor vehicle sessions). Cross-city generalisation is shown separately in the per-dataset heatmap (Papers 2/3).
+4. **Ablation ordering at val:** LSTM-only slightly outperforms full model at Run 10 val. This is attributed to limited DEGRADED training signal; hypothesis is that the Transformer benefits more from larger/more diverse training data (Run 12 will test this).
 
 ### Target Venues
 

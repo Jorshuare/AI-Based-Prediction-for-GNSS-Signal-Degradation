@@ -211,6 +211,28 @@ SPLIT_REASSIGN: dict[str, str] = {
     # supervisor_vehicle_exp1_4b intentionally kept in test (397 CLEAN) for balance.
     # supervisor_vehicle_exp3    intentionally kept in test (392 CLEAN) for balance.
 
+    # ── UrbanNav HK-Deep-Urban-1 (Whampoa) consumer phones → train ──────────
+    # Consumer phones have the most DEGRADED and WARNING epochs in Deep.
+    # Professional (NovAtel) and high-precision (F9P) kept in val for
+    # cross-receiver generalisation experiment (Paper 2).
+    "urbannav_deep_google_pixel4":   "train",
+    "urbannav_deep_huawei_p40pro":   "train",
+    "urbannav_deep_xiaomi_mi8":      "train",
+    "urbannav_deep_samsung_note8":   "train",
+
+    # ── UrbanNav HK-Harsh-Urban-1 (Mong Kok) — all non-professional → train ─
+    # Mong Kok provides the most severe urban-canyon signal degradation in the
+    # dataset. Moving all consumer phones and M8T (prosumer) to training gives
+    # the model the most challenging WARNING/DEGRADED examples.
+    # Keep NovAtel FlexPak6 in val for cross-receiver eval.
+    "urbannav_harsh_google_pixel4":  "train",
+    "urbannav_harsh_huawei_p40pro":  "train",
+    "urbannav_harsh_xiaomi_mi8":     "train",
+    "urbannav_harsh_samsung_note8":  "train",
+    "urbannav_harsh_ublox_m8t_GC":   "train",
+    "urbannav_harsh_ublox_m8t_GEJ":  "train",
+    "urbannav_harsh_ublox_m8t_GRJ":  "train",
+
     # ── CLASS 2: Scenario A moved from val → train ───────────────────────────
     # Instant-blockage pattern was completely absent from training.  r3 stays
     # in val so the balanced early-stopping subset retains DEGRADED signal.
@@ -257,23 +279,36 @@ RECEIVER_TIER_MAP: dict[str, int] = {
     # Professional — NovAtel FlexPak6, UrbanNav HK
     "urbannav_novatel_flexpak6":        0,
     "urbannav_tunnel_novatel_flexpak6": 0,
+    "urbannav_deep_novatel_flexpak6":   0,   # Whampoa (Deep)
+    "urbannav_harsh_novatel_flexpak6":  0,   # Mong Kok (Harsh)
     # Professional — Trimble survey grade, Tokyo
     "tokyo_odaiba_trimble":   0,
     "tokyo_shinjuku_trimble": 0,
     # ── High-precision dual-frequency (tier 1) — u-blox F9P ─────────────────
     "urbannav_ublox_f9p":              1, "urbannav_ublox_f9p_splitter":         1,
     "urbannav_tunnel_ublox_f9p":       1, "urbannav_tunnel_ublox_f9p_splitter":  1,
+    "urbannav_deep_ublox_f9p":         1, "urbannav_deep_ublox_f9p_splitter":    1,
+    "urbannav_harsh_ublox_f9p":        1, "urbannav_harsh_ublox_f9p_splitter":   1,
     "tokyo_odaiba_ublox":              1, "tokyo_shinjuku_ublox":                1,
     # ── Prosumer single-frequency (tier 2) — u-blox M8T ─────────────────────
+    # Note: Medium uses "GR" (GPS+GLONASS); Tunnel/Deep/Harsh use "GRJ" (+QZSS)
     "urbannav_ublox_m8t_GC":           2, "urbannav_ublox_m8t_GEJ":             2,
     "urbannav_ublox_m8t_GR":           2,
     "urbannav_tunnel_ublox_m8t_GC":    2, "urbannav_tunnel_ublox_m8t_GEJ":      2,
     "urbannav_tunnel_ublox_m8t_GRJ":   2,
+    "urbannav_deep_ublox_m8t_GC":      2, "urbannav_deep_ublox_m8t_GEJ":        2,
+    "urbannav_deep_ublox_m8t_GRJ":     2,
+    "urbannav_harsh_ublox_m8t_GC":     2, "urbannav_harsh_ublox_m8t_GEJ":       2,
+    "urbannav_harsh_ublox_m8t_GRJ":    2,
     # ── Consumer phone (tier 3) ──────────────────────────────────────────────
     "urbannav_google_pixel4":          3, "urbannav_huawei_p40pro":              3,
     "urbannav_xiaomi_mi8":             3, "urbannav_samsung_note8":              3,
     "urbannav_tunnel_google_pixel4":   3, "urbannav_tunnel_huawei_p40pro":       3,
     "urbannav_tunnel_xiaomi_mi8":      3, "urbannav_tunnel_samsung_note8":       3,
+    "urbannav_deep_google_pixel4":     3, "urbannav_deep_huawei_p40pro":         3,
+    "urbannav_deep_xiaomi_mi8":        3, "urbannav_deep_samsung_note8":         3,
+    "urbannav_harsh_google_pixel4":    3, "urbannav_harsh_huawei_p40pro":        3,
+    "urbannav_harsh_xiaomi_mi8":       3, "urbannav_harsh_samsung_note8":        3,
     # ── Legacy GPS-only (tier 4) — excluded from primary training ────────────
     "nclt":   4,
     "oxford": 4,

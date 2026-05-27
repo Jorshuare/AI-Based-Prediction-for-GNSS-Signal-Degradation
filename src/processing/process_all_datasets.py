@@ -1446,6 +1446,273 @@ def process_urbannav_tunnel() -> pd.DataFrame:
     return combined
 
 
+def _extract_urbannav_receiver_name(stem: str) -> str:
+    """
+    Extract a normalised receiver name from an UrbanNav filename stem.
+
+    Handles two naming conventions used across dataset releases:
+
+    New format (UrbanNav 2023 releases):
+        UrbanNav-HK-Deep-Urban-1.google.pixel4   →  google_pixel4
+        UrbanNav-HK-Harsh-Urban-1.ublox.m8t.GRJ  →  ublox_m8t_GRJ
+
+    Old format (UrbanNav 2021 releases, Mong Kok collection):
+        20210518.dense-urban.mk.google.pixel4     →  google_pixel4
+        20210518.tunnel.cht.novatel.flexpak6       →  novatel_flexpak6
+
+    The receiver name (everything after the dataset/date prefix) is joined
+    with underscores so it can be used directly as a source tag.
+    """
+    parts = stem.split(".")
+    if stem.startswith("UrbanNav-"):
+        # New format: first component is the dataset identifier (e.g. UrbanNav-HK-Deep-Urban-1)
+        return "_".join(parts[1:])
+    else:
+        # Old format: first three components are date + environment + location abbreviation
+        # e.g. "20210518", "dense-urban", "mk"  or  "20210518", "tunnel", "cht"
+        return "_".join(parts[3:]) if len(parts) > 3 else stem
+
+
+def process_urbannav_deep() -> pd.DataFrame:
+    """
+    Process UrbanNav HK-Deep-Urban-1 (Whampoa route, Dec 2023).
+
+    10-receiver simultaneous setup — identical hardware to Medium and Tunnel.
+    Route: Whampoa area, Hong Kong (~4.5 km, ~1,500 s).  The deeper urban
+    canyon (taller buildings, narrower streets than Medium-Urban-1) produces
+    significantly more WARNING and DEGRADED epochs than Medium:
+
+      Expected approximate label split (per receiver, before windowing):
+        CLEAN    ~15–25 %  — open intersections and short open segments
+        WARNING  ~40–55 %  — canyon signal degradation, multipath
+        DEGRADED ~25–35 %  — severe canyon, sky blockage, sats < 4
+
+    Format: RINEX 3 OBS (S1C = direct dBHz) + NMEA (GSV / GGA).
+    NovAtel FlexPak6 has .obs only (no NMEA companion).
+
+    Source tags:  urbannav_deep_{receiver_name}
+    Scenario tags: same as source_tag (one session per receiver).
+
+    Reference: Hsu et al. (2023) NAVIGATION doi:10.33012/navi.602
+    """
+    base = Path("data/raw/public/urbannav/urbanNav_Deep")
+    if not base.exists():
+        log.warning(f"UrbanNav Deep directory not found: {base}")
+        return pd.DataFrame()
+
+    # Build receiver_name → {".obs": path, ".nmea": path} mapping
+    receiver_files: dict[str, dict] = {}
+    for f in base.iterdir():
+        if f.suffix not in (".nmea", ".obs"):
+            continue
+        receiver_name = _extract_urbannav_receiver_name(f.stem)
+        if receiver_name not in receiver_files:
+            receiver_files[receiver_name] = {}
+        receiver_files[receiver_name][f.suffix] = f
+
+    if not receiver_files:
+        log.warning("No .obs/.nmea files found in UrbanNav Deep directory.")
+        return pd.DataFrame()
+
+    all_dfs = []
+    rinex_parser = Rinex3ObsParser(mode="direct_s1c")
+    nmea_parser = NmeaParser()
+
+    for receiver_name, files in sorted(receiver_files.items()):
+        obs_path = files.get(".obs")
+        nmea_path = files.get(".nmea")
+
+        if obs_path is None:
+            log.info(f"  Skipping {receiver_name} — no .obs file")
+            continue
+
+        log.info(f"  UrbanNav Deep: {receiver_name}")
+        source_tag = f"urbannav_deep_{receiver_name}"
+
+        # Parse RINEX OBS (C/N0 + cycle slips)
+        rinex_epochs = rinex_parser.parse_file(obs_path)
+
+        # Parse NMEA if available (position + DOP)
+        nmea_df = pd.DataFrame()
+        if nmea_path is not None and nmea_path.exists():
+            nmea_df = nmea_parser.parse_file(nmea_path)
+
+        if not rinex_epochs and nmea_df.empty:
+            log.warning(f"    No data for {receiver_name} — skipping")
+            continue
+
+        if not nmea_df.empty and rinex_epochs:
+            epoch_df = merge_nmea_rinex(
+                nmea_df, rinex_epochs, leap_seconds=GPS_LEAP_SECONDS)
+        elif not nmea_df.empty:
+            epoch_df = merge_nmea_rinex(nmea_df, {})
+        else:
+            # RINEX-only (NovAtel FlexPak6 has no NMEA companion)
+            rows = []
+            for gps_dt, data in sorted(rinex_epochs.items()):
+                utc_dt = gps_dt - timedelta(seconds=GPS_LEAP_SECONDS)
+                cnr_list = data.get("cnr_list", [])
+                rows.append({
+                    "timestamp":         utc_dt,
+                    "mean_cnr_epoch":    float(np.mean(cnr_list)) if cnr_list else np.nan,
+                    "cycle_slips_epoch": data.get("cycle_slips", 0),
+                    "lat": np.nan, "lon": np.nan, "alt": np.nan,
+                    "fix_quality": 1,
+                    "num_satellites": len([c for c in cnr_list if c > 0]),
+                    "hdop": 2.5, "pdop": 3.5, "vdop": 2.0,
+                })
+            epoch_df = pd.DataFrame(rows)
+
+        epoch_df["source"]   = source_tag
+        epoch_df["scenario"] = source_tag   # one independent session per receiver
+
+        feat_df = compute_features(epoch_df)
+        if not feat_df.empty:
+            all_dfs.append(feat_df)
+            log.info(
+                f"    -> {len(feat_df)} rows  "
+                f"labels: {feat_df['label'].value_counts().to_dict()}")
+
+    if not all_dfs:
+        log.warning("No UrbanNav Deep data processed.")
+        return pd.DataFrame()
+
+    combined = pd.concat(all_dfs, ignore_index=True)
+    out_dir = Path("data/processed/urbannav")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / "urbannav_deep_features.csv"
+    combined.to_csv(out_path, index=False)
+    log.info(f"Saved {len(combined)} UrbanNav Deep rows -> {out_path}")
+    return combined
+
+
+def process_urbannav_harsh() -> pd.DataFrame:
+    """
+    Process UrbanNav HK-Harsh-Urban-1 (Mong Kok route, Dec 2023 / May 2021).
+
+    10-receiver simultaneous setup — identical hardware to Medium, Tunnel, Deep.
+    Route: Mong Kok, Kowloon, HK (~4.9 km, ~3,400 s).  Mong Kok has some of
+    the world's highest urban building density, creating extreme GPS canyon
+    conditions — near-vertical sky views, severe multipath, frequent satellite
+    dropout.
+
+      Expected approximate label split (per receiver, before windowing):
+        CLEAN    ~5–15 %   — very short open segments near MTR stations
+        WARNING  ~40–55 %  — canyon signal degradation, heavy multipath
+        DEGRADED ~35–45 %  — extreme blockage, frequent sats < 4
+
+    File naming note:  This directory contains a mix of two naming conventions
+    (2021 and 2023 collection releases).  The helper _extract_urbannav_receiver_name()
+    normalises both to the same receiver key, so obs+nmea pairs are matched
+    correctly even when the filename prefixes differ:
+        20210518.dense-urban.mk.google.pixel4.obs   ←─┐  both → "google_pixel4"
+        UrbanNav-HK-Harsh-Urban-1.google.pixel4.nmea ←─┘
+
+    Format: RINEX 3 OBS (S1C = direct dBHz) + NMEA (GSV / GGA).
+
+    Source tags:  urbannav_harsh_{receiver_name}
+    Scenario tags: same as source_tag (one session per receiver).
+
+    Reference: Hsu et al. (2023) NAVIGATION doi:10.33012/navi.602
+    """
+    base = Path("data/raw/public/urbannav/urbanNav_Harsh")
+    if not base.exists():
+        log.warning(f"UrbanNav Harsh directory not found: {base}")
+        return pd.DataFrame()
+
+    # Build receiver_name → {".obs": path, ".nmea": path} mapping.
+    # Both 2021 and 2023 naming conventions are handled by
+    # _extract_urbannav_receiver_name() — they resolve to the same key.
+    receiver_files: dict[str, dict] = {}
+    for f in base.iterdir():
+        if f.suffix not in (".nmea", ".obs"):
+            continue
+        receiver_name = _extract_urbannav_receiver_name(f.stem)
+        if receiver_name not in receiver_files:
+            receiver_files[receiver_name] = {}
+        # If two files with different stems map to the same receiver + suffix,
+        # prefer the UrbanNav-HK-* (new format) version.
+        existing = receiver_files[receiver_name].get(f.suffix)
+        if existing is None or f.stem.startswith("UrbanNav-"):
+            receiver_files[receiver_name][f.suffix] = f
+
+    if not receiver_files:
+        log.warning("No .obs/.nmea files found in UrbanNav Harsh directory.")
+        return pd.DataFrame()
+
+    all_dfs = []
+    rinex_parser = Rinex3ObsParser(mode="direct_s1c")
+    nmea_parser = NmeaParser()
+
+    for receiver_name, files in sorted(receiver_files.items()):
+        obs_path = files.get(".obs")
+        nmea_path = files.get(".nmea")
+
+        if obs_path is None:
+            log.info(f"  Skipping {receiver_name} — no .obs file")
+            continue
+
+        log.info(f"  UrbanNav Harsh: {receiver_name}  "
+                 f"[obs={obs_path.name}, nmea={nmea_path.name if nmea_path else 'none'}]")
+        source_tag = f"urbannav_harsh_{receiver_name}"
+
+        # Parse RINEX OBS (C/N0 + cycle slips)
+        rinex_epochs = rinex_parser.parse_file(obs_path)
+
+        # Parse NMEA if available (position + DOP)
+        nmea_df = pd.DataFrame()
+        if nmea_path is not None and nmea_path.exists():
+            nmea_df = nmea_parser.parse_file(nmea_path)
+
+        if not rinex_epochs and nmea_df.empty:
+            log.warning(f"    No data for {receiver_name} — skipping")
+            continue
+
+        if not nmea_df.empty and rinex_epochs:
+            epoch_df = merge_nmea_rinex(
+                nmea_df, rinex_epochs, leap_seconds=GPS_LEAP_SECONDS)
+        elif not nmea_df.empty:
+            epoch_df = merge_nmea_rinex(nmea_df, {})
+        else:
+            # RINEX-only (NovAtel FlexPak6 has no NMEA companion)
+            rows = []
+            for gps_dt, data in sorted(rinex_epochs.items()):
+                utc_dt = gps_dt - timedelta(seconds=GPS_LEAP_SECONDS)
+                cnr_list = data.get("cnr_list", [])
+                rows.append({
+                    "timestamp":         utc_dt,
+                    "mean_cnr_epoch":    float(np.mean(cnr_list)) if cnr_list else np.nan,
+                    "cycle_slips_epoch": data.get("cycle_slips", 0),
+                    "lat": np.nan, "lon": np.nan, "alt": np.nan,
+                    "fix_quality": 1,
+                    "num_satellites": len([c for c in cnr_list if c > 0]),
+                    "hdop": 2.5, "pdop": 3.5, "vdop": 2.0,
+                })
+            epoch_df = pd.DataFrame(rows)
+
+        epoch_df["source"]   = source_tag
+        epoch_df["scenario"] = source_tag   # one independent session per receiver
+
+        feat_df = compute_features(epoch_df)
+        if not feat_df.empty:
+            all_dfs.append(feat_df)
+            log.info(
+                f"    -> {len(feat_df)} rows  "
+                f"labels: {feat_df['label'].value_counts().to_dict()}")
+
+    if not all_dfs:
+        log.warning("No UrbanNav Harsh data processed.")
+        return pd.DataFrame()
+
+    combined = pd.concat(all_dfs, ignore_index=True)
+    out_dir = Path("data/processed/urbannav")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / "urbannav_harsh_features.csv"
+    combined.to_csv(out_path, index=False)
+    log.info(f"Saved {len(combined)} UrbanNav Harsh rows -> {out_path}")
+    return combined
+
+
 def process_tokyo_odaiba() -> pd.DataFrame:
     """
     Process UrbanNav Tokyo Odaiba RINEX observation files.
@@ -1851,6 +2118,8 @@ def combine_all(out_path: Path = Path("data/processed/combined_dataset.csv")):
         Path("data/processed/supervisor/drone/supervisor_drone_features.csv"),
         Path("data/processed/urbannav/urbannav_hk_features.csv"),
         Path("data/processed/urbannav/urbannav_tunnel_features.csv"),
+        Path("data/processed/urbannav/urbannav_deep_features.csv"),    # HK Deep (Whampoa)
+        Path("data/processed/urbannav/urbannav_harsh_features.csv"),   # HK Harsh (Mong Kok)
         Path("data/processed/tokyo/tokyo_odaiba_features.csv"),
         Path("data/processed/tokyo/tokyo_shinjuku_features.csv"),
         Path("data/processed/nclt/nclt_features.csv"),
@@ -1890,6 +2159,10 @@ def combine_all(out_path: Path = Path("data/processed/combined_dataset.csv")):
             return "drone"
         elif "urbannav_tunnel" in s:
             return "urbannav_tunnel"
+        elif "urbannav_deep" in s:
+            return "urbannav_deep"
+        elif "urbannav_harsh" in s:
+            return "urbannav_harsh"
         elif "urbannav" in s:
             return "urbannav_medium"
         elif "tokyo" in s:
@@ -1991,7 +2264,8 @@ def main():
     parser.add_argument(
         "--source",
         choices=["scenarios", "supervisor", "drone", "urbannav",
-                 "tunnel", "tokyo", "nclt", "oxford", "all"],
+                 "tunnel", "urbannav_deep", "urbannav_harsh",
+                 "tokyo", "nclt", "oxford", "all"],
         default="all",
         help="Which data source to process (default: all)",
     )
@@ -2058,6 +2332,24 @@ def main():
         if not df.empty:
             results.append(df)
             print_dataset_summary(df, "UrbanNav Tunnel Summary")
+
+    if args.process_all or args.source in ("urbannav_deep", "all"):
+        log.info("\n" + "="*65)
+        log.info("PROCESSING: UrbanNav HK-Deep-Urban-1 (Whampoa, 10 receivers)")
+        log.info("="*65)
+        df = process_urbannav_deep()
+        if not df.empty:
+            results.append(df)
+            print_dataset_summary(df, "UrbanNav Deep Summary")
+
+    if args.process_all or args.source in ("urbannav_harsh", "all"):
+        log.info("\n" + "="*65)
+        log.info("PROCESSING: UrbanNav HK-Harsh-Urban-1 (Mong Kok, 10 receivers)")
+        log.info("="*65)
+        df = process_urbannav_harsh()
+        if not df.empty:
+            results.append(df)
+            print_dataset_summary(df, "UrbanNav Harsh Summary")
 
     if args.process_all or args.source in ("tokyo", "all"):
         log.info("\n" + "="*65)
