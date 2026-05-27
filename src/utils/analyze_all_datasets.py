@@ -165,23 +165,25 @@ def load_dataset(key: str) -> Optional[pd.DataFrame]:
 
 
 def _ensure_timestamp(df: pd.DataFrame) -> pd.DataFrame:
-    """Ensure timestamp column is datetime; compute t_sec relative to session start."""
+    """Ensure timestamp column is datetime; compute t_sec relative to session start.
+
+    Uses transform() instead of groupby().apply() to avoid the pandas 2.2+
+    behaviour where the group-key column is dropped from the result when
+    include_groups defaults to False.
+    """
+    df = df.copy()
     if "timestamp" in df.columns:
-        df = df.copy()
         df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
         # t_sec = seconds since start of each source session
         if "source" in df.columns:
-            def _compute_t(grp):
-                t0 = grp["timestamp"].min()
-                grp = grp.copy()
-                grp["t_sec"] = (grp["timestamp"] - t0).dt.total_seconds()
-                return grp
-            df = df.groupby("source", group_keys=False).apply(_compute_t)
+            # transform preserves the DataFrame shape and never drops 'source'
+            df["t_sec"] = df.groupby("source")["timestamp"].transform(
+                lambda x: (x - x.min()).dt.total_seconds()
+            )
         else:
             t0 = df["timestamp"].min()
             df["t_sec"] = (df["timestamp"] - t0).dt.total_seconds()
     else:
-        df = df.copy()
         df["t_sec"] = np.arange(len(df))
     return df
 
