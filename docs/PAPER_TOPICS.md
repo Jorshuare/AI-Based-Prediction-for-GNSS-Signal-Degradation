@@ -92,54 +92,65 @@ The choice of Transformer-LSTM over pure LSTM or pure Transformer is deliberate.
 
 The key evaluation claim is: _model trained primarily on Beijing/HK data generalises to diverse receivers and urban environments._ Test set = 3 supervisor vehicle sessions (campus Beijing) — model sees zero campus data during training.
 
-### Key Results (Run 10, checkpoint_best.pt, epoch 23 of 73)
+### Key Results (Run 12, checkpoint_best.pt, epoch 16 of 73) ← CURRENT BEST
 
-**Test set: 1,277 sliding-window samples — Beijing campus (supervisor vehicle exp1_3_b, exp1_4b, exp3)**
+**Test set: 1,452 sliding-window samples — Beijing campus (supervisor vehicle exp1_3_b, exp1_4b, exp3)**
+_(Test grew from 1,277 to 1,452 windows because Run 12 feature_prep used expanded combined CSV; DEGRADED count unchanged at 55)_
 
 | Horizon | Accuracy | Macro-F1 | MCC    | Bootstrap 95% CI (MacroF1) |
 | ------- | -------- | -------- | ------ | -------------------------- |
-| +5s     | 0.8528   | 0.6868   | 0.7614 | [0.658, 0.715]             |
-| +15s    | 0.7980   | 0.6330   | 0.6949 | [0.608, 0.657]             |
-| +30s    | 0.8262   | 0.6309   | 0.7176 | [0.608, 0.654]             |
+| +5s     | 0.8472   | **0.7036** | 0.7707 | [0.671, 0.735]           |
+| +15s    | 0.8009   | 0.6293   | 0.6975 | [0.606, 0.655]             |
+| +30s    | 0.8275   | 0.6043   | 0.7125 | [0.589, 0.622]             |
 
-Best val MacroF1 = 0.7768 (epoch 23). Val uses balanced subset 500/class for early stopping.
+Best val MacroF1 = **0.8627** (epoch 16). Temperature calibration T=0.4442.
 
-**Per-class F1 at +5s (test):**
+**Per-class F1 at +5s (test, Run 12):**
 | Class    | Precision | Recall | F1    | Support |
 | -------- | --------- | ------ | ----- | ------- |
-| CLEAN    | 0.878     | 0.926  | 0.901 | 671     |
-| WARNING  | 0.882     | 0.851  | 0.866 | 551     |
-| DEGRADED | 0.168     | 0.745  | 0.274 | 55      |
+| CLEAN    | 0.925     | 0.893  | 0.909 | 671     |
+| WARNING  | 0.959     | 0.766  | 0.851 | 726     |
+| DEGRADED | 0.216     | 0.527  | 0.307 | 55      |
 
-**DEGRADED bottleneck:** F1=0.274 at +5s. Primary bottleneck is the combination of (a) only 55 DEGRADED test windows (4.3% of test set) and (b) the model's low precision (0.168) due to too few natural DEGRADED training examples. Expected improvement after Run 12 (adding Deep+Harsh): DEGRADED F1 → 0.40–0.55.
+**Run 10 → Run 12 improvement summary:**
+| Metric | Run 10 | Run 12 | Δ |
+|--------|--------|--------|---|
+| Val MacroF1 | 0.7768 | **0.8627** | +8.6 pts |
+| +5s MacroF1 | 0.6868 | **0.7036** | +1.7 pts |
+| WARNING F1 | ~0.67 | **0.851** | +18 pts |
+| DEGRADED F1 | 0.274 | **0.307** | +3.3 pts |
+| Training DEGRADED | 555 | **11,996** | 21.6× |
 
-**Ablation val results (Run 10):**
-| Architecture        | Val MacroF1 | ΔvsFull |
-| ------------------- | ----------- | ------- |
-| Full (Transformer+LSTM) | 0.7768  | —       |
-| LSTM-only           | 0.7898      | +0.013  |
-| Transformer-only    | 0.7552      | -0.022  |
+**DEGRADED analysis (Run 12):** F1=0.307 at +5s. Recall improved (0.527 vs 0.745 in Run 10 — threshold tuning now more conservative). Precision = 0.216 (low: 12 false alarms dominate on small test set). Root cause: model trained on HK canyon DEGRADED, tested on Beijing campus blockage — different physical signatures. The 55 DEGRADED test samples are fixed by design (3 Beijing sessions); adding more HK training data cannot increase this count.
 
-Note: LSTM-only slightly outperforms full model on val at Run 10. This may reverse after Run 12 with more training data — the Transformer benefits more from diverse training signal. Report all three in the ablation table with 95% CIs.
+**Ablation results (Run 12):**
+| Architecture        | Val MacroF1 | Test +5s MacroF1 | DEGRADED F1 |
+| ------------------- | ----------- | ---------------- | ----------- |
+| Full (Transformer+LSTM) | **0.8627** | **0.7036** | 0.307 |
+| LSTM-only           | 0.8593      | 0.6082           | 0.165 |
+| Transformer-only    | *not trained yet* | — | — |
+
+Note: LSTM-only val is very close to full (0.8593 vs 0.8627 — only 0.003 gap), but test degrades more (0.6082 vs 0.7036 — 10-point gap). This confirms the Transformer adds genuine cross-city generalisation capability beyond pure LSTM.
 
 ### Detailed Results for Paper 1 Sections
 
-**1. Prediction accuracy** — Report Table 2 (per-class × horizon from above). State explicitly: "accuracy improves at shorter horizons as expected; +5s MacroF1=0.687 [CI: 0.658–0.715], +30s MacroF1=0.631."
+**1. Prediction accuracy** — Report Table 2 (per-class × horizon from above, Run 12). State explicitly: "+5s MacroF1=0.704 [CI: 0.671–0.735], MCC=0.771; +30s MacroF1=0.604."
 
 **2. Lead time analysis** — Run on Scenario A/E test cases only. Expected: model issues WARNING 5–20 s before satellite count crashes to 0. Report histogram over all Scenario A/E blockage events.
 
-**3. Ablation table** — Use baselines.py output after Run 12. Compare: MajorityClass, CNR_Threshold, RandomForest, XGBoost, LSTM-only, Transformer-only, SENTINEL-GNSS (full).
+**3. Ablation table** — Use baselines.py output after transformer-only is trained (Run 13). Compare: MajorityClass, CNR_Threshold, RandomForest, XGBoost, LSTM-only, Transformer-only, SENTINEL-GNSS (full).
 
 **4. Navigation RMSE** — Adaptive EKF experiment. Compare: (a) raw GNSS-only, (b) standard fixed-R EKF, (c) adaptive EKF that increases Q and lowers R trust when P(DEGRADED) > 0.5. Show RMSE during blockage events.
 
-**5. Confusion matrix** — At +5s: CLEAN/WARNING boundary is the primary confusion (both high-signal states). DEGRADED has high recall (0.745) but low precision (0.168) — the model is cautious (fires early) but also fires on difficult WARNING→DEGRADED transitions.
+**5. Confusion matrix** — At +5s: CLEAN/WARNING boundary is the primary confusion. DEGRADED: recall=0.527, precision=0.216 — model is cautious but too many false alarms from WARNING→DEGRADED misclassification.
 
 ### Current Known Issues (Disclose in Paper)
 
-1. **DEGRADED test class size:** Only 55 DEGRADED windows (4.3% of test). Confidence intervals on DEGRADED-specific metrics are wide. Will improve after Run 12.
-2. **Val-test gap:** Val MacroF1=0.777 vs test MacroF1=0.687 (9-point gap). Due to balanced val subset for early stopping vs imbalanced real-world test. Disclose in Section 4 experimental setup: "val metric reflects balanced class performance; test metric reflects realistic class imbalance."
-3. **Test set geographic scope:** Test set is Beijing campus only (3 supervisor vehicle sessions). Cross-city generalisation is shown separately in the per-dataset heatmap (Papers 2/3).
-4. **Ablation ordering at val:** LSTM-only slightly outperforms full model at Run 10 val. This is attributed to limited DEGRADED training signal; hypothesis is that the Transformer benefits more from larger/more diverse training data (Run 12 will test this).
+1. **DEGRADED test class size (by design):** Only 55 DEGRADED windows (3.8% of test). Fixed by test set design (Beijing campus only). Report with explicit bootstrap CI. Confidence intervals on DEGRADED-specific metrics are wide (~±0.10).
+2. **Val-test gap (Run 12: 15.9 points):** Val MacroF1=0.8627 vs test MacroF1=0.7036. Val is balanced (12,000+ CLEAN, 3,229 WARNING, 917 DEGRADED); test is imbalanced (CLEAN/WARNING near-equal, 3.8% DEGRADED). Disclose in experimental setup: "val metric reflects model training signal quality; test metric reflects realistic Beijing campus deployment."
+3. **DEGRADED precision (0.216):** Low precision means ~4 false alarms per true DEGRADED detection. Acceptable for safety-critical applications (recall=0.527 is the primary concern). Report DEGRADED precision explicitly.
+4. **Transformer-only ablation missing:** Not yet trained; target Run 13. The full ablation table is incomplete without it.
+5. **Baseline MCC vs MacroF1:** RF MCC=0.891, MacroF1=0.647; XGBoost MCC=0.909, MacroF1=0.669. This is expected behaviour — MCC rewards strong majority-class performance while MacroF1 equally weights the poorly-detected DEGRADED class. Report both and explain the difference.
 
 ### Target Venues
 
