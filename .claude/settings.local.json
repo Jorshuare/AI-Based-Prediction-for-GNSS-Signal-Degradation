@@ -6,7 +6,10 @@
       "Bash(git commit -m ' *)",
       "Bash(git push *)",
       "Bash(Get-ChildItem -Recurse \"C:\\\\Users\\\\Joel\\\\Desktop\\\\Beihang University\\\\Team-Pilot-Project\\\\josh_processed_data\" -ErrorAction SilentlyContinue)",
-      "Bash(Select-Object -ExpandProperty FullName)"
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(for dir *)",
+      "Read(//c/Users/Joel/Desktop/Beihang University/Team-Pilot-Project/data/raw/scenarios/**)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\Joel\\\\Desktop\\\\Beihang University\\\\Team-Pilot-Project\\\\data\\\\processed\\\\scenarios\" -File | Select-Object Name, @{n='KB';e={[math]::Round\\($_.Length/1KB,1\\)}} | Sort-Object Name)"
     ]
   }
 }

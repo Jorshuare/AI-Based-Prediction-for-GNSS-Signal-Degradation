@@ -233,11 +233,24 @@ SPLIT_REASSIGN: dict[str, str] = {
     "urbannav_harsh_ublox_m8t_GEJ":  "train",
     "urbannav_harsh_ublox_m8t_GRJ":  "train",
 
-    # ── CLASS 2: Scenario A moved from val → train ───────────────────────────
-    # Instant-blockage pattern was completely absent from training.  r3 stays
-    # in val so the balanced early-stopping subset retains DEGRADED signal.
-    "scenario_a_r1":                  "train",  #  47 rows: 33 DEG, 11 CLEAN, 3 WARN
-    "scenario_a_r2":                  "train",  #  53 rows: 41 DEG,  9 CLEAN, 3 WARN
+    # ── CLASS 2: Scenario A (instant blockage) → mostly train ───────────────
+    # Original 3 runs: r1+r2 → train; r3 stays in val for DEGRADED val signal.
+    # Extended 10 runs (Degraded data collection, same location/receiver):
+    #   r4–r11 → train  (8 runs, ~2,700 rows, rich no-fix / DEGRADED signal)
+    #   r12–r13 → val   (2 runs kept out to prevent overfitting to our own site)
+    "scenario_a_r1":  "train",   #  47 rows:  33 DEG, 11 CLEAN,  3 WARN
+    "scenario_a_r2":  "train",   #  53 rows:  41 DEG,  9 CLEAN,  3 WARN
+    # r3 → val intentionally (not listed here)
+    "scenario_a_r4":  "train",   # 346 rows
+    "scenario_a_r5":  "train",   # 393 rows
+    "scenario_a_r6":  "train",   # 355 rows
+    "scenario_a_r7":  "train",   # 354 rows
+    "scenario_a_r8":  "train",   # 467 rows
+    "scenario_a_r9":  "train",   # 424 rows
+    "scenario_a_r10": "train",   # 314 rows
+    "scenario_a_r11": "train",   # 378 rows
+    "scenario_a_r12": "val",     # 283 rows — held out for val DEGRADED signal
+    "scenario_a_r13": "test",    # 293 rows — first instant-blockage test coverage
 
     # ── CLASS 3: All-CLEAN test sessions moved to train ──────────────────────
     "supervisor_vehicle_exp2_1b":     "train",  # 174 rows: all CLEAN
@@ -263,6 +276,10 @@ SPLIT_REASSIGN: dict[str, str] = {
 RECEIVER_TIER_MAP: dict[str, int] = {
     # ── Professional (tier 0) — Septentrio Mosaic-X5C, Beijing ──────────────
     "scenario_a_r1": 0, "scenario_a_r2": 0, "scenario_a_r3": 0,
+    "scenario_a_r4": 0, "scenario_a_r5": 0, "scenario_a_r6": 0,
+    "scenario_a_r7": 0, "scenario_a_r8": 0, "scenario_a_r9": 0,
+    "scenario_a_r10": 0, "scenario_a_r11": 0, "scenario_a_r12": 0,
+    "scenario_a_r13": 0,
     "scenario_b_r1": 0, "scenario_b_r2": 0,
     "scenario_c_r1": 0, "scenario_c_r2": 0,
     "scenario_d_r1": 0,

@@ -993,10 +993,24 @@ def process_scenarios() -> pd.DataFrame:
 
     # Mapping: (folder_path, scenario_label, source_tag)
     scenario_map = [
-        # Scenario A: Instant Blockage (3 runs)
+        # Scenario A: Instant Blockage (3 original runs + 10 extended runs)
         (base / "scenario_a" / "A",  "scenario_a", "scenario_a_r1"),
         (base / "scenario_a" / "A2", "scenario_a", "scenario_a_r2"),
         (base / "scenario_a" / "A3", "scenario_a", "scenario_a_r3"),
+        # Scenario A extended: 10 longer runs from "Degraded data" collection.
+        # NMEA+SBF only (no RINEX) — C/N0 sourced from GSV sentences.
+        # Same location (30°21′N 119°58′E). ~347 epochs/run vs ~48 in originals.
+        # Q=0 (no-fix) rate is much higher: ~49% vs ~69% in originals — rich DEGRADED signal.
+        (base / "Degraded data" / "A",   "scenario_a", "scenario_a_r4"),
+        (base / "Degraded data" / "A2",  "scenario_a", "scenario_a_r5"),
+        (base / "Degraded data" / "A3",  "scenario_a", "scenario_a_r6"),
+        (base / "Degraded data" / "A4",  "scenario_a", "scenario_a_r7"),
+        (base / "Degraded data" / "A5",  "scenario_a", "scenario_a_r8"),
+        (base / "Degraded data" / "A6",  "scenario_a", "scenario_a_r9"),
+        (base / "Degraded data" / "A7",  "scenario_a", "scenario_a_r10"),
+        (base / "Degraded data" / "A8",  "scenario_a", "scenario_a_r11"),
+        (base / "Degraded data" / "A9",  "scenario_a", "scenario_a_r12"),
+        (base / "Degraded data" / "A10", "scenario_a", "scenario_a_r13"),
         # Scenario B: Urban Canyon (2 runs)
         (base / "scenario_b" / "B",  "scenario_b", "scenario_b_r1"),
         (base / "scenario_b" / "B2", "scenario_b", "scenario_b_r2"),

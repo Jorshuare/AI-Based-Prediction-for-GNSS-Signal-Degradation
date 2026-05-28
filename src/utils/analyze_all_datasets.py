@@ -173,7 +173,9 @@ def _ensure_timestamp(df: pd.DataFrame) -> pd.DataFrame:
     """
     df = df.copy()
     if "timestamp" in df.columns:
-        df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
+        # format="ISO8601" handles mixed fractional/non-fractional seconds correctly
+        # (pandas 2.0+ format inference breaks on mixed .XXXXXX / no-fraction strings)
+        df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, format="ISO8601", errors="coerce")
         # t_sec = seconds since start of each source session
         if "source" in df.columns:
             # transform preserves the DataFrame shape and never drops 'source'
