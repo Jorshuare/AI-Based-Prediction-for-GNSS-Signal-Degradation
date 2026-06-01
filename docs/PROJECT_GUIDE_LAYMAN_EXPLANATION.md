@@ -6,6 +6,37 @@ This is the single root guide for the project. It combines the previous app guid
 
 The project goal is to predict GNSS degradation 5 to 30 seconds before failure so an autonomous platform can switch to backup localization safely.
 
+## Where We Are Now — Plain Language (June 2026, Run 14)
+
+Think of GNSS (GPS) as the car's main way of knowing where it is. In cities it suddenly
+fails near tall buildings and tunnels. Today's systems only notice the failure **after** it
+happens — too late. We built a model that **warns 5, 15, and 30 seconds ahead of time**, so
+the car can prepare (slow down, lean on its other sensors, or reroute).
+
+**What we have working:**
+- A neural network (Transformer + LSTM) that reads the last 30 seconds of signal and predicts
+  the next 5 / 15 / 30 seconds as **CLEAN / WARNING / DEGRADED**.
+- It is right about **82%** of the time at the 5-second mark, and importantly it **catches
+  85% of real degradations** before they happen.
+- We tested it in a city it had **never seen** (Tokyo). Our model still spotted the dangerous
+  "loss-of-signal" moments well; a simpler method essentially failed there. This "works in a
+  new city" result is our strongest selling point.
+- It runs in well under a millisecond — fast enough for a real vehicle.
+
+**The data:** ~150,000 labelled one-second snapshots from Beijing, Hong Kong, and Tokyo,
+across professional receivers down to ordinary phone chips.
+
+**What we publish (plan):** two journal papers (one on the method, one releasing the dataset)
+plus one conference paper (the "works in a new city" result). Details for the team are in the
+`papers/` folder — start with `papers/TEAM_BRIEF.md`.
+
+**What is left:** wire the prediction into a navigation filter (adaptive EKF) to show the
+positioning actually improves, build a web dashboard app, and finish the per-receiver study.
+
+> The sections below are the **original field-collection notes** (route testing, phone A/B
+> scouting) kept for historical reference. The numbers above supersede any modelling figures
+> mentioned later in this file.
+
 The five target scenarios are:
 
 | Scenario | Meaning              | Desired behavior                                                  |

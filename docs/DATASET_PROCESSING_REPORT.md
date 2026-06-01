@@ -1,8 +1,27 @@
 # SENTINEL-GNSS: Dataset Processing Report
 
-> **Updated:** May 27, 2026  
+> **Updated:** June 1, 2026 (Run 14)
 > **Pipeline:** `src/processing/process_all_datasets.py --all`
-> **Current rows:** 97,393 (pre-Deep/Harsh) → ~130,000+ after Run 12
+> **Current labelled dataset:** **149,662 rows × 41 columns** across 12 source groups, 4 cities
+> **Model feature count:** **37** (33 signal/geometry + `pdop_delta` + `hdop_delta` + `receiver_tier` + `cnr_available`)
+
+---
+
+## 0. Run 14 Window Splits (model-ready)
+
+Built by `feature_prep.py` from the labelled CSV (30-second sliding windows, session-level
+split, scaler fit on train only):
+
+| Split | Windows | CLEAN | WARNING | DEGRADED |
+|-------|--------:|------:|--------:|---------:|
+| Train (no-SMOTE, DL) | 62,413 | 11,438 | 37,494 | 13,481 |
+| Train (SMOTE, baselines) | 112,482 | 37,494 | 37,494 | 37,494 |
+| Validation | 18,074 | 13,708 | 3,243 | 1,123 |
+| **Test** | **1,686** | 731 | 746 | 209 |
+
+> Scenario A was expanded to 13 runs (3 original + 10 "Degraded data" instant-blockage runs).
+> `scenario_a_r13` is held out as dedicated blockage **test** coverage; r12 stays in val.
+> Tokyo Shinjuku (31,236 windows) is fully held out as a **cross-city** evaluation set (E6).
 
 ---
 
@@ -10,19 +29,29 @@
 
 | Source                 | Type           | Location                 | Receiver              | C/N0 Method          | Epochs |
 | ---------------------- | -------------- | ------------------------ | --------------------- | -------------------- | ------ |
-| **Scenarios A–E**          | Self-collected | Beijing, 2026            | Septentrio Mosaic-X5C | RINEX SNR-indicator  | 3,586     |
+| **Scenarios A–E**          | Self-collected | Beijing, 2026            | Septentrio Mosaic-X5C | RINEX SNR-indicator  | 7,193  |
 | **Supervisor Vehicle**     | Self-collected | Beijing, 2025            | Septentrio Mosaic-X5C | NMEA GSV (direct)    | 3,401     |
 | **Supervisor Drone**       | Self-collected | Beijing, 2024            | Unicore UB4B0         | RINEX S1C (direct)   | 11,123    |
 | **UrbanNav HK Medium**     | Downloaded     | Hong Kong, 2021          | 10 receivers          | RINEX S1C + NMEA GSV | 7,608     |
 | **UrbanNav HK Tunnel**     | Downloaded     | Hong Kong, 2021          | 10 receivers          | RINEX S1C + NMEA GSV | 3,461     |
-| **UrbanNav HK Deep** 🆕    | Downloaded     | Hong Kong, 2023          | 10 receivers          | RINEX S1C + NMEA GSV | ~14,000 est.|
-| **UrbanNav HK Harsh** 🆕   | Downloaded     | Hong Kong, 2021/2023     | 10 receivers          | RINEX S1C + NMEA GSV | ~30,000 est.|
+| **UrbanNav HK Deep**       | Downloaded     | Hong Kong, 2023          | 10 receivers          | RINEX S1C + NMEA GSV | 15,233 |
+| **UrbanNav HK Harsh**      | Downloaded     | Hong Kong, 2021/2023     | 10 receivers          | RINEX S1C + NMEA GSV | 33,429 |
 | **Tokyo Odaiba**           | Downloaded     | Tokyo, 2021              | Trimble + u-blox      | RINEX S1C (direct)   | 18,603    |
 | **Tokyo Shinjuku**         | Downloaded     | Tokyo, 2021              | Trimble + u-blox      | RINEX S1C (direct)   | 31,265    |
 | **NCLT**                   | Downloaded     | Ann Arbor USA, 2012–2013 | Unknown GPS module    | GPS CSV (no C/N0)    | 7,493     |
 | **Oxford RobotCar**        | Downloaded     | Oxford UK, 2014–2015     | NovAtel OEM6          | GPS CSV (no C/N0)    | 7,114     |
+| | | | | **TOTAL labelled** | **149,662** |
+
+> Scenario A grew from 3,586 → 7,193 epochs after the 10 "Degraded data" instant-blockage
+> runs were added (Run 13–14). Deep/Harsh epoch counts are now exact (15,233 / 33,429),
+> replacing the earlier estimates.
 
 > **Publishing note:** Only Scenarios A–E and Supervisor data (self-collected) may be redistributed. All other sources are third-party datasets. For code/data release: publish the processing scripts + raw Scenarios A–E + all processed CSV features (transforming a downloaded dataset ≠ redistributing the raw data, which is standard practice in ML papers). Cite the original papers for NCLT, Oxford, UrbanNav.
+
+> **Exclusions for model training** (via `DEFAULT_EXCLUDE_SOURCES`): Supervisor Drone
+> (open-sky only, ~100% CLEAN), NCLT (satellite-count logging bug), Oxford (2014 GPS-only,
+> position-sigma labels), and the Tokyo Shinjuku/Odaiba u-blox + Shinjuku Trimble splits
+> (imputed DOP, ~92% CLEAN) — Shinjuku is repurposed as the held-out cross-city test.
 
 ---
 

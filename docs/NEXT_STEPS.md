@@ -1,8 +1,14 @@
 # SENTINEL-GNSS: Next Steps Roadmap
 
-**Updated:** May 27, 2026
-**Current best result:** Run 12 — MacroF1 = 0.7036 (+5s), MCC = 0.7707, Val MacroF1 = 0.8627
-**Run 12 status:** Full model ✅ complete | LSTM-only ✅ complete | Transformer-only ❌ not yet trained
+**Updated:** June 1, 2026
+**Current best result (Run 14):** +5s Macro-F1 = **0.8206** [95% CI 0.800–0.843], MCC = 0.7729; +30s Macro-F1 = 0.7825
+**Run 14 status:** Full ✅ | LSTM-only ✅ | Transformer-only ✅ | Baselines (±SMOTE) ✅ | Reviewer experiments E1–E7 ✅ (E7 calibration re-run inline in Colab)
+**Headline:** DEGRADED F1 0.274 (Run 11) → **0.718** (Run 14); cross-city Tokyo retains DEGRADED F1 **0.75 (DL) vs 0.15 (RF)**
+**Authoritative numbers:** see `papers/RESULTS_REFERENCE.md`. **Team brief:** `papers/TEAM_BRIEF.md`.
+
+> **Notebooks:** `kaggle_train.ipynb` (primary) and `colab_train.ipynb` (Drive-backed, fully
+> synced as of Run 14) both reproduce every number end-to-end. Colab mirrors all outputs to
+> `MyDrive/sentinel-gnss-results/`.
 
 ---
 
