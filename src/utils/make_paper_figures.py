@@ -2,7 +2,7 @@
 make_paper_figures.py — Publication-quality figures for SENTINEL-GNSS papers + slides.
 
 Design rules (per project standard):
-  • Colour-blind-safe palette only (Okabe & Ito, 2008) — single source of truth (PALETTE).
+  • Colour-blind-safe **cividis** palette only — single source of truth (PALETTE/civ()).
   • NO figure titles (captions live in the paper). Context goes in axis labels.
   • Multi-panel figures carry (a)/(b)/(c) labels for caption referencing.
   • Legends + axis labels are BOLD at 14 pt; tick labels bold.
@@ -28,26 +28,29 @@ RES = ROOT / "results"
 OUT = RES / "paper_figures"
 OUT.mkdir(parents=True, exist_ok=True)
 
-# ── Single source of truth: Okabe–Ito colour-blind-safe palette ───────────────
+# ── Single source of truth: cividis colour-blind-safe palette ─────────────────
+# cividis is perceptually uniform and safe for all colour-vision deficiencies.
+# Categorical colours are evenly-spaced samples of the cividis colormap; callout
+# TEXT/ARROWS use a dark colour (C_MARK) because the cividis high end is yellow.
+import matplotlib as _mpl
+_CIV = _mpl.colormaps["cividis"]
+def civ(t):
+    r, g, b, _ = _CIV(float(t))
+    return (r, g, b)
 PALETTE = {
-    "black":   "#000000",
-    "orange":  "#E69F00",
-    "sky":     "#56B4E9",
-    "green":   "#009E73",
-    "yellow":  "#F0E442",
-    "blue":    "#0072B2",
-    "vermil":  "#D55E00",
-    "purple":  "#CC79A7",
-    "grey":    "#999999",
+    "c0": civ(0.00), "c1": civ(0.20), "c2": civ(0.40),
+    "c3": civ(0.60), "c4": civ(0.80), "c5": civ(1.00),
+    "black": "#000000", "grey": "#7A7A7A", "white": "#FFFFFF",
 }
-# semantic assignments (kept consistent across every figure)
-C_CLEAN = PALETTE["green"]     # CLEAN
-C_WARN  = PALETTE["orange"]    # WARNING
-C_DEG   = PALETTE["vermil"]    # DEGRADED
-C_OURS  = PALETTE["blue"]      # SENTINEL-GNSS / DL
-C_BASE  = PALETTE["sky"]       # tree / baseline
-C_ACC   = PALETTE["purple"]    # secondary series (e.g. MCC)
-C_NEU   = PALETTE["grey"]      # neutral
+# semantic assignments (consistent across every figure), sampled from cividis
+C_CLEAN = civ(0.12)            # CLEAN    (dark blue)
+C_WARN  = civ(0.52)            # WARNING  (slate)
+C_DEG   = civ(0.92)            # DEGRADED (yellow)  -- bars/fills only
+C_OURS  = civ(0.18)            # SENTINEL-GNSS / DL (dark)
+C_BASE  = civ(0.70)            # tree / baseline    (light)
+C_ACC   = civ(0.45)            # secondary series (e.g. MCC)
+C_NEU   = PALETTE["grey"]
+C_MARK  = PALETTE["black"]     # readable callout text / arrows (never yellow on white)
 
 # ── Single source of truth: font sizes (pt) ───────────────────────────────────
 FONTS = {
@@ -229,8 +232,8 @@ def fig_crosscity_degraded():
     for xi, v in zip(x - w/2, dl): ax.text(xi, v + 0.015, f"{v:.2f}", ha="center", fontsize=FONTS["value"], fontweight="bold")
     for xi, v in zip(x + w/2, rf): ax.text(xi, v + 0.015, f"{v:.2f}", ha="center", fontsize=FONTS["value"], fontweight="bold")
     ax.annotate("RF collapses\non DEGRADED", xy=(2 + w/2, rf[2]), xytext=(1.25, 0.45),
-                arrowprops=dict(arrowstyle="->", color=C_DEG, lw=2),
-                color=C_DEG, fontsize=FONTS["annot"], fontweight="bold")
+                arrowprops=dict(arrowstyle="->", color=C_MARK, lw=2),
+                color=C_MARK, fontsize=FONTS["annot"], fontweight="bold")
     ax.set_xticks(x); ax.set_xticklabels(classes); ax.set_ylim(0, 1.05)
     ax.set_ylabel("F1 on unseen Tokyo")
     blegend(ax, loc="upper right"); style(ax)
@@ -284,7 +287,7 @@ def fig_ekf_trajectory():
         ax.plot(fixed[:, 0], fixed[:, 1], color=C_WARN, lw=1.8, ls="--", label="Fixed-R EKF")
         ax.plot(adapt[:, 0], adapt[:, 1], color=C_OURS, lw=2.2, label="Adaptive EKF (ours)")
         ax.axvspan(2 * 120, 2 * 180, color=C_DEG, alpha=0.10)
-        ax.text(2 * 150, truth[:, 1].max() * 0.95, "GNSS blockage", color=C_DEG, ha="center", fontsize=FONTS["annot"], fontweight="bold")
+        ax.text(2 * 150, truth[:, 1].max() * 0.95, "GNSS blockage", color=C_MARK, ha="center", fontsize=FONTS["annot"], fontweight="bold")
         ax.set_xlabel("East (m)"); ax.set_ylabel("North (m)")
         blegend(ax, loc="upper left"); style(ax)
         save(fig, "fig08_ekf_trajectory")
@@ -352,7 +355,7 @@ def fig_reactive_vs_proactive():
         ax.plot([s, s], [0.9, 1.1], color=C_NEU, lw=2)
         ax.text(s, 0.5, lbl, ha="center", fontsize=12, color=C_NEU, fontweight="bold")
     ax.add_patch(FancyBboxPatch((7.6, 1.4), 0.85, 0.5, boxstyle="round,pad=0.05", fc=C_DEG, ec="none"))
-    ax.text(8.02, 1.65, "REACTIVE", ha="center", va="center", color="white", fontsize=FONTS["value"], fontweight="bold")
+    ax.text(8.02, 1.65, "REACTIVE", ha="center", va="center", color=PALETTE["black"], fontsize=FONTS["value"], fontweight="bold")
     for s, c in [(3, C_CLEAN), (5, C_WARN), (6.5, C_DEG)]:
         ax.add_patch(FancyBboxPatch((s - 0.42, 1.4), 0.85, 0.5, boxstyle="round,pad=0.05", fc=c, ec="none"))
     ax.text(4.8, 2.55, "SENTINEL-GNSS: proactive warnings before the event",
@@ -429,7 +432,7 @@ def fig_crosscity_panel():
     axs[0].bar(x - w/2, dl, w, color=C_OURS, label="SENTINEL-GNSS", edgecolor="white")
     axs[0].bar(x + w/2, rf, w, color=C_BASE, label="RandomForest", edgecolor="white")
     axs[0].annotate("RF collapses", xy=(2 + w/2, rf[2]), xytext=(1.2, 0.45),
-                    arrowprops=dict(arrowstyle="->", color=C_DEG, lw=2), color=C_DEG, fontsize=FONTS["value"], fontweight="bold")
+                    arrowprops=dict(arrowstyle="->", color=C_MARK, lw=2), color=C_MARK, fontsize=FONTS["value"], fontweight="bold")
     axs[0].set_xticks(x); axs[0].set_xticklabels(classes); axs[0].set_ylim(0, 1.05)
     axs[0].set_ylabel("F1 on unseen Tokyo"); blegend(axs[0], loc="upper right")
     x2 = np.arange(2)
