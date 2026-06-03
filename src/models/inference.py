@@ -161,7 +161,7 @@ class SentinelInference:
         return Xw, end_idx
 
     # ── predict ──────────────────────────────────────────────────────────────
-    def predict(self, Xw, bs=512):
+    def predict(self, Xw, bs=512, xgb_model=None):
         torch = self.torch
         probs = {h: [] for h in HORIZONS}
         for i in range(0, len(Xw), bs):
@@ -170,10 +170,17 @@ class SentinelInference:
                 out = self.model(xb)
             for h in HORIZONS:
                 probs[h].append(torch.softmax(out[f"logits_{h}"], dim=-1).cpu().numpy())
-        return {h: np.concatenate(v) for h, v in probs.items()}
+        probs = {h: np.concatenate(v) for h, v in probs.items()}
+        # Soft-vote ensemble: (DL + XGB) / 2
+        if xgb_model is not None:
+            Xwf = Xw.reshape(len(Xw), -1)
+            xgb_probs = xgb_model.predict_proba(Xwf)
+            for h in HORIZONS:
+                probs[h] = (probs[h] + xgb_probs) / 2.0
+        return probs
 
     # ── orchestration ─────────────────────────────────────────────────────────
-    def run_file(self, nmea_path, out_dir, run_ekf=False, ekf_horizon="5s"):
+    def run_file(self, nmea_path, out_dir, run_ekf=False, ekf_horizon="5s", use_ensemble=False):
         out_dir = Path(out_dir); out_dir.mkdir(parents=True, exist_ok=True)
         stem = Path(nmea_path).parent.name + "_" + Path(nmea_path).stem \
             if Path(nmea_path).stem == "log_0000" else Path(nmea_path).stem
@@ -182,6 +189,20 @@ class SentinelInference:
         n_epochs = len(feat)
         result = {"nmea_file": str(nmea_path), "n_epochs": int(n_epochs),
                   "window_size": WINDOW, "receiver_tier": self.receiver_tier}
+
+        # Load XGBoost ensemble model if requested
+        xgb_model = None
+        if use_ensemble:
+            try:
+                import joblib
+                xgb_path = ROOT / "results" / "ensemble_xgb_model.joblib"
+                if xgb_path.exists():
+                    xgb_model = joblib.load(xgb_path)
+                    result["ensemble"] = "DL + XGBoost soft-vote"
+                else:
+                    print(f"[warn] --ensemble requested but {xgb_path} not found; using DL only")
+            except Exception as e:
+                print(f"[warn] failed to load ensemble model: {e}")
 
         Xw, end_idx = self.windows(feat)
         if Xw is None:
@@ -192,7 +213,7 @@ class SentinelInference:
             print(f"[warn] {result['message']}")
             return result
 
-        probs = self.predict(Xw)
+        probs = self.predict(Xw, xgb_model=xgb_model)
 
         # per-window prediction table
         rows = []
@@ -263,12 +284,14 @@ def main():
     ap.add_argument("--scaler", default=str(DEFAULT_SCALER))
     ap.add_argument("--receiver_tier", type=int, default=0,
                     help="0=professional(Septentrio) .. 3=consumer phone (default 0)")
+    ap.add_argument("--ensemble", action="store_true",
+                    help="use DL + XGBoost soft-vote ensemble (requires ensemble_xgb_model.joblib)")
     ap.add_argument("--ekf", action="store_true", help="also run the adaptive EKF")
     ap.add_argument("--ekf_horizon", default="5s", choices=list(HORIZONS))
     args = ap.parse_args()
 
     eng = SentinelInference(args.checkpoint, args.scaler, args.receiver_tier)
-    eng.run_file(args.nmea, args.out, run_ekf=args.ekf, ekf_horizon=args.ekf_horizon)
+    eng.run_file(args.nmea, args.out, run_ekf=args.ekf, ekf_horizon=args.ekf_horizon, use_ensemble=args.ensemble)
 
 
 if __name__ == "__main__":

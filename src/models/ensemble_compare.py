@@ -24,6 +24,7 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import f1_score
+import joblib
 
 ROOT = Path(__file__).resolve().parents[2]
 RESULTS = ROOT / "results"
@@ -150,6 +151,10 @@ def main():
                                     subsample=0.8, colsample_bytree=0.8, n_jobs=-1,
                                     eval_metric="mlogloss", random_state=42)
                 xgb.fit(Xtrf, ytr, sample_weight=sw)
+                # Save the +5s XGBoost model for ensemble inference
+                if h == "5s":
+                    joblib.dump(xgb, RESULTS / "ensemble_xgb_model.joblib")
+                    print("[saved] results/ensemble_xgb_model.joblib")
                 xgb_te = xgb.predict_proba(Xtef)
                 row["xgb"] = round(macro(yte, xgb_te.argmax(1)), 4)
                 # E8a soft-vote (mean of DL + XGB)
