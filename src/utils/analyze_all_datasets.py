@@ -33,6 +33,11 @@ References:
 """
 
 from __future__ import annotations
+import pandas as pd
+import numpy as np
+import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 
 import argparse
 import logging
@@ -41,11 +46,6 @@ from typing import Optional
 
 import matplotlib
 matplotlib.use("Agg")
-import matplotlib.gridspec as gridspec
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-import numpy as np
-import pandas as pd
 
 logging.basicConfig(
     level=logging.INFO,
@@ -56,23 +56,24 @@ log = logging.getLogger(__name__)
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DATA_DIR     = PROJECT_ROOT / "data" / "processed"
-OUT_ROOT     = PROJECT_ROOT / "results" / "dataset_analysis"
+DATA_DIR = PROJECT_ROOT / "data" / "processed"
+OUT_ROOT = PROJECT_ROOT / "results" / "dataset_analysis"
 
 # ─── Colour + label mapping ──────────────────────────────────────────────────
-LABEL_COLORS = {0: "#4CAF50", 1: "#FF9800", 2: "#F44336"}   # CLEAN / WARN / DEG
-LABEL_NAMES  = {0: "CLEAN", 1: "WARNING", 2: "DEGRADED"}
+LABEL_COLORS = {0: "#4CAF50", 1: "#FF9800",
+                2: "#F44336"}   # CLEAN / WARN / DEG
+LABEL_NAMES = {0: "CLEAN", 1: "WARNING", 2: "DEGRADED"}
 
 # C/N₀ threshold lines (dBHz) from IS-GPS-200 / RTCM SC-104
-CNR_CLEAN    = 35.0
-CNR_WARN     = 30.0
-CNR_DEGRAD   = 25.0
+CNR_CLEAN = 35.0
+CNR_WARN = 30.0
+CNR_DEGRAD = 25.0
 
 # DOP thresholds from GNSS literature
-HDOP_WARN    = 2.5
-HDOP_DEGRAD  = 5.0
-PDOP_WARN    = 4.0
-PDOP_DEGRAD  = 8.0
+HDOP_WARN = 2.5
+HDOP_DEGRAD = 5.0
+PDOP_WARN = 4.0
+PDOP_DEGRAD = 8.0
 
 # ─── Dataset sources configuration ───────────────────────────────────────────
 # Each entry: (csv_path, dataset_label, groupby_col)
@@ -80,37 +81,37 @@ PDOP_DEGRAD  = 8.0
 DATASETS: dict[str, dict] = {
     "scenarios": {
         "csv":   DATA_DIR / "scenarios" / "all_scenarios_features.csv",
-        "label": "Field Collection — Scenarios A–E (Beijing Campus)",
+        "label": "Field Collection — Scenarios A–E (Beihang Campus)",
         "group": "scenario",
         "description": "Self-collected data with Septentrio MOSAIC-X5C. "
-                        "Five controlled degradation environments.",
+        "Five controlled degradation environments.",
     },
     "supervisor": {
         "csv":   DATA_DIR / "supervisor" / "vehicle" / "supervisor_vehicle_features.csv",
-        "label": "Supervisor Vehicle (Beijing)",
+        "label": "Supervisor Vehicle (Beihang)",
         "group": "source",
-        "description": "Septentrio MOSAIC-X5C vehicle surveys in Beijing urban/suburban areas.",
+        "description": "Septentrio MOSAIC-X5C vehicle surveys in Beihang urban/suburban areas.",
     },
     "drone": {
         "csv":   DATA_DIR / "supervisor" / "drone" / "supervisor_drone_features.csv",
-        "label": "Supervisor Drone (Beijing) — EXCLUDED from training",
+        "label": "Supervisor Drone (Beihang) — EXCLUDED from training",
         "group": "source",
         "description": "Unicore UB4B0 on aerial UAV. Open-sky only (100% CLEAN). "
-                        "Excluded via DEFAULT_EXCLUDE_SOURCES — no degradation signal.",
+        "Excluded via DEFAULT_EXCLUDE_SOURCES — no degradation signal.",
     },
     "urbannav": {
         "csv":   DATA_DIR / "urbannav" / "urbannav_hk_features.csv",
         "label": "UrbanNav HK-Medium-Urban-1 (Mong Kok / Sham Shui Po, 2021)",
         "group": "source",
         "description": "10 simultaneous receivers, same vehicle. "
-                        "Moderate urban canyon. Reference: Hsu et al. (2023) NAVIGATION.",
+        "Moderate urban canyon. Reference: Hsu et al. (2023) NAVIGATION.",
     },
     "tunnel": {
         "csv":   DATA_DIR / "urbannav" / "urbannav_tunnel_features.csv",
         "label": "UrbanNav HK-Tunnel-1 (Cross-Harbour Tunnel, 2021)",
         "group": "source",
         "description": "10 receivers through Cross-Harbour Tunnel. "
-                        "Complete signal loss inside. Mirrors campus Scenario A/E.",
+        "Complete signal loss inside. Mirrors campus Scenario A/E.",
     },
     "tokyo": {
         "csv":   [DATA_DIR / "tokyo" / "tokyo_odaiba_features.csv",
@@ -118,21 +119,21 @@ DATASETS: dict[str, dict] = {
         "label": "Tokyo Odaiba + Shinjuku (2021)",
         "group": "source",
         "description": "Trimble survey-grade + u-blox F9P. "
-                        "Odaiba: waterfront mixed. Shinjuku: dense urban canyon.",
+        "Odaiba: waterfront mixed. Shinjuku: dense urban canyon.",
     },
     "nclt": {
         "csv":   DATA_DIR / "nclt" / "nclt_features.csv",
         "label": "NCLT Ann Arbor (Michigan, 2012–2013) — EXCLUDED from training",
         "group": "source",
         "description": "Ground robot, campus + urban routes. GPS-only (no C/N₀). "
-                        "Satellite count logging bug → excluded from training.",
+        "Satellite count logging bug → excluded from training.",
     },
     "oxford": {
         "csv":   DATA_DIR / "oxford" / "oxford_features.csv",
         "label": "Oxford RobotCar (UK, 2014–2015) — EXCLUDED from training",
         "group": "source",
         "description": "NovAtel OEM6 GPS-only (2014 era). "
-                        "Labels from position-sigma, not C/N₀ → excluded.",
+        "Labels from position-sigma, not C/N₀ → excluded.",
     },
 }
 
@@ -175,7 +176,8 @@ def _ensure_timestamp(df: pd.DataFrame) -> pd.DataFrame:
     if "timestamp" in df.columns:
         # format="ISO8601" handles mixed fractional/non-fractional seconds correctly
         # (pandas 2.0+ format inference breaks on mixed .XXXXXX / no-fraction strings)
-        df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, format="ISO8601", errors="coerce")
+        df["timestamp"] = pd.to_datetime(
+            df["timestamp"], utc=True, format="ISO8601", errors="coerce")
         # t_sec = seconds since start of each source session
         if "source" in df.columns:
             # transform preserves the DataFrame shape and never drops 'source'
@@ -216,14 +218,15 @@ def make_source_chart(
         df = df.sort_values("t_sec").reset_index(drop=True)
 
     duration_s = df["t_sec"].max() if "t_sec" in df.columns else len(df)
-    n_epochs   = len(df)
+    n_epochs = len(df)
 
     # ── label counts ──────────────────────────────────────────────────────
-    label_counts = df["label"].value_counts().sort_index() if "label" in df.columns else {}
+    label_counts = df["label"].value_counts(
+    ).sort_index() if "label" in df.columns else {}
     total = len(df)
-    clean_pct   = 100 * label_counts.get(0, 0) / max(total, 1)
-    warn_pct    = 100 * label_counts.get(1, 0) / max(total, 1)
-    degrad_pct  = 100 * label_counts.get(2, 0) / max(total, 1)
+    clean_pct = 100 * label_counts.get(0, 0) / max(total, 1)
+    warn_pct = 100 * label_counts.get(1, 0) / max(total, 1)
+    degrad_pct = 100 * label_counts.get(2, 0) / max(total, 1)
 
     # ── mean_cnr ──────────────────────────────────────────────────────────
     has_cnr = "mean_cnr" in df.columns and df["mean_cnr"].notna().any()
@@ -253,7 +256,8 @@ def make_source_chart(
                             color=LABEL_COLORS.get(lbl, "#888888"),
                             alpha=0.08, linewidth=0)
 
-        ax1.plot(t, cnr, color="#1565C0", linewidth=1.2, alpha=0.9, label="Mean C/N₀")
+        ax1.plot(t, cnr, color="#1565C0", linewidth=1.2,
+                 alpha=0.9, label="Mean C/N₀")
 
         # Fill between min and max if available
         if "min_cnr" in df.columns and "max_cnr" in df.columns:
@@ -281,13 +285,15 @@ def make_source_chart(
 
     # ── Panel 2: Satellite count + HDOP ───────────────────────────────────
     ax2 = fig.add_subplot(gs[0, 1])
-    has_sats = "num_satellites" in df.columns and df["num_satellites"].notna().any()
+    has_sats = "num_satellites" in df.columns and df["num_satellites"].notna(
+    ).any()
     has_hdop = "hdop" in df.columns and df["hdop"].notna().any()
 
     if has_sats:
         sats = df["num_satellites"].values
         ax2.fill_between(t, 0, sats, alpha=0.3, color="#1976D2")
-        ax2.plot(t, sats, color="#1565C0", linewidth=1.2, label="Satellites tracked")
+        ax2.plot(t, sats, color="#1565C0", linewidth=1.2,
+                 label="Satellites tracked")
         ax2.axhline(8, color="#4CAF50", linestyle="--", linewidth=0.7,
                     label="CLEAN ≥8 sats")
         ax2.axhline(4, color="#F44336", linestyle="--", linewidth=0.7,
@@ -300,8 +306,10 @@ def make_source_chart(
         ax2b = ax2.twinx()
         ax2b.plot(t, df["hdop"].values, color="#E91E63", linewidth=1.2,
                   alpha=0.7, label="HDOP")
-        ax2b.axhline(HDOP_WARN,   color="#FF9800", linestyle=":", linewidth=0.7)
-        ax2b.axhline(HDOP_DEGRAD, color="#F44336", linestyle=":", linewidth=0.7)
+        ax2b.axhline(HDOP_WARN,   color="#FF9800",
+                     linestyle=":", linewidth=0.7)
+        ax2b.axhline(HDOP_DEGRAD, color="#F44336",
+                     linestyle=":", linewidth=0.7)
         ax2b.set_ylabel("HDOP", color="#E91E63")
         ax2b.tick_params(axis="y", labelcolor="#E91E63")
         ax2b.set_ylim(0, 12)
@@ -383,11 +391,13 @@ def make_source_chart(
         f"Rows / epochs:  {n_epochs:,}",
         f"Duration:       {duration_s/60:.1f} min  ({duration_s:.0f} s)",
         f"",
-        f"Mean C/N₀:      {cnr_global_mean:.1f} dBHz" if not np.isnan(cnr_global_mean) else "Mean C/N₀:      N/A",
+        f"Mean C/N₀:      {cnr_global_mean:.1f} dBHz" if not np.isnan(
+            cnr_global_mean) else "Mean C/N₀:      N/A",
         f"Sats (mean):    {df['num_satellites'].mean():.1f}" if has_sats else "Sats (mean):    N/A",
         f"HDOP (mean):    {df['hdop'].mean():.2f}" if has_hdop else "HDOP (mean):    N/A",
         f"PDOP (mean):    {df['pdop'].mean():.2f}" if has_pdop else "PDOP (mean):    N/A",
-        f"Fix rate:       {solution_ok:.1f}%" if not np.isnan(solution_ok) else "Fix rate:       N/A",
+        f"Fix rate:       {solution_ok:.1f}%" if not np.isnan(
+            solution_ok) else "Fix rate:       N/A",
         f"",
         f"CLEAN:          {clean_pct:.1f}%  ({label_counts.get(0, 0):,})",
         f"WARNING:        {warn_pct:.1f}%  ({label_counts.get(1, 0):,})",
@@ -442,13 +452,13 @@ def make_comparison_chart(summaries: list[dict], out_dir: Path) -> None:
     # Sort by degrad_pct descending so most challenged sources appear first
     summaries.sort(key=lambda s: s.get("degrad_pct", 0), reverse=True)
 
-    labels    = [s["source"] for s in summaries]
+    labels = [s["source"] for s in summaries]
     clean_pcts = [s.get("clean_pct", 0) for s in summaries]
-    warn_pcts  = [s.get("warn_pct", 0) for s in summaries]
+    warn_pcts = [s.get("warn_pct", 0) for s in summaries]
     degrad_pcts = [s.get("degrad_pct", 0) for s in summaries]
-    mean_cnrs   = [s.get("mean_cnr", float("nan")) for s in summaries]
-    mean_sats   = [s.get("mean_sats", float("nan")) for s in summaries]
-    mean_hdops  = [s.get("mean_hdop", float("nan")) for s in summaries]
+    mean_cnrs = [s.get("mean_cnr", float("nan")) for s in summaries]
+    mean_sats = [s.get("mean_sats", float("nan")) for s in summaries]
+    mean_hdops = [s.get("mean_hdop", float("nan")) for s in summaries]
 
     n = len(labels)
     x = np.arange(n)
@@ -462,7 +472,8 @@ def make_comparison_chart(summaries: list[dict], out_dir: Path) -> None:
     # ── Panel 1: Stacked label distribution ──────────────────────────────
     ax = axes[0, 0]
     bar_width = 0.6
-    ax.bar(x, clean_pcts,  bar_width, label="CLEAN",    color="#4CAF50", alpha=0.85)
+    ax.bar(x, clean_pcts,  bar_width, label="CLEAN",
+           color="#4CAF50", alpha=0.85)
     ax.bar(x, warn_pcts,   bar_width, label="WARNING",  color="#FF9800", alpha=0.85,
            bottom=clean_pcts)
     ax.bar(x, degrad_pcts, bar_width, label="DEGRADED", color="#F44336", alpha=0.85,
@@ -479,7 +490,7 @@ def make_comparison_chart(summaries: list[dict], out_dir: Path) -> None:
     # ── Panel 2: Mean C/N₀ ────────────────────────────────────────────────
     ax = axes[0, 1]
     has_cnr = [not np.isnan(c) for c in mean_cnrs]
-    x_valid  = x[has_cnr]
+    x_valid = x[has_cnr]
     cnr_valid = [c for c, h in zip(mean_cnrs, has_cnr) if h]
     bars = ax.bar(x_valid, cnr_valid, bar_width,
                   color=["#4CAF50" if c >= 35 else ("#FF9800" if c >= 30 else "#F44336")
@@ -505,19 +516,22 @@ def make_comparison_chart(summaries: list[dict], out_dir: Path) -> None:
     # Add "N/A" labels for missing
     for i, h in enumerate(has_cnr):
         if not h:
-            ax.text(i, 2, "N/A", ha="center", va="bottom", fontsize=7, color="#888")
+            ax.text(i, 2, "N/A", ha="center",
+                    va="bottom", fontsize=7, color="#888")
 
     # ── Panel 3: Mean satellite count ─────────────────────────────────────
     ax = axes[1, 0]
     has_sats = [not np.isnan(s) for s in mean_sats]
-    x_valid  = x[has_sats]
+    x_valid = x[has_sats]
     sats_valid = [s for s, h in zip(mean_sats, has_sats) if h]
     ax.bar(x_valid, sats_valid, bar_width,
            color=["#4CAF50" if s >= 8 else ("#FF9800" if s >= 4 else "#F44336")
                   for s in sats_valid],
            alpha=0.85)
-    ax.axhline(8, color="#4CAF50", linestyle="--", linewidth=0.8, label="CLEAN ≥8")
-    ax.axhline(4, color="#F44336", linestyle="--", linewidth=0.8, label="DEGRAD <4")
+    ax.axhline(8, color="#4CAF50", linestyle="--",
+               linewidth=0.8, label="CLEAN ≥8")
+    ax.axhline(4, color="#F44336", linestyle="--",
+               linewidth=0.8, label="DEGRAD <4")
     ax.set_xticks(x)
     ax.set_xticklabels(labels, rotation=65, ha="right", fontsize=7)
     ax.set_ylabel("Mean satellites tracked")
@@ -526,12 +540,13 @@ def make_comparison_chart(summaries: list[dict], out_dir: Path) -> None:
     ax.grid(True, alpha=0.25, axis="y")
     for i, h in enumerate(has_sats):
         if not h:
-            ax.text(i, 0.2, "N/A", ha="center", va="bottom", fontsize=7, color="#888")
+            ax.text(i, 0.2, "N/A", ha="center",
+                    va="bottom", fontsize=7, color="#888")
 
     # ── Panel 4: Mean HDOP ────────────────────────────────────────────────
     ax = axes[1, 1]
     has_hdop = [not np.isnan(h) for h in mean_hdops]
-    x_valid  = x[has_hdop]
+    x_valid = x[has_hdop]
     hdop_valid = [h for h, hv in zip(mean_hdops, has_hdop) if hv]
     ax.bar(x_valid, hdop_valid, bar_width,
            color=["#4CAF50" if h <= 2.5 else ("#FF9800" if h <= 5 else "#F44336")
@@ -549,7 +564,8 @@ def make_comparison_chart(summaries: list[dict], out_dir: Path) -> None:
     ax.grid(True, alpha=0.25, axis="y")
     for i, h in enumerate(has_hdop):
         if not h:
-            ax.text(i, 0.05, "N/A", ha="center", va="bottom", fontsize=7, color="#888")
+            ax.text(i, 0.05, "N/A", ha="center",
+                    va="bottom", fontsize=7, color="#888")
 
     plt.tight_layout()
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -569,8 +585,8 @@ def make_label_heatmap(summaries: list[dict], out_dir: Path) -> None:
 
     summaries.sort(key=lambda s: s.get("degrad_pct", 0), reverse=True)
     labels = [s["source"] for s in summaries]
-    data   = np.array([[s.get("clean_pct", 0), s.get("warn_pct", 0), s.get("degrad_pct", 0)]
-                        for s in summaries])
+    data = np.array([[s.get("clean_pct", 0), s.get("warn_pct", 0), s.get("degrad_pct", 0)]
+                     for s in summaries])
 
     fig_h = max(6, len(labels) * 0.45 + 2)
     fig, ax = plt.subplots(figsize=(9, fig_h))
@@ -585,7 +601,8 @@ def make_label_heatmap(summaries: list[dict], out_dir: Path) -> None:
 
     for i in range(len(labels)):
         for j, val in enumerate(data[i]):
-            text_color = "white" if (j == 2 and val > 30) or (j == 0 and val < 30) else "black"
+            text_color = "white" if (j == 2 and val > 30) or (
+                j == 0 and val < 30) else "black"
             ax.text(j, i, f"{val:.1f}%", ha="center", va="center",
                     fontsize=8, color=text_color, fontweight="bold")
 

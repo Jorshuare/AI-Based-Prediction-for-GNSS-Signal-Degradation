@@ -75,6 +75,7 @@ python src/processing/process_all_datasets.py --combine
 ```
 
 Actual Run 12 output:
+
 - `data/processed/urbannav/urbannav_deep_features.csv` — **15,233 rows** (10 receivers, Whampoa)
 - `data/processed/urbannav/urbannav_harsh_features.csv` — **33,429 rows** (10 receivers, Mong Kok)
 - `data/labelled/sentinel_gnss_labelled.csv` — **146,055 rows** across 12 source groups
@@ -88,6 +89,7 @@ python -m src.models.feature_prep --force
 Output: `data/processed/windows/{train,val,test}.npz` + `data/processed/scaler.pkl`
 
 After rebuild, check DEGRADED count in training set:
+
 ```powershell
 python -c "
 import numpy as np
@@ -112,6 +114,7 @@ python -m src.models.train --arch transformer_only
 ```
 
 Checkpoints saved to `results/models/checkpoints/`:
+
 - `checkpoint_best.pt` ← best val macro-F1
 - `checkpoint_epoch_NNN.pt` ← periodic (every 10 epochs)
 - `training_history.json` ← loss + F1 per epoch
@@ -138,9 +141,10 @@ All figures saved to `results/figures/` as PDF (vector) + PNG (300 DPI).
 ## Completed ✅
 
 ### Data Pipeline
+
 - [x] Scenarios A–E, Supervisor Vehicle/Drone processed → CSV
 - [x] UrbanNav HK Medium (10 receivers) processed → CSV
-- [x] UrbanNav HK Tunnel (10 receivers) processed → CSV  ← critical for DEGRADED class
+- [x] UrbanNav HK Tunnel (10 receivers) processed → CSV ← critical for DEGRADED class
 - [x] Tokyo Odaiba (Trimble + u-blox) processed → CSV
 - [x] Tokyo Shinjuku (Trimble + u-blox) processed → CSV
 - [x] NCLT Ann Arbor (2 sessions) processed → CSV
@@ -155,6 +159,7 @@ All figures saved to `results/figures/` as PDF (vector) + PNG (300 DPI).
 - [x] Pandas 2.2+ groupby-drop bug fixed in `analyze_all_datasets.py` (use `transform()` not `apply()`)
 
 ### Model Architecture (Run 10/11 final config)
+
 - [x] Transformer encoder: 2 layers, 8 heads, d_model=128, d_ff=512
 - [x] LSTM decoder: 2 layers, hidden=256
 - [x] 37 features: 33 signal + cnr_available + pdop_delta + hdop_delta + receiver_tier
@@ -166,10 +171,12 @@ All figures saved to `results/figures/` as PDF (vector) + PNG (300 DPI).
 - [x] Temperature calibration (Guo et al. 2017) — Run 11
 
 ### Results (Run 10, checkpoint_best.pt, epoch 23 of 73) — superseded by Run 12
+
 - [x] +5s: MacroF1=0.6868, MCC=0.7614 | +15s: MacroF1=0.6330, MCC=0.6949 | +30s: MacroF1=0.6309, MCC=0.7176
 - [x] Best val MacroF1=0.7768 | DEGRADED F1=0.274 | Training DEGRADED=555
 
 ### Results (Run 12, checkpoint_best.pt, epoch 16 of 73) ← CURRENT BEST
+
 - [x] **+5s: Accuracy=0.8472, MacroF1=0.7036, MCC=0.7707, CI=[0.671, 0.735]**
 - [x] **+15s: Accuracy=0.8009, MacroF1=0.6293, MCC=0.6975, CI=[0.606, 0.655]**
 - [x] **+30s: Accuracy=0.8275, MacroF1=0.6043, MCC=0.7125, CI=[0.589, 0.622]**
@@ -182,6 +189,7 @@ All figures saved to `results/figures/` as PDF (vector) + PNG (300 DPI).
 - [ ] Transformer-only ablation: **NOT YET TRAINED**
 
 ### Documentation
+
 - [x] `DATASET_PROCESSING_REPORT.md` — full feature/label justification
 - [x] `PAPER_TOPICS.md` — 4-paper publication roadmap
 - [x] All model source files documented with references
@@ -191,6 +199,7 @@ All figures saved to `results/figures/` as PDF (vector) + PNG (300 DPI).
 ## Run 13 Prerequisites (Next Run) 🔄
 
 > Run 12 is complete for the full model and LSTM-only. Run 13 should focus on:
+>
 > 1. Train transformer-only ablation (never ran)
 > 2. Reduce DEGRADED false alarms (precision=0.216 still too low)
 
@@ -213,24 +222,28 @@ All figures saved to `results/figures/` as PDF (vector) + PNG (300 DPI).
 ## Known Issues 🐛
 
 ### Issue 1: DEGRADED precision still low (Run 12 actuals)
+
 - **Problem:** DEGRADED F1 at +5s = 0.307. Recall=0.527 but Precision=0.216 (too many false alarms).
-- **Root cause:** Test set has only 55 DEGRADED (3.8%). Even 12 false alarms → precision drops badly. Model trained on HK canyon DEGRADED, tested on Beijing campus DEGRADED — different physics (canyon vs. blockage).
+- **Root cause:** Test set has only 55 DEGRADED (3.8%). Even 12 false alarms → precision drops badly. Model trained on HK canyon DEGRADED, tested on Beihang campus DEGRADED — different physics (canyon vs. blockage).
 - **Fix options:**
   - Keep class_weights=[1.0, 2.0, 5.0] (current) — recall-focused
   - Reduce FPR cap from 0.15 → 0.20 in `tune_thresholds()` to allow more DEGRADED predictions
-  - Collect more Beijing DEGRADED data (only long-term fix)
+  - Collect more Beihang DEGRADED data (only long-term fix)
 
 ### Issue 2: Val-test MacroF1 gap (Run 12: 0.8627 val vs 0.7036 test)
+
 - **Gap is 15.9 points** (was 9 points in Run 10 — widened because val improved more than test).
 - **Root cause:** Val (17,850 windows, CLEAN=76.8%, WARNING=18.1%, DEGRADED=5.1%) vs test (1,452 windows, CLEAN=46.2%, WARNING=49.9%, DEGRADED=3.8%).
 - **This is NOT a bug.** Val performance jump reflects the model genuinely learning better WARNING detection from HK data.
-- **In paper:** Report both. Val = "training convergence signal". Test = "deployment performance on Beijing campus".
+- **In paper:** Report both. Val = "training convergence signal". Test = "deployment performance on Beihang campus".
 
 ### Issue 3: `pos_enc` AttributeError in evaluate.py for LSTM-only ← FIXED in current session
+
 - **Fixed:** Added `hasattr(model, "pos_enc")` guard in `plot_attention_heatmap()`.
 - LSTM-only ablation evaluations will now complete without crashing.
 
 ### Issue 4: Baseline MCC vs MacroF1 apparent discrepancy
+
 - **Reported values:** RF MCC=0.891 with MacroF1=0.647; XGBoost MCC=0.909 with MacroF1=0.669.
 - **This is NOT a bug.** On a test set with 46% CLEAN, 50% WARNING, and only 4% DEGRADED, a classifier that gets CLEAN and WARNING nearly perfect can achieve high MCC even with poor DEGRADED performance. MCC measures overall covariance; MacroF1 equally weights all 3 classes including the nearly-missed DEGRADED.
 - **In paper:** Report both metrics and note the difference: "MCC rewards strong majority-class performance; MacroF1 exposes the DEGRADED class gap."
@@ -241,25 +254,27 @@ All figures saved to `results/figures/` as PDF (vector) + PNG (300 DPI).
 
 Run 12 is complete. Full results:
 
-| Metric | Run 10 | Run 12 | Δ |
-|--------|--------|--------|---|
-| Val MacroF1 | 0.7768 | **0.8627** | +8.6 pts |
-| +5s MacroF1 | 0.6868 | **0.7036** | +1.7 pts |
-| +15s MacroF1 | 0.6330 | **0.6293** | -0.4 pts |
-| +30s MacroF1 | 0.6309 | **0.6043** | -2.7 pts |
-| +5s DEGRADED F1 | 0.274 | **0.307** | +3.3 pts |
-| +5s WARNING F1 | ~0.67 | **0.851** | +18 pts |
-| +5s MCC | 0.7614 | **0.7707** | +0.9 pts |
-| Training DEGRADED (pre-SMOTE) | 555 | **11,996** | 21.6× |
-| Temperature T | — | **0.4442** (sharper) | — |
+| Metric                        | Run 10 | Run 12               | Δ        |
+| ----------------------------- | ------ | -------------------- | -------- |
+| Val MacroF1                   | 0.7768 | **0.8627**           | +8.6 pts |
+| +5s MacroF1                   | 0.6868 | **0.7036**           | +1.7 pts |
+| +15s MacroF1                  | 0.6330 | **0.6293**           | -0.4 pts |
+| +30s MacroF1                  | 0.6309 | **0.6043**           | -2.7 pts |
+| +5s DEGRADED F1               | 0.274  | **0.307**            | +3.3 pts |
+| +5s WARNING F1                | ~0.67  | **0.851**            | +18 pts  |
+| +5s MCC                       | 0.7614 | **0.7707**           | +0.9 pts |
+| Training DEGRADED (pre-SMOTE) | 555    | **11,996**           | 21.6×    |
+| Temperature T                 | —      | **0.4442** (sharper) | —        |
 
 Window distribution (Run 12):
+
 - train (pre-SMOTE): 59,854 — CLEAN=10,563, WARNING=37,295, DEGRADED=11,996
 - train (post-SMOTE): 111,885 — balanced 37,295 per class
 - val: 17,850 — CLEAN=13,704, WARNING=3,229, DEGRADED=917
 - test: 1,452 — CLEAN=671, WARNING=726, DEGRADED=55
 
 LSTM-only ablation (Run 12):
+
 - Val MacroF1=0.8593, +5s MacroF1=0.6082, DEGRADED F1=0.165
 - Attention heatmap crash fixed (pos_enc guard added to evaluate.py)
 
@@ -286,6 +301,7 @@ python -m src.models.baselines --include_ablations
 ### Class weight guidance after Run 12
 
 DEGRADED precision = 0.216 at +5s (below 0.30 threshold):
+
 - **Keep `class_weights=[1.0, 2.0, 5.0]`** — do NOT reduce to 3.5 yet
 - Consider relaxing FPR cap from 0.15 → 0.20 in `evaluate.py tune_thresholds()` to trade some WARNING precision for DEGRADED recall
 

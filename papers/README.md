@@ -12,15 +12,19 @@ avoid salami-slicing and maximise impact).
 |------|-----------|------------------|
 | **TEAM_BRIEF.md** | Project orientation: novelties, validation, status, next steps, reviewer Q&A | …new to the project or sharing with a colleague |
 | **RESULTS_REFERENCE.md** | Single source of truth — every confirmed number (Run 14) + E1–E7 | …writing any paper or citing any figure |
-| **PAPER_A_Flagship.md** | **Paper A** — flagship journal paper (method + multi-horizon + cross-receiver §6 + cross-city §7 + EKF). Absorbs the former Papers 2 & 3. | …writing the main paper |
-| **PAPER_B_Benchmark.md** | **Paper B** — dataset/benchmark descriptor (separate contribution type) | …preparing the public data release |
-| **PAPER_CONFERENCE_CrossCity.md** | **Conference paper** — cross-city short paper for ION GNSS+ 2026 (extended later into Paper A §7) | …writing the conference submission |
+| **PAPER_A_Flagship.md** | **Paper A** — flagship method paper (proactive multi-horizon Transformer-LSTM + ablations + cross-receiver + cross-city) | …writing the main method paper |
+| **PAPER_B_Comparison_EKF.md** | **Paper B** — systems paper: model-family comparison → select best → **adaptive EKF** → navigation RMSE | …writing the systems/application paper |
+| **PAPER_CONFERENCE_CrossCity.md** | **Conference paper** — cross-city short paper for ION GNSS+ 2026 | …writing the conference submission |
 
-> **What "Paper B" means:** Paper B is the **benchmark / dataset descriptor** — it does not
-> propose a model, it formally describes and releases the 149,662-epoch multi-city dataset so
-> others can reproduce and build on it. It targets a data journal (*Scientific Data* /
-> *Data in Brief*). It is a different *kind* of paper from Paper A (method), which is why the
-> two coexist without overlapping.
+> **Final structure (team decision): 2 papers + 1 conference.**
+> - **Paper A (method):** how we predict — the novelty, multi-horizon, interpretability,
+>   robustness. → *GPS Solutions*.
+> - **Paper B (systems):** does it *work* — compare models, pick the deployable one, wire it
+>   into an adaptive EKF, show the position-accuracy gain. → *IEEE T-ITS* / *J. Navigation*.
+> - **Conference:** the cross-city transfer result, short paper. → ION GNSS+ 2026.
+>
+> The former **benchmark/dataset paper was dropped**; the dataset is still released alongside
+> Paper A (GitHub/Zenodo) for reproducibility, just not as its own paper.
 
 ## Ground rules for everyone writing
 

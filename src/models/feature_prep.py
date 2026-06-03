@@ -22,7 +22,7 @@ Model input
   y_30s  : (N,)          — label 30 s after window end
 
 NOTE: lat/lon are excluded because including raw geographic coordinates
-introduces positional bias — the model would learn "Beijing ≈ CLEAN" instead
+introduces positional bias — the model would learn "Beihang ≈ CLEAN" instead
 of the underlying signal physics.  Altitude is kept because it proxies
 tropospheric delay (Saastamoinen, 1972).
 
@@ -161,11 +161,12 @@ DEFAULT_EXCLUDE_SOURCES: list[str] = [
     "supervisor_drone_12",        # 5,562 rows — UAV open sky, all CLEAN
     # Legacy hardware — incompatible label mechanisms
     "oxford",                     # 7,114 rows — 2014 GPS-only, position-sigma labels
-    "nclt",                       # 7,493 rows — 2012 GPS, satellite count always 0 (bug)
+    # 7,493 rows — 2012 GPS, satellite count always 0 (bug)
+    "nclt",
     # Tokyo cross-city evaluation set (kept separate to preserve geographic generalization claim)
     "tokyo_shinjuku_trimble",     # 20,790 rows — train split, 94% CLEAN, DOP imputed
     "tokyo_shinjuku_ublox",       # 10,475 rows — train split, 92% CLEAN, DOP imputed
-    "tokyo_odaiba_ublox",         #  6,205 rows — test split, 100% CLEAN, DOP imputed
+    "tokyo_odaiba_ublox",  # 6,205 rows — test split, 100% CLEAN, DOP imputed
     # tokyo_odaiba_trimble is intentionally NOT excluded: it stays in val (12,398 rows,
     # 97.7% CLEAN) and provides the CLEAN examples the balanced val early-stopping
     # subset needs.  It is a proxy for "professional receiver, open/moderate urban".
@@ -191,7 +192,7 @@ DEFAULT_EXCLUDE_SOURCES: list[str] = [
 #   exp1_4b, and exp3 in test for a balanced hold-out (37% CLEAN / 57% WARN
 #   / 6% DEG).
 #
-# Resulting test set (Beijing campus hold-out):
+# Resulting test set (Beihang campus hold-out):
 #   supervisor_vehicle_exp1_3_b  665 rows: 607 WARN,  58 DEG,   0 CLEAN
 #   supervisor_vehicle_exp1_4b   397 rows:   0 WARN,   0 DEG, 397 CLEAN
 #   supervisor_vehicle_exp3      392 rows:   0 WARN,   0 DEG, 392 CLEAN
@@ -202,9 +203,12 @@ SPLIT_REASSIGN: dict[str, str] = {
     # ── CLASS 1: WARNING/DEGRADED sources moved from test → train ───────────
     "supervisor_vehicle_exp1_1_base": "train",  # 664 rows: 654 WARN,  10 DEG
     "supervisor_vehicle_exp1_2_base": "train",  # 357 rows: 221 WARN, 136 DEG
-    "supervisor_vehicle_exp4":        "train",  # 480 rows: 280 CLEAN, 182 WARN, 18 DEG
-    "scenario_b_r1":                  "train",  # 535 rows: 260 CLEAN, 206 WARN, 69 DEG
-    "scenario_b_r2":                  "train",  # 391 rows: 118 CLEAN, 260 WARN, 13 DEG
+    # 480 rows: 280 CLEAN, 182 WARN, 18 DEG
+    "supervisor_vehicle_exp4":        "train",
+    # 535 rows: 260 CLEAN, 206 WARN, 69 DEG
+    "scenario_b_r1":                  "train",
+    # 391 rows: 118 CLEAN, 260 WARN, 13 DEG
+    "scenario_b_r2":                  "train",
     "urbannav_tunnel_google_pixel4":  "train",  # 263 rows: 232 WARN,  31 DEG
     "urbannav_tunnel_huawei_p40pro":  "train",  # 400 rows: 216 WARN, 184 DEG
     # supervisor_vehicle_exp1_3_b intentionally kept in test (607 WARN, 58 DEG).
@@ -238,8 +242,8 @@ SPLIT_REASSIGN: dict[str, str] = {
     # Extended 10 runs (Degraded data collection, same location/receiver):
     #   r4–r11 → train  (8 runs, ~2,700 rows, rich no-fix / DEGRADED signal)
     #   r12–r13 → val   (2 runs kept out to prevent overfitting to our own site)
-    "scenario_a_r1":  "train",   #  47 rows:  33 DEG, 11 CLEAN,  3 WARN
-    "scenario_a_r2":  "train",   #  53 rows:  41 DEG,  9 CLEAN,  3 WARN
+    "scenario_a_r1":  "train",  # 47 rows:  33 DEG, 11 CLEAN,  3 WARN
+    "scenario_a_r2":  "train",  # 53 rows:  41 DEG,  9 CLEAN,  3 WARN
     # r3 → val intentionally (not listed here)
     "scenario_a_r4":  "train",   # 346 rows
     "scenario_a_r5":  "train",   # 393 rows
@@ -274,7 +278,7 @@ SPLIT_REASSIGN: dict[str, str] = {
 #                                          primary training but kept for reference)
 #
 RECEIVER_TIER_MAP: dict[str, int] = {
-    # ── Professional (tier 0) — Septentrio Mosaic-X5C, Beijing ──────────────
+    # ── Professional (tier 0) — Septentrio Mosaic-X5C, Beihang ──────────────
     "scenario_a_r1": 0, "scenario_a_r2": 0, "scenario_a_r3": 0,
     "scenario_a_r4": 0, "scenario_a_r5": 0, "scenario_a_r6": 0,
     "scenario_a_r7": 0, "scenario_a_r8": 0, "scenario_a_r9": 0,
@@ -577,10 +581,12 @@ def build_windows(
       'test':  {...},
     }
     """
+    # Horizon-driven so extra horizons (e.g. --extra_horizons 60) flow through
+    # automatically. Default HORIZONS = {5s,15s,30s} keeps this byte-identical.
+    _ykeys = ["y_0s"] + [f"y_{k}" for k in HORIZONS]
     split_data: dict[str, dict] = {
-        "train": {"X": [], "y_0s": [], "y_5s": [], "y_15s": [], "y_30s": []},
-        "val":   {"X": [], "y_0s": [], "y_5s": [], "y_15s": [], "y_30s": []},
-        "test":  {"X": [], "y_0s": [], "y_5s": [], "y_15s": [], "y_30s": []},
+        spl: {"X": [], **{yk: [] for yk in _ykeys}}
+        for spl in ("train", "val", "test")
     }
 
     # Group by (source, scenario) to create per-session windows
@@ -687,9 +693,13 @@ def apply_smote(
     n_orig = n
     split_data["train"]["X"] = X_res_3d.astype(np.float32)
     split_data["train"]["y_5s"] = y_res.astype(np.int64)
-    for k in ("y_0s", "y_15s", "y_30s"):
+    # All horizon targets except y_5s (the SMOTE target) — discovered dynamically
+    # so extra horizons are handled too.
+    other_y = [k for k in split_data["train"]
+               if k.startswith("y_") and k != "y_5s" and isinstance(
+                   split_data["train"][k], np.ndarray)]
+    for k in other_y:
         orig = split_data["train"][k]
-        n_synth = len(y_res) - n_orig
         synth_labels = y_res[n_orig:]    # use y_5s of synthetic rows
         split_data["train"][k] = np.concatenate(
             [orig, synth_labels]).astype(np.int64)
@@ -806,7 +816,8 @@ def prepare(
     df = impute(df)
     df = clip_features(df)
     df = add_delta_features(df)   # adds pdop_delta, hdop_delta (Run 6)
-    df = add_receiver_tier(df)    # adds receiver_tier 0–4 constant per session (Run 7)
+    # adds receiver_tier 0–4 constant per session (Run 7)
+    df = add_receiver_tier(df)
 
     feature_cols = _get_feature_cols(df)
     log.info(f"Feature columns ({len(feature_cols)}): {feature_cols}")
@@ -862,7 +873,21 @@ if __name__ == "__main__":
     parser.add_argument("--no_reassign", action="store_true",
                         help="Disable SPLIT_REASSIGN (moves 7 test-only WARNING/DEGRADED "
                              "sources to train to fix source-domain mismatch).")
+    parser.add_argument("--extra_horizons", type=int, nargs="*", default=None,
+                        metavar="SECONDS",
+                        help="Add extra look-ahead horizons (seconds) beyond 5/15/30, e.g. "
+                             "--extra_horizons 45 60. Adds y_45s/y_60s arrays to the .npz "
+                             "(backward compatible; default keeps only 5/15/30). NOTE: the "
+                             "DL model still has 3 heads — extra horizons are for classical "
+                             "baselines / analysis until the multi-head model is trained.")
     args = parser.parse_args()
+
+    # Inject extra horizons (mutate the module dict in place so build_windows and
+    # _build_windows_for_session, which default to HORIZONS, both pick them up).
+    if args.extra_horizons:
+        for h in sorted(set(args.extra_horizons)):
+            HORIZONS[f"{h}s"] = h
+        log.info(f"Extra horizons added → HORIZONS now: {HORIZONS}")
 
     # Build the effective exclude list starting from DEFAULT_EXCLUDE_SOURCES,
     # then selectively remove groups that the user wants to include back.

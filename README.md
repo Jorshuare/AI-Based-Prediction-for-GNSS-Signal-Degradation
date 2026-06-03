@@ -145,21 +145,21 @@ python src/utils/analyze_route_testing_v2.py route_planning/Phone_b route_planni
 
 ## Data Sources
 
-| Dataset                         | Location                                           | City      | Purpose                                          | Status             |
-| ------------------------------- | -------------------------------------------------- | --------- | ------------------------------------------------ | ------------------ |
-| Supervisor vehicle (Septentrio) | `data/raw/supervisor/vehicle/`                     | Beijing   | Urban + suburban driving                         | ✅ Processed       |
-| Supervisor drone (Septentrio)   | `data/raw/supervisor/drone/`                       | Beijing   | Aerial open-sky reference (training excluded)    | ✅ Processed       |
-| Field collection — Scenarios    | `data/raw/scenarios/`                              | Beijing   | 5 controlled degradation scenarios (A–E)         | ✅ Processed       |
-| UrbanNav HK-Medium-Urban-1      | `data/raw/public/urbannav/urbanNav_Medium/`        | Hong Kong | Urban canyon, 10 receivers simultaneously        | ✅ Processed       |
-| UrbanNav HK-Tunnel-1            | `data/raw/public/urbannav/urbanNav_tunnel/`        | Hong Kong | Complete signal loss (cross-harbour tunnel)      | ✅ Processed       |
-| **UrbanNav HK-Deep-Urban-1**    | `data/raw/public/urbannav/urbanNav_Deep/`          | Hong Kong | Dense urban canyon, Whampoa, 10 receivers        | ✅ Processed (15,233 rows) |
-| **UrbanNav HK-Harsh-Urban-1**   | `data/raw/public/urbannav/urbanNav_Harsh/`         | Hong Kong | Extreme urban canyon, Mong Kok, 10 receivers     | ✅ Processed (33,429 rows) |
-| UrbanNav Tokyo-Odaiba           | `data/raw/public/urbannav/Tokyo/Odaiba/`           | Tokyo     | Mixed open-sky + moderate urban                  | ✅ Processed       |
-| UrbanNav Tokyo-Shinjuku         | `data/raw/public/urbannav/Tokyo/Shinjuku/`         | Tokyo     | Dense urban canyon                               | ✅ Processed       |
-| NCLT                            | `data/raw/public/nclt/`                            | Michigan  | Campus driving (excluded: GPS-only artifact)     | ✅ Processed       |
-| Oxford RobotCar                 | `data/raw/public/oxford/`                          | Oxford    | Cross-continent (excluded: 2014 position-sigma)  | ✅ Processed       |
+| Dataset                         | Location                                    | City      | Purpose                                         | Status                     |
+| ------------------------------- | ------------------------------------------- | --------- | ----------------------------------------------- | -------------------------- |
+| Supervisor vehicle (Septentrio) | `data/raw/supervisor/vehicle/`              | Beihang   | Urban + suburban driving                        | ✅ Processed               |
+| Supervisor drone (Septentrio)   | `data/raw/supervisor/drone/`                | Beihang   | Aerial open-sky reference (training excluded)   | ✅ Processed               |
+| Field collection — Scenarios    | `data/raw/scenarios/`                       | Beihang   | 5 controlled degradation scenarios (A–E)        | ✅ Processed               |
+| UrbanNav HK-Medium-Urban-1      | `data/raw/public/urbannav/urbanNav_Medium/` | Hong Kong | Urban canyon, 10 receivers simultaneously       | ✅ Processed               |
+| UrbanNav HK-Tunnel-1            | `data/raw/public/urbannav/urbanNav_tunnel/` | Hong Kong | Complete signal loss (cross-harbour tunnel)     | ✅ Processed               |
+| **UrbanNav HK-Deep-Urban-1**    | `data/raw/public/urbannav/urbanNav_Deep/`   | Hong Kong | Dense urban canyon, Whampoa, 10 receivers       | ✅ Processed (15,233 rows) |
+| **UrbanNav HK-Harsh-Urban-1**   | `data/raw/public/urbannav/urbanNav_Harsh/`  | Hong Kong | Extreme urban canyon, Mong Kok, 10 receivers    | ✅ Processed (33,429 rows) |
+| UrbanNav Tokyo-Odaiba           | `data/raw/public/urbannav/Tokyo/Odaiba/`    | Tokyo     | Mixed open-sky + moderate urban                 | ✅ Processed               |
+| UrbanNav Tokyo-Shinjuku         | `data/raw/public/urbannav/Tokyo/Shinjuku/`  | Tokyo     | Dense urban canyon                              | ✅ Processed               |
+| NCLT                            | `data/raw/public/nclt/`                     | Michigan  | Campus driving (excluded: GPS-only artifact)    | ✅ Processed               |
+| Oxford RobotCar                 | `data/raw/public/oxford/`                   | Oxford    | Cross-continent (excluded: 2014 position-sigma) | ✅ Processed               |
 
-**Combined labelled dataset (Run 12):** **146,055 rows** × 41 columns across **12 source groups** and 4 cities (Beijing, Hong Kong, Tokyo, Michigan/Oxford excluded from training).
+**Combined labelled dataset (Run 12):** **146,055 rows** × 41 columns across **12 source groups** and 4 cities (Beihang, Hong Kong, Tokyo, Michigan/Oxford excluded from training).
 Labels: CLEAN ~45%, WARNING ~42%, DEGRADED ~13% (varies by split — see NEXT_STEPS.md).
 
 **Note on exclusions:** Drone data (all CLEAN, no degradation signal), NCLT (num_satellites artifact), and Oxford 2014 (GPS-only, labels derived from position sigma only) are excluded from the primary training/test pipeline via `DEFAULT_EXCLUDE_SOURCES` in `feature_prep.py`. They remain in the combined CSV for research reference.
@@ -220,7 +220,7 @@ See `src/features/feature_extractor.py` for exact computation logic.
 
 SMOTE is applied to training only — training set balanced to 37,295 per class (111,885 total after SMOTE). Val and test windows are never modified.
 
-**Test set composition:** 3 supervisor vehicle sessions (Beijing campus only) — the model never sees any Beijing campus data during training, making the test set a genuine held-out cross-city evaluation. Test DEGRADED=55 is by design and does not change regardless of training data volume.
+**Test set composition:** 3 supervisor vehicle sessions (Beihang campus only) — the model never sees any Beihang campus data during training, making the test set a genuine held-out cross-city evaluation. Test DEGRADED=55 is by design and does not change regardless of training data volume.
 
 Random shuffling is explicitly forbidden. GNSS data is sequential — shuffling allows the model to "see the future" during training and inflates test accuracy without real generalization (Bergmeir & Benitez, 2012).
 
@@ -232,11 +232,11 @@ Random shuffling is explicitly forbidden. GNSS data is sequential — shuffling 
 
 Architecture: TransformerEncoder (2 layers, 8 heads, d_model=128) → BiLSTM (2 layers, hidden=256) → 3 output heads + 1 aux head. Input: 37 features × 30-step sliding window. Temperature calibration T=0.4442.
 
-| Horizon | Accuracy | Macro-F1 | MCC    | 95% CI (MacroF1) |
-| ------- | -------- | -------- | ------ | ---------------- |
-| +5s     | 0.8472   | **0.7036** | 0.7707 | [0.671, 0.735] |
-| +15s    | 0.8009   | 0.6293   | 0.6975 | [0.606, 0.655]   |
-| +30s    | 0.8275   | 0.6043   | 0.7125 | [0.589, 0.622]   |
+| Horizon | Accuracy | Macro-F1   | MCC    | 95% CI (MacroF1) |
+| ------- | -------- | ---------- | ------ | ---------------- |
+| +5s     | 0.8472   | **0.7036** | 0.7707 | [0.671, 0.735]   |
+| +15s    | 0.8009   | 0.6293     | 0.6975 | [0.606, 0.655]   |
+| +30s    | 0.8275   | 0.6043     | 0.7125 | [0.589, 0.622]   |
 
 Best validation MacroF1 = **0.8627** (balanced class subset, epoch 16).
 DEGRADED F1 at +5s = **0.307** (P=0.216, R=0.527) — improved from Run 10's 0.274.

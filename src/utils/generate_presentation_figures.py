@@ -323,13 +323,13 @@ def generate_generalization_map():
         import folium
         from folium.plugins import MarkerCluster
 
-        # Create map centered on Beijing
+        # Create map centered on Beihang
         m = folium.Map(location=[39.9, 116.4],
                        zoom_start=3, tiles='OpenStreetMap')
 
         # Define test locations with metadata
         locations = {
-            'Beijing': {
+            'Beihang': {
                 'coords': [39.9, 116.4],
                 'accuracy': 88,
                 'type': 'Training',
@@ -382,12 +382,12 @@ def generate_generalization_map():
                     color=data['color'], icon=data['icon'], prefix='fa')
             ).add_to(m)
 
-        # Add lines from Beijing to other cities
-        beijing = locations['Beijing']['coords']
+        # Add lines from Beihang to other cities
+        Beihang = locations['Beihang']['coords']
         for city, data in locations.items():
-            if city != 'Beijing':
+            if city != 'Beihang':
                 folium.PolyLine(
-                    [beijing, data['coords']],
+                    [Beihang, data['coords']],
                     color='blue',
                     weight=2,
                     opacity=0.5,
@@ -498,7 +498,7 @@ def generate_five_scenarios():
     • Total Epochs Collected: ~150,000 GPS measurements
     • Collection Duration: ~40 hours across all scenarios
     • Sampling Rate: 10 Hz (100 ms per measurement)
-    • Geographic Coverage: Beihang University Campus, Beijing
+    • Geographic Coverage: Beihang University Campus, Beihang
     • Labeled Classes: CLEAN (50%) | WARNING (30%) | DEGRADED (20%)
     • Features Extracted: 35 features per epoch (signal strength, satellites, DOP, etc.)
     • Train/Val/Test Split: 70% / 15% / 15% (by time, not random)

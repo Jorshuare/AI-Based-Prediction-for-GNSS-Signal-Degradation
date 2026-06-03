@@ -12,12 +12,12 @@
 Built by `feature_prep.py` from the labelled CSV (30-second sliding windows, session-level
 split, scaler fit on train only):
 
-| Split | Windows | CLEAN | WARNING | DEGRADED |
-|-------|--------:|------:|--------:|---------:|
-| Train (no-SMOTE, DL) | 62,413 | 11,438 | 37,494 | 13,481 |
-| Train (SMOTE, baselines) | 112,482 | 37,494 | 37,494 | 37,494 |
-| Validation | 18,074 | 13,708 | 3,243 | 1,123 |
-| **Test** | **1,686** | 731 | 746 | 209 |
+| Split                    |   Windows |  CLEAN | WARNING | DEGRADED |
+| ------------------------ | --------: | -----: | ------: | -------: |
+| Train (no-SMOTE, DL)     |    62,413 | 11,438 |  37,494 |   13,481 |
+| Train (SMOTE, baselines) |   112,482 | 37,494 |  37,494 |   37,494 |
+| Validation               |    18,074 | 13,708 |   3,243 |    1,123 |
+| **Test**                 | **1,686** |    731 |     746 |      209 |
 
 > Scenario A was expanded to 13 runs (3 original + 10 "Degraded data" instant-blockage runs).
 > `scenario_a_r13` is held out as dedicated blockage **test** coverage; r12 stays in val.
@@ -27,20 +27,20 @@ split, scaler fit on train only):
 
 ## 1. All Data Sources — Overview
 
-| Source                 | Type           | Location                 | Receiver              | C/N0 Method          | Epochs |
-| ---------------------- | -------------- | ------------------------ | --------------------- | -------------------- | ------ |
-| **Scenarios A–E**          | Self-collected | Beijing, 2026            | Septentrio Mosaic-X5C | RINEX SNR-indicator  | 7,193  |
-| **Supervisor Vehicle**     | Self-collected | Beijing, 2025            | Septentrio Mosaic-X5C | NMEA GSV (direct)    | 3,401     |
-| **Supervisor Drone**       | Self-collected | Beijing, 2024            | Unicore UB4B0         | RINEX S1C (direct)   | 11,123    |
-| **UrbanNav HK Medium**     | Downloaded     | Hong Kong, 2021          | 10 receivers          | RINEX S1C + NMEA GSV | 7,608     |
-| **UrbanNav HK Tunnel**     | Downloaded     | Hong Kong, 2021          | 10 receivers          | RINEX S1C + NMEA GSV | 3,461     |
-| **UrbanNav HK Deep**       | Downloaded     | Hong Kong, 2023          | 10 receivers          | RINEX S1C + NMEA GSV | 15,233 |
-| **UrbanNav HK Harsh**      | Downloaded     | Hong Kong, 2021/2023     | 10 receivers          | RINEX S1C + NMEA GSV | 33,429 |
-| **Tokyo Odaiba**           | Downloaded     | Tokyo, 2021              | Trimble + u-blox      | RINEX S1C (direct)   | 18,603    |
-| **Tokyo Shinjuku**         | Downloaded     | Tokyo, 2021              | Trimble + u-blox      | RINEX S1C (direct)   | 31,265    |
-| **NCLT**                   | Downloaded     | Ann Arbor USA, 2012–2013 | Unknown GPS module    | GPS CSV (no C/N0)    | 7,493     |
-| **Oxford RobotCar**        | Downloaded     | Oxford UK, 2014–2015     | NovAtel OEM6          | GPS CSV (no C/N0)    | 7,114     |
-| | | | | **TOTAL labelled** | **149,662** |
+| Source                 | Type           | Location                 | Receiver              | C/N0 Method          | Epochs      |
+| ---------------------- | -------------- | ------------------------ | --------------------- | -------------------- | ----------- |
+| **Scenarios A–E**      | Self-collected | Beihang, 2026            | Septentrio Mosaic-X5C | RINEX SNR-indicator  | 7,193       |
+| **Supervisor Vehicle** | Self-collected | Beihang, 2025            | Septentrio Mosaic-X5C | NMEA GSV (direct)    | 3,401       |
+| **Supervisor Drone**   | Self-collected | Beihang, 2024            | Unicore UB4B0         | RINEX S1C (direct)   | 11,123      |
+| **UrbanNav HK Medium** | Downloaded     | Hong Kong, 2021          | 10 receivers          | RINEX S1C + NMEA GSV | 7,608       |
+| **UrbanNav HK Tunnel** | Downloaded     | Hong Kong, 2021          | 10 receivers          | RINEX S1C + NMEA GSV | 3,461       |
+| **UrbanNav HK Deep**   | Downloaded     | Hong Kong, 2023          | 10 receivers          | RINEX S1C + NMEA GSV | 15,233      |
+| **UrbanNav HK Harsh**  | Downloaded     | Hong Kong, 2021/2023     | 10 receivers          | RINEX S1C + NMEA GSV | 33,429      |
+| **Tokyo Odaiba**       | Downloaded     | Tokyo, 2021              | Trimble + u-blox      | RINEX S1C (direct)   | 18,603      |
+| **Tokyo Shinjuku**     | Downloaded     | Tokyo, 2021              | Trimble + u-blox      | RINEX S1C (direct)   | 31,265      |
+| **NCLT**               | Downloaded     | Ann Arbor USA, 2012–2013 | Unknown GPS module    | GPS CSV (no C/N0)    | 7,493       |
+| **Oxford RobotCar**    | Downloaded     | Oxford UK, 2014–2015     | NovAtel OEM6          | GPS CSV (no C/N0)    | 7,114       |
+|                        |                |                          |                       | **TOTAL labelled**   | **149,662** |
 
 > Scenario A grew from 3,586 → 7,193 epochs after the 10 "Degraded data" instant-blockage
 > runs were added (Run 13–14). Deep/Harsh epoch counts are now exact (15,233 / 33,429),
@@ -134,16 +134,16 @@ For NCLT and Oxford, C/N0 is unavailable. Labels use **position uncertainty** di
 | **NCLT**   | CLEAN: RTK_err < 2.0m AND 3D fix; DEGRADED: RTK_err > 5.0m or no 3D fix           | `gps_rtk_err.csv` =                    | GPS − LiDAR_SLAM_ground_truth |     |
 | **Oxford** | CLEAN: lat_sigma < 3.0m AND num_sats ≥ 5; DEGRADED: sigma > 10.0m or num_sats < 3 | From NovAtel OEM6 position uncertainty |
 
-| Dataset                | CLEAN     | WARNING   | DEGRADED  | Total      | Notes                                                                             |
-| ---------------------- | --------- | --------- | --------- | ---------- | --------------------------------------------------------------------------------- |
-| **UrbanNav HK Medium** | **2.7%**   | **74.0%** | **23.3%** | **7,608**     | 10 receivers; NovAtel best, phones worst                                          |
-| **UrbanNav HK Tunnel** | **11.2%**  | **42.9%** | **46.0%** | **3,461**     | Complete tunnel traversal; in-tunnel no-fix epochs now correctly DEGRADED         |
-| **UrbanNav HK Deep** 🆕 | **~15–25%** | **~40–55%** | **~25–35%** | **~14,000 est.** | Whampoa dense canyon; primary contribution: diverse WARNING + moderate DEGRADED |
-| **UrbanNav HK Harsh** 🆕 | **~5–15%** | **~40–55%** | **~35–45%** | **~30,000 est.** | Mong Kok extreme canyon; most severe WARNING+DEGRADED in full dataset           |
-| **Tokyo Odaiba**       | **98.4%** | **1.1%**  | **0.4%**  | **18,603** | Mostly open/moderate urban; 12,398 Trimble + 6,205 u-blox                         |
-| **Tokyo Shinjuku**     | **93.5%** | **5.2%**  | **1.3%**  | **31,265** | Dense urban canyon route; 20,790 Trimble + 10,475 u-blox                          |
-| **NCLT**               | **82.0%** | **10.0%** | **8.0%**  | **7,493**  | Michigan campus; 2012 session much cleaner (mean RTK err 2.82m) than 2013 (6.81m) |
-| **Oxford**             | **3.6%**  | **43.9%** | **52.5%** | **7,114**  | GPS-only 2014 hardware; avg sigma 6m → mostly DEGRADED/WARNING                    |
+| Dataset                  | CLEAN       | WARNING     | DEGRADED    | Total            | Notes                                                                             |
+| ------------------------ | ----------- | ----------- | ----------- | ---------------- | --------------------------------------------------------------------------------- |
+| **UrbanNav HK Medium**   | **2.7%**    | **74.0%**   | **23.3%**   | **7,608**        | 10 receivers; NovAtel best, phones worst                                          |
+| **UrbanNav HK Tunnel**   | **11.2%**   | **42.9%**   | **46.0%**   | **3,461**        | Complete tunnel traversal; in-tunnel no-fix epochs now correctly DEGRADED         |
+| **UrbanNav HK Deep** 🆕  | **~15–25%** | **~40–55%** | **~25–35%** | **~14,000 est.** | Whampoa dense canyon; primary contribution: diverse WARNING + moderate DEGRADED   |
+| **UrbanNav HK Harsh** 🆕 | **~5–15%**  | **~40–55%** | **~35–45%** | **~30,000 est.** | Mong Kok extreme canyon; most severe WARNING+DEGRADED in full dataset             |
+| **Tokyo Odaiba**         | **98.4%**   | **1.1%**    | **0.4%**    | **18,603**       | Mostly open/moderate urban; 12,398 Trimble + 6,205 u-blox                         |
+| **Tokyo Shinjuku**       | **93.5%**   | **5.2%**    | **1.3%**    | **31,265**       | Dense urban canyon route; 20,790 Trimble + 10,475 u-blox                          |
+| **NCLT**                 | **82.0%**   | **10.0%**   | **8.0%**    | **7,493**        | Michigan campus; 2012 session much cleaner (mean RTK err 2.82m) than 2013 (6.81m) |
+| **Oxford**               | **3.6%**    | **43.9%**   | **52.5%**   | **7,114**        | GPS-only 2014 hardware; avg sigma 6m → mostly DEGRADED/WARNING                    |
 
 ### 3.3 Combined Dataset Summary (Session-Based 70/15/15 Split)
 
@@ -174,7 +174,7 @@ The table below compares our results with a colleague's independent processing o
 
 **Why do our numbers differ from the colleague — and who is right?**
 
-**Our thresholds (35/25 dBHz) are physically correct** for the Septentrio Mosaic-X5C in Beijing conditions. The signal analysis charts confirm mean C/N0 = 37–41 dBHz in open/urban environments, well within our CLEAN range.
+**Our thresholds (35/25 dBHz) are physically correct** for the Septentrio Mosaic-X5C in Beihang conditions. The signal analysis charts confirm mean C/N0 = 37–41 dBHz in open/urban environments, well within our CLEAN range.
 
 **Scenarios B, C, D — we are more accurate.** The charts show mean C/N0 = 37.2 dBHz (B) and 38.6 dBHz (C), both well above the 35 dBHz CLEAN threshold. The colleague's 93% DEGRADED for B is inconsistent with the raw signal data. Their threshold appears to be ≥40 dBHz for CLEAN, which is too strict for single-frequency RINEX SNR-indicator data.
 
@@ -241,7 +241,7 @@ With 70/15/15 session split:
 
 As a **separate supplementary experiment** (not the primary metric), train on all data EXCEPT one city, then test on that city:
 
-- "Train on Beijing + Hong Kong → Test on Tokyo"
+- "Train on Beihang + Hong Kong → Test on Tokyo"
 - "Train on everything → Test on NCLT"
 - "Train on everything → Test on Oxford"
 
@@ -312,7 +312,7 @@ This goes in the paper as a generalization table (Table X) and directly supports
 
 ### Important: `lat` and `lon` Should NOT Be Model Inputs
 
-Raw latitude/longitude cause **geographic overfitting** — the model learns "Beijing coordinates → CLEAN" rather than learning signal physics. In model training:
+Raw latitude/longitude cause **geographic overfitting** — the model learns "Beihang coordinates → CLEAN" rather than learning signal physics. In model training:
 
 - Exclude `lat` and `lon` from the feature tensor
 - Include `alt` (with median imputation) — altitude affects tropospheric delay
@@ -322,7 +322,7 @@ Raw latitude/longitude cause **geographic overfitting** — the model learns "Be
 
 ## 7. Data Sources — Technical Details
 
-### 7.1 Scenarios A–E (Septentrio Mosaic-X5C, Beijing, 2026)
+### 7.1 Scenarios A–E (Septentrio Mosaic-X5C, Beihang, 2026)
 
 **Why we collected these:** No existing public dataset covers all five degradation scenarios (instant blockage, urban canyon, partial blockage, open sky, approaching blockage) with a professional survey-grade receiver under controlled conditions. These scenarios were designed specifically for SENTINEL-GNSS.
 
@@ -330,11 +330,11 @@ Raw latitude/longitude cause **geographic overfitting** — the model learns "Be
 
 **C/N0 from RINEX SNR indicator:** The RINEX SNR digit (0–9 scale, 6 dBHz bins) gives `CNR ≈ (SNR−1)×6+6` dBHz. Open-sky conditions give SNR=7 → 42 dBHz (correct). This is why CLEAN threshold is 35 dBHz (not 38): the 6 dBHz quantisation can push the window mean to 36–37 dBHz even under good conditions.
 
-### 7.2 Supervisor Vehicle (Septentrio Mosaic-X5C, Beijing, 2025)
+### 7.2 Supervisor Vehicle (Septentrio Mosaic-X5C, Beihang, 2025)
 
 Same receiver as scenarios. Uses NMEA with GSV sentences (C/N0 in dBHz). This gives higher-quality C/N0 than the scenarios (direct measurement vs. SNR indicator). 9 sessions across 4 experiments.
 
-### 7.3 Supervisor Drone (Unicore UB4B0, Beijing, 2024)
+### 7.3 Supervisor Drone (Unicore UB4B0, Beihang, 2024)
 
 Military-grade multi-constellation receiver. RINEX S1C gives actual C/N0. All data is CLEAN (open-sky aerial flight, excellent geometry). Provides the model with the cleanest possible signal examples.
 
@@ -352,7 +352,7 @@ This dataset enables the **cross-receiver generalization study** (Paper 2).
 
 ### 7.5 UrbanNav HK Tunnel (Hong Kong, May 2021)
 
-Same 10-receiver setup but in the **Cross-Harbour Tunnel** (Tung Chung Tunnel route). Complete signal loss inside tunnel. Provides the clearest DEGRADED examples — closely mirrors Scenarios A (instant blockage) and E (approaching blockage) from the Beijing campus collection.
+Same 10-receiver setup but in the **Cross-Harbour Tunnel** (Tung Chung Tunnel route). Complete signal loss inside tunnel. Provides the clearest DEGRADED examples — closely mirrors Scenarios A (instant blockage) and E (approaching blockage) from the Beihang campus collection.
 
 **Key label pattern:** ~11% CLEAN / ~43% WARNING (approach/exit) / **~46% DEGRADED** (inside tunnel). This is the DEGRADED-richest dataset in the pipeline before adding Deep/Harsh.
 
@@ -364,11 +364,13 @@ Consumer phone sessions (google_pixel4, huawei_p40pro) are assigned to training 
 Route: Whampoa district, Kowloon, HK. Route length ~4.5 km, duration ~1,500 s.
 
 Whampoa features taller and more densely packed residential and commercial buildings than the Medium Urban route. This creates:
+
 - **More extensive sky blockage** — fewer satellites consistently visible
 - **Stronger canyon multipath** — C/N0 degradation without complete signal loss
 - **Frequent partial blockage transitions** — receiver alternates between WARNING and DEGRADED
 
 **Expected label distribution (per receiver, before windowing):**
+
 - CLEAN ~15–25 % — short open segments at major intersections
 - WARNING ~40–55 % — canyon signal degradation, moderate multipath (dominant class)
 - DEGRADED ~25–35 % — severe blockage, frequent sats < 4
@@ -389,21 +391,25 @@ Reference: Hsu et al. (2023) NAVIGATION doi:10.33012/navi.602
 Route: Mong Kok, Kowloon, HK. Route length ~4.9 km, duration ~3,400 s.
 
 Mong Kok is one of the world's highest-density urban areas (population density ~130,000/km²). The building canyon effect is extreme:
+
 - Sky visibility often < 30° above horizon — far fewer usable satellites
 - Severe multipath from all directions simultaneously
 - Frequent short-lived complete blockages at building intersections
 - Notable feature for the model: **rapid sequential WARNING↔DEGRADED transitions** at high temporal density
 
 **Expected label distribution (per receiver, before windowing):**
+
 - CLEAN ~5–15 % — very short open segments near MTR stations
 - WARNING ~40–55 % — extreme canyon multipath (dominant class, same as Deep)
 - DEGRADED ~35–45 % — severe blockage, frequent sats < 4
 
 **File naming quirk:** The Harsh directory contains a **mix of 2021 and 2023 naming conventions**:
+
 ```
 20210518.dense-urban.mk.google.pixel4.obs    (2021 format, old)
 UrbanNav-HK-Harsh-Urban-1.google.pixel4.nmea (2023 format, new)
 ```
+
 Both conventions extract to the same receiver key (`google_pixel4`) via `_extract_urbannav_receiver_name()`. The processor pairs obs and nmea by receiver name, preferring the new-format file when duplicates exist.
 
 **Source tags:** `urbannav_harsh_{receiver_name}` (e.g., `urbannav_harsh_huawei_p40pro`)

@@ -135,7 +135,7 @@ def make_v3_divider_slide(prs):
                  size=Pt(16), bold=False, color=C_ACCENT)
 
     bullets = [
-        "✔  97,393 labelled epochs — 10 sources, 3 cities (Beijing · Hong Kong · Tokyo)",
+        "✔  97,393 labelled epochs — 10 sources, 3 cities (Beihang · Hong Kong · Tokyo)",
         "✔  SENTINEL-GNSS Transformer-LSTM architecture finalised — 359 K parameters",
         "✔  Full pipeline: feature_prep → SMOTE → sliding windows → train → evaluate",
         "✔  Smoke test passed — val macro-F1 = 0.9375 at epoch 3 (5-epoch debug run)",
@@ -343,13 +343,13 @@ def make_dataset_expansion_slide(prs):
                      size=Pt(8.5), bold=True, color=C_WHITE)
 
     rows = [
-        ("Scenarios A-E",                "Beijing, China",
+        ("Scenarios A-E",                "Beihang, China",
          "Septentrio",     "3,586",   "A B C D E"),
-        ("Supervisor Vehicle",           "Beijing, China",
+        ("Supervisor Vehicle",           "Beihang, China",
          "Septentrio",     "3,401",   "B C D E"),
-        ("Supervisor Vehicle (ref)",     "Beijing, China",
+        ("Supervisor Vehicle (ref)",     "Beihang, China",
          "Septentrio",     "3,739",   "D"),
-        ("Supervisor Drone",             "Beijing, China",
+        ("Supervisor Drone",             "Beihang, China",
          "Unicore UB4B0",  "11,123",  "D"),
         ("UrbanNav HK Medium",           "Hong Kong, China",
          "10 receivers",    "7,608",   "B C"),

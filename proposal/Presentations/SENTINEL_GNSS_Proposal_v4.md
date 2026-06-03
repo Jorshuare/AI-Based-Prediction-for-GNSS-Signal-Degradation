@@ -64,11 +64,12 @@ Progress Presentation · Version 4 · Run 14 results
 > elevated urban expressway between glass skyscrapers at dusk, faint GNSS satellite signal
 > beams descending from orbit, some beams blocked by buildings; deep navy-to-blue gradient
 > (#003366→#005BAC→#00A0E9), subtle orbital grid lines, clean futuristic, no text, 16:9."
-> *(Place at low opacity behind the title; theme already provides the gradient fallback.)*
+> _(Place at low opacity behind the title; theme already provides the gradient fallback.)_
 
 ---
 
 <!-- _class: section-divider -->
+
 # 1 · The Problem
 
 ---
@@ -81,7 +82,7 @@ Progress Presentation · Version 4 · Run 14 results
 - Every existing monitor — RTKLIB quality codes, RAIM, recent ML classifiers — is
   **reactive**: it reports degradation only **after** it happens.
 
-> **The gap:** detecting loss *at the moment it occurs* gives the vehicle **zero**
+> **The gap:** detecting loss _at the moment it occurs_ gives the vehicle **zero**
 > preparation time. We ask a harder question — **"will the signal degrade in the next
 > 5 / 15 / 30 seconds?"**
 
@@ -96,11 +97,11 @@ Progress Presentation · Version 4 · Run 14 results
 
 ## What proactive warning buys the vehicle
 
-| Horizon | Distance at 60 km/h | Action the planner can take |
-|--------|--------------------|------------------------------|
-| **+5 s** | 83 m | Tighten IMU fusion, slow down |
-| **+15 s** | 250 m | Pre-engage dead-reckoning, adjust speed |
-| **+30 s** | 500 m | Re-route to avoid the degradation zone |
+| Horizon   | Distance at 60 km/h | Action the planner can take             |
+| --------- | ------------------- | --------------------------------------- |
+| **+5 s**  | 83 m                | Tighten IMU fusion, slow down           |
+| **+15 s** | 250 m               | Pre-engage dead-reckoning, adjust speed |
+| **+30 s** | 500 m               | Re-route to avoid the degradation zone  |
 
 - Prediction converts a **sudden failure** into a **planned hand-off** to backup localisation.
 
@@ -110,6 +111,7 @@ Progress Presentation · Version 4 · Run 14 results
 ---
 
 <!-- _class: section-divider -->
+
 # 2 · Data
 
 ---
@@ -117,19 +119,19 @@ Progress Presentation · Version 4 · Run 14 results
 ## A multi-city, multi-receiver dataset
 
 - **149,662 labelled epochs**, 4 cities, 9+ receiver types, one unified 3-class schema.
-- Field collection (Beijing, Septentrio Mosaic-X5C) + public datasets (Hong Kong, Tokyo).
+- Field collection (Beihang, Septentrio Mosaic-X5C) + public datasets (Hong Kong, Tokyo).
 - 5 controlled degradation scenarios (A–E): instant blockage, urban canyon, partial,
   open-sky, approaching blockage.
 
-| Source | City | Receivers | Role |
-|--------|------|-----------|------|
-| Field Scenarios A–E | Beijing | Septentrio | train / test |
-| UrbanNav Medium/Tunnel/Deep/Harsh | Hong Kong | 9+ | train / val |
-| Tokyo Shinjuku | Tokyo | Trimble + u-blox | **held-out city** |
+| Source                            | City      | Receivers        | Role              |
+| --------------------------------- | --------- | ---------------- | ----------------- |
+| Field Scenarios A–E               | Beihang   | Septentrio       | train / test      |
+| UrbanNav Medium/Tunnel/Deep/Harsh | Hong Kong | 9+               | train / val       |
+| Tokyo Shinjuku                    | Tokyo     | Trimble + u-blox | **held-out city** |
 
-> **[FIGURE]** `fig_dataset_map.pdf` — world map with pins on Beijing, Hong Kong, Tokyo;
+> **[FIGURE]** `fig_dataset_map.pdf` — world map with pins on Beihang, Hong Kong, Tokyo;
 > bubble size = epoch count.
-> **[IMAGE PROMPT]** "Minimalist East-Asia map, three glowing location pins (Beijing, Hong
+> **[IMAGE PROMPT]** "Minimalist East-Asia map, three glowing location pins (Beihang, Hong
 > Kong, Tokyo) connected by thin satellite-orbit arcs, Beihang blue ocean, white land,
 > sky-blue arcs, flat vector, no labels."
 
@@ -142,11 +144,11 @@ Progress Presentation · Version 4 · Run 14 results
   temporal patterns, atmospheric.
 - A **30-second sliding window** → tensor `(30 × 37)`; labels at t+5 / t+15 / t+30 s.
 
-| Class | Meaning | Colour |
-|-------|---------|--------|
-| <span class="clean">CLEAN</span> | healthy fix | green |
-| <span class="warning">WARNING</span> | partial degradation | amber |
-| <span class="degraded">DEGRADED</span> | loss of fix / severe | red |
+| Class                                  | Meaning              | Colour |
+| -------------------------------------- | -------------------- | ------ |
+| <span class="clean">CLEAN</span>       | healthy fix          | green  |
+| <span class="warning">WARNING</span>   | partial degradation  | amber  |
+| <span class="degraded">DEGRADED</span> | loss of fix / severe | red    |
 
 > **[FIGURE]** `fig_pipeline.pdf` — RINEX/NMEA → feature extraction → 30 s window →
 > Transformer-LSTM → 3 horizon outputs.
@@ -157,6 +159,7 @@ Progress Presentation · Version 4 · Run 14 results
 ---
 
 <!-- _class: section-divider -->
+
 # 3 · Method
 
 ---
@@ -184,8 +187,8 @@ Progress Presentation · Version 4 · Run 14 results
   identical C/N₀ readings that mean different things on different hardware.
 - We run a **4-tier baseline** (trivial, rule-based, RandomForest/XGBoost, DL ablations).
 - **Ablation:** full model vs LSTM-only vs Transformer-only — identical data, loss, HPs.
-- **Honesty controls:** permutation test + temporal-feature ablation to check *what actually
-  drives performance* — we report negative results too.
+- **Honesty controls:** permutation test + temporal-feature ablation to check _what actually
+  drives performance_ — we report negative results too.
 
 > <span class="small">Validation layers: held-out test · bootstrap 95% CIs · MCC + κ ·
 > ablations · cross-city + cross-receiver · reproducible Kaggle/Colab notebook.</span>
@@ -193,17 +196,18 @@ Progress Presentation · Version 4 · Run 14 results
 ---
 
 <!-- _class: section-divider -->
+
 # 4 · Results (Run 14)
 
 ---
 
 ## Headline: multi-horizon prediction
 
-| Horizon | Accuracy | **Macro-F1** | MCC | 95% CI (Macro-F1) |
-|--------|---------|------------|-----|-------------------|
-| **+5 s** | 0.854 | **0.821** | 0.773 | [0.800, 0.843] |
-| +15 s | 0.789 | 0.741 | 0.691 | [0.717, 0.764] |
-| +30 s | 0.830 | 0.783 | 0.731 | [0.758, 0.804] |
+| Horizon  | Accuracy | **Macro-F1** | MCC   | 95% CI (Macro-F1) |
+| -------- | -------- | ------------ | ----- | ----------------- |
+| **+5 s** | 0.854    | **0.821**    | 0.773 | [0.800, 0.843]    |
+| +15 s    | 0.789    | 0.741        | 0.691 | [0.717, 0.764]    |
+| +30 s    | 0.830    | 0.783        | 0.731 | [0.758, 0.804]    |
 
 - <span class="degraded">DEGRADED</span> **recall = 0.85 at +5 s** — catches 85% of impending
   degradations five seconds early.
@@ -216,27 +220,27 @@ Progress Presentation · Version 4 · Run 14 results
 
 ## Per-class performance at +5 s
 
-| Class | Precision | Recall | F1 | Support |
-|-------|----------:|-------:|---:|--------:|
-| <span class="clean">CLEAN</span> | 0.868 | 0.993 | **0.927** | 731 |
-| <span class="warning">WARNING</span> | 0.947 | 0.718 | **0.817** | 746 |
-| <span class="degraded">DEGRADED</span> | 0.623 | 0.847 | **0.718** | 209 |
+| Class                                  | Precision | Recall |        F1 | Support |
+| -------------------------------------- | --------: | -----: | --------: | ------: |
+| <span class="clean">CLEAN</span>       |     0.868 |  0.993 | **0.927** |     731 |
+| <span class="warning">WARNING</span>   |     0.947 |  0.718 | **0.817** |     746 |
+| <span class="degraded">DEGRADED</span> |     0.623 |  0.847 | **0.718** |     209 |
 
 - High **recall** on the safety-critical DEGRADED class is the priority for an AV system.
 
 > **[FIGURE — insert]** `pr_curves_test.png` and `roc_curves_test.png` (already generated).
 > **[FIGURE — insert]** `lead_time_histogram.png` — median seconds of advance warning
-> *(read the median value from the figure and add it here as the headline engineering number)*.
+> _(read the median value from the figure and add it here as the headline engineering number)_.
 
 ---
 
 ## Ablation — every component contributes
 
-| Architecture | Params | +5 s Macro-F1 | +5 s MCC | DEGRADED F1 |
-|--------------|-------:|--------------:|---------:|------------:|
-| Transformer-only | 0.43 M | 0.767 | 0.725 | 0.571 |
-| LSTM-only | 1.03 M | 0.767 | 0.702 | 0.645 |
-| **Full (Transformer+LSTM)** | **1.46 M** | **0.821** | **0.773** | **0.718** |
+| Architecture                |     Params | +5 s Macro-F1 |  +5 s MCC | DEGRADED F1 |
+| --------------------------- | ---------: | ------------: | --------: | ----------: |
+| Transformer-only            |     0.43 M |         0.767 |     0.725 |       0.571 |
+| LSTM-only                   |     1.03 M |         0.767 |     0.702 |       0.645 |
+| **Full (Transformer+LSTM)** | **1.46 M** |     **0.821** | **0.773** |   **0.718** |
 
 - Full model wins on Macro-F1 (+5 s) and on **MCC at every horizon**.
 - Transformer alone over-flags (DEGRADED precision 0.42); the LSTM supplies directional
@@ -249,19 +253,19 @@ Progress Presentation · Version 4 · Run 14 results
 
 ## The key result: cross-city generalisation
 
-Trained on Beijing + Hong Kong, tested on **Tokyo (never seen)**:
+Trained on Beihang + Hong Kong, tested on **Tokyo (never seen)**:
 
-| Model | Beijing | Tokyo | Gap | **Tokyo DEGRADED F1** |
-|-------|--------:|------:|----:|----------------------:|
-| **SENTINEL-GNSS** | 0.822 | 0.649 | −0.173 | **<span class="clean">0.753</span>** |
-| RandomForest | 0.926 | 0.618 | −0.308 | **<span class="degraded">0.148</span>** |
+| Model             | Beihang | Tokyo |    Gap |                   **Tokyo DEGRADED F1** |
+| ----------------- | ------: | ----: | -----: | --------------------------------------: |
+| **SENTINEL-GNSS** |   0.822 | 0.649 | −0.173 |    **<span class="clean">0.753</span>** |
+| RandomForest      |   0.926 | 0.618 | −0.308 | **<span class="degraded">0.148</span>** |
 
 - In-domain, tree ensembles win; **out-of-domain, the network keeps the safety-critical
   DEGRADED class (0.75) while the tree collapses (0.15).**
 - **Trees memorise city-specific thresholds; the network learns a transferable representation.**
 
 > **[FIGURE]** `fig_cross_city_degraded.pdf` — grouped bar chart, DL vs RF, per class,
-> Beijing vs Tokyo; highlight the DEGRADED collapse in red.
+> Beihang vs Tokyo; highlight the DEGRADED collapse in red.
 > **[IMAGE PROMPT]** "Grouped bar chart mockup, two cities, two models, three classes
 > (green/amber/red), one red bar dramatically shorter than the others, Beihang blue framing,
 > clean academic chart, white background."
@@ -274,8 +278,8 @@ Trained on Beijing + Hong Kong, tested on **Tokyo (never seen)**:
   one 17.8 MB checkpoint serves all three horizons.
 - Real-time at 10 Hz using <0.4% of the per-epoch time budget.
 - **Calibration:** temperature scaling applied (Guo et al., 2017); reliability diagram in
-  `calibration_curves_test.png`. *(ECE re-measured with corrected temperature — confirm
-  before claiming "well-calibrated".)*
+  `calibration_curves_test.png`. _(ECE re-measured with corrected temperature — confirm
+  before claiming "well-calibrated".)_
 
 > **[FIGURE — insert]** `calibration_curves_test.png`.
 > **[IMAGE PROMPT]** "Speedometer-style comparison: one fast needle (DL) vs three slow needles
@@ -284,6 +288,7 @@ Trained on Beijing + Hong Kong, tested on **Tokyo (never seen)**:
 ---
 
 <!-- _class: section-divider -->
+
 # 5 · Novelty & Validation
 
 ---
@@ -304,12 +309,12 @@ Trained on Beijing + Hong Kong, tested on **Tokyo (never seen)**:
 
 ## How we will defend it to reviewers
 
-| Question | Our evidence |
-|----------|--------------|
-| "Trees beat you in-domain." | True; we disclose it. Out-of-domain we win on DEGRADED (0.75 vs 0.15), run 10.5× faster, one model for 3 horizons. |
-| "Does the Transformer use time?" | Honestly, temporal *order* adds ~3% (permutation test). The win is **representation transfer**, not order modelling. |
-| "Small DEGRADED test set?" | Bootstrap 95% CIs on every per-class metric. |
-| "Data leakage?" | Session-level split; scaler/SMOTE on train only; one within-site overlap disclosed; Tokyo fully held out. |
+| Question                         | Our evidence                                                                                                         |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| "Trees beat you in-domain."      | True; we disclose it. Out-of-domain we win on DEGRADED (0.75 vs 0.15), run 10.5× faster, one model for 3 horizons.   |
+| "Does the Transformer use time?" | Honestly, temporal _order_ adds ~3% (permutation test). The win is **representation transfer**, not order modelling. |
+| "Small DEGRADED test set?"       | Bootstrap 95% CIs on every per-class metric.                                                                         |
+| "Data leakage?"                  | Session-level split; scaler/SMOTE on train only; one within-site overlap disclosed; Tokyo fully held out.            |
 
 > <span class="small">The honest narrative is the strong narrative — we lead with
 > generalisation and efficiency, not an in-domain leaderboard score.</span>
@@ -317,16 +322,17 @@ Trained on Beijing + Hong Kong, tested on **Tokyo (never seen)**:
 ---
 
 <!-- _class: section-divider -->
+
 # 6 · Roadmap & Deliverables
 
 ---
 
 ## Publication plan (2 papers + 1 conference)
 
-- **Paper A — flagship** (*GPS Solutions*, Q1): method + multi-horizon + cross-receiver +
-  cross-city + adaptive EKF. *(Cross-receiver and cross-city are robustness sections, not
-  separate thin papers.)*
-- **Paper B — benchmark** (*Scientific Data* / *Data in Brief*): the dataset descriptor.
+- **Paper A — flagship** (_GPS Solutions_, Q1): method + multi-horizon + cross-receiver +
+  cross-city + adaptive EKF. _(Cross-receiver and cross-city are robustness sections, not
+  separate thin papers.)_
+- **Paper B — benchmark** (_Scientific Data_ / _Data in Brief_): the dataset descriptor.
 - **Conference — ION GNSS+ 2026**: cross-city result as a short paper, later extended.
 
 > <span class="small">Two substantial papers avoid "salami-slicing" and carry more impact
@@ -336,15 +342,15 @@ Trained on Beijing + Hong Kong, tested on **Tokyo (never seen)**:
 
 ## What is left to build
 
-| # | Task | Status |
-|---|------|--------|
-| 1 | Re-run calibration (E7) with correct temperature | ⏳ |
-| 2 | Read median lead-time from histogram | ⏳ |
-| 3 | `inference.py` — NMEA stream → live prediction | ⏳ |
-| 4 | Per-receiver evaluation (Paper A §receiver) | ⏳ |
-| 5 | **Adaptive EKF** — navigation RMSE during blockage | ⏳ (biggest reviewer ask) |
-| 6 | Web app — **Next.js + FastAPI** dashboards | ⏳ |
-| 7 | Paper A full draft | ⏳ |
+| #   | Task                                               | Status                    |
+| --- | -------------------------------------------------- | ------------------------- |
+| 1   | Re-run calibration (E7) with correct temperature   | ⏳                        |
+| 2   | Read median lead-time from histogram               | ⏳                        |
+| 3   | `inference.py` — NMEA stream → live prediction     | ⏳                        |
+| 4   | Per-receiver evaluation (Paper A §receiver)        | ⏳                        |
+| 5   | **Adaptive EKF** — navigation RMSE during blockage | ⏳ (biggest reviewer ask) |
+| 6   | Web app — **Next.js + FastAPI** dashboards         | ⏳                        |
+| 7   | Paper A full draft                                 | ⏳                        |
 
 ---
 
@@ -381,6 +387,7 @@ github.com/Jorshuare/AI-Based-Prediction-for-GNSS-Signal-Degradation</span>
 ---
 
 <!-- _class: section-divider -->
+
 # Appendix
 
 ---

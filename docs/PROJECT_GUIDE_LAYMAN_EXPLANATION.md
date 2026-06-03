@@ -14,6 +14,7 @@ happens — too late. We built a model that **warns 5, 15, and 30 seconds ahead 
 the car can prepare (slow down, lean on its other sensors, or reroute).
 
 **What we have working:**
+
 - A neural network (Transformer + LSTM) that reads the last 30 seconds of signal and predicts
   the next 5 / 15 / 30 seconds as **CLEAN / WARNING / DEGRADED**.
 - It is right about **82%** of the time at the 5-second mark, and importantly it **catches
@@ -23,7 +24,7 @@ the car can prepare (slow down, lean on its other sensors, or reroute).
   new city" result is our strongest selling point.
 - It runs in well under a millisecond — fast enough for a real vehicle.
 
-**The data:** ~150,000 labelled one-second snapshots from Beijing, Hong Kong, and Tokyo,
+**The data:** ~150,000 labelled one-second snapshots from Beihang, Hong Kong, and Tokyo,
 across professional receivers down to ordinary phone chips.
 
 **What we publish (plan):** two journal papers (one on the method, one releasing the dataset)
@@ -328,7 +329,7 @@ These notes replace the older root dataset note and correct the earlier city lis
 
 ### UrbanNav
 
-UrbanNav currently provides Hong Kong and Tokyo data, not Beijing and Taipei.
+UrbanNav currently provides Hong Kong and Tokyo data, not Beihang and Taipei.
 
 Recommended downloads later:
 

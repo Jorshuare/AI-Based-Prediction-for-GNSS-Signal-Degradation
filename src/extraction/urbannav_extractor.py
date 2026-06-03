@@ -45,8 +45,8 @@ class UrbanNavExtractor:
                 # Try Hong Kong variants
                 if location_name == 'hong_kong':
                     variants = ['Hong_Kong', 'HongKong', 'HK', 'hong_kong']
-                elif location_name == 'beijing':
-                    variants = ['Beijing', 'BEIJING', 'beijing']
+                elif location_name == 'Beihang':
+                    variants = ['Beihang', 'Beihang', 'Beihang']
                 else:  # taipei
                     variants = ['Taipei', 'TAIPEI', 'taipei']
 
