@@ -1,0 +1,86 @@
+{
+  "E8_ensemble": {
+    "cross_city_tokyo_5s": {
+      "dl": 0.6489,
+      "xgb": 0.8208,
+      "softvote": 0.8919,
+      "stack": 0.8863,
+      "dl_deg": 0.7528,
+      "xgb_deg": 0.7839,
+      "softvote_deg": 0.8957,
+      "stack_deg": 0.8791
+    },
+    "5s": {
+      "dl": 0.8218,
+      "dl_deg": 0.7172,
+      "rf": 0.926,
+      "xgb": 0.9187,
+      "softvote": 0.9112,
+      "softvote_deg": 0.7917,
+      "stack": 0.8987,
+      "stack_deg": 0.7638
+    },
+    "15s": {
+      "dl": 0.7615,
+      "dl_deg": 0.6121,
+      "rf": 0.9121,
+      "xgb": 0.8895,
+      "softvote": 0.8765,
+      "softvote_deg": 0.7234,
+      "stack": 0.8762,
+      "stack_deg": 0.7208
+    },
+    "30s": {
+      "dl": 0.7817,
+      "dl_deg": 0.6261,
+      "rf": 0.8989,
+      "xgb": 0.8771,
+      "softvote": 0.8716,
+      "softvote_deg": 0.7032,
+      "stack": 0.8626,
+      "stack_deg": 0.6825
+    }
+  },
+  "E10_horizon_gap": {
+    "5s": {
+      "dl": 0.8218,
+      "rf": 0.926,
+      "xgb": 0.9187,
+      "best_single": 0.926
+    },
+    "15s": {
+      "dl": 0.7615,
+      "rf": 0.9121,
+      "xgb": 0.8895,
+      "best_single": 0.9121
+    },
+    "30s": {
+      "dl": 0.7817,
+      "rf": 0.8989,
+      "xgb": 0.8771,
+      "best_single": 0.8989
+    }
+  },
+  "E9_persistence": {
+    "5s": {
+      "persistence_macro_f1": 0.9077,
+      "persistence_accuracy": 0.9442,
+      "label_change_rate": 0.0558
+    },
+    "15s": {
+      "persistence_macro_f1": 0.871,
+      "persistence_accuracy": 0.9205,
+      "label_change_rate": 0.0795
+    },
+    "30s": {
+      "persistence_macro_f1": 0.8263,
+      "persistence_accuracy": 0.8932,
+      "label_change_rate": 0.1068
+    }
+  },
+  "_notes": {
+    "E8": "Static ensembles (soft-vote / stacking) of DL+XGB; compare in-domain vs Tokyo. If neither dominates both regimes, domain-aware/confidence-gated fusion is needed.",
+    "E9": "persistence_accuracy = how often the t+h label equals the current label. High value \u21d2 the present already determines the future \u21d2 limited room for 'memory'. label_change_rate rising with horizon \u21d2 longer horizons need temporal modelling.",
+    "E10": "Per-horizon Macro-F1 by model family; does the DL\u2013tree gap shrink at longer horizons?"
+  }
+}

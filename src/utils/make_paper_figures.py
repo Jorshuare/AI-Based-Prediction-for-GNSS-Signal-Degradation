@@ -49,6 +49,7 @@ C_DEG   = civ(0.92)            # DEGRADED (yellow)  -- bars/fills only
 C_OURS  = civ(0.18)            # SENTINEL-GNSS / DL (dark)
 C_BASE  = civ(0.70)            # tree / baseline    (light)
 C_ACC   = civ(0.45)            # secondary series (e.g. MCC)
+C_ENS   = civ(0.62)            # ensemble series
 C_NEU   = PALETTE["grey"]
 C_MARK  = PALETTE["black"]     # readable callout text / arrows (never yellow on white)
 
@@ -482,13 +483,111 @@ def fig_ekf_panel():
         print(f"  [skip] figC3 — {e}")
 
 
+def fig_ensemble():
+    """E8 — DL/XGB/RF/Soft-vote/Stack, in-domain vs cross-city. The ensemble is best cross-city."""
+    e = load_json(RES / "ensemble_comparison.json")
+    rev = load_json(RES / "reviewer_experiments.json")
+    # in-domain (test) +5s
+    if e and "E8_ensemble" in e and "5s" in e["E8_ensemble"]:
+        d = e["E8_ensemble"]["5s"]; cc = e["E8_ensemble"].get("cross_city_tokyo_5s", {})
+        ind = {"DL": d.get("dl"), "XGB": d.get("xgb"), "RF": d.get("rf"),
+               "Soft-vote": d.get("softvote"), "Stack": d.get("stack")}
+        rf_cc = (rev or {}).get("E6_cross_city_tokyo", {}).get("rf_macro_f1", 0.6178)
+        cro = {"DL": cc.get("dl", 0.6489), "XGB": cc.get("xgb", 0.8208), "RF": rf_cc,
+               "Soft-vote": cc.get("softvote", 0.8919), "Stack": cc.get("stack", 0.8863)}
+    else:  # confirmed Run-15 fallback
+        ind = {"DL": 0.8218, "XGB": 0.9187, "RF": 0.926, "Soft-vote": 0.9112, "Stack": 0.8987}
+        cro = {"DL": 0.6489, "XGB": 0.8208, "RF": 0.6178, "Soft-vote": 0.8919, "Stack": 0.8863}
+    names = list(ind.keys()); x = np.arange(len(names)); w = 0.4
+    cols = [C_OURS, C_BASE, C_NEU, C_ENS, civ(0.80)]
+    fig, ax = plt.subplots(figsize=(8.2, 4.7))
+    ax.bar(x - w/2, [ind[n] for n in names], w, color=C_NEU, label="In-domain (Beihang/Beijing)", edgecolor="white")
+    ax.bar(x + w/2, [cro[n] for n in names], w, color=C_ENS, label="Cross-city (unseen Tokyo)", edgecolor="white")
+    for xi, n in zip(x - w/2, names): ax.text(xi, ind[n] + 0.012, f"{ind[n]:.2f}", ha="center", fontsize=FONTS["value"], fontweight="bold")
+    for xi, n in zip(x + w/2, names): ax.text(xi, cro[n] + 0.012, f"{cro[n]:.2f}", ha="center", fontsize=FONTS["value"], fontweight="bold")
+    ax.set_xticks(x); ax.set_xticklabels(names); ax.set_ylim(0, 1.05); ax.set_ylabel("Macro-F1 (+5 s)")
+    ax.annotate("ensemble best\ncross-city", xy=(3 + w/2, cro["Soft-vote"]), xytext=(2.4, 0.42),
+                arrowprops=dict(arrowstyle="->", color=C_MARK, lw=2), color=C_MARK, fontsize=FONTS["annot"], fontweight="bold")
+    blegend(ax, loc="lower left"); style(ax)
+    save(fig, "fig16_ensemble")
+
+
+def fig_persistence():
+    """E9 — persistence baseline vs models across horizons (is memory needed?)."""
+    e = load_json(RES / "ensemble_comparison.json")
+    pers = {"+5s": 0.9077, "+15s": 0.871, "+30s": 0.8263}
+    chg = {"+5s": 0.0558, "+15s": 0.0795, "+30s": 0.1068}
+    tree = {"+5s": 0.926, "+15s": 0.9121, "+30s": 0.8989}
+    if e and "E9_persistence" in e:
+        for h, k in [("+5s", "5s"), ("+15s", "15s"), ("+30s", "30s")]:
+            if k in e["E9_persistence"]:
+                pers[h] = e["E9_persistence"][k].get("persistence_macro_f1", pers[h])
+                chg[h] = e["E9_persistence"][k].get("label_change_rate", chg[h])
+        for h, k in [("+5s", "5s"), ("+15s", "15s"), ("+30s", "30s")]:
+            if k in e.get("E10_horizon_gap", {}):
+                g = e["E10_horizon_gap"][k]
+                tree[h] = max(g.get("rf", 0), g.get("xgb", 0)) or tree[h]
+    dl = {h: FULL[h]["macro_f1"] for h in HZ}
+    x = np.arange(len(HZ))
+    fig, ax = plt.subplots(figsize=(7.5, 4.7))
+    ax.plot(x, [pers[h] for h in HZ], "-o", color=C_NEU, lw=2.4, ms=9, label="Persistence baseline")
+    ax.plot(x, [tree[h] for h in HZ], "-s", color=C_BASE, lw=2.4, ms=9, label="Best tree (RF/XGB)")
+    ax.plot(x, [dl[h] for h in HZ], "-^", color=C_OURS, lw=2.4, ms=9, label="SENTINEL-GNSS (DL)")
+    for h, xi in zip(HZ, x):
+        ax.text(xi, pers[h] + 0.012, f"{pers[h]:.2f}", ha="center", fontsize=FONTS["value"], fontweight="bold", color=C_MARK)
+    ax.set_xticks(x); ax.set_xticklabels([f"{h}\n({chg[h]*100:.0f}% change)" for h in HZ])
+    ax.set_ylim(0.6, 1.0); ax.set_xlabel("Horizon  (label-change rate)"); ax.set_ylabel("Macro-F1")
+    blegend(ax, loc="lower left"); style(ax)
+    save(fig, "fig17_persistence")
+
+
+def fig_ekf_realdata():
+    """Real-data case study: adaptive EKF on an actual Beihang field NMEA run.
+
+    Reads the EKF track produced by `python -m src.models.inference --ekf` on a real
+    collection (no synthetic). Shows (a) the real GNSS track vs the adaptive-EKF track with
+    predicted-degraded epochs shaded, and (b) the model's per-epoch P(DEGRADED). RMSE is NOT
+    reported here because these files have no independent reference trajectory (that needs the
+    UrbanNav reference.csv / RTK step) — this panel demonstrates the closed loop on real data.
+    """
+    inf = RES / "inference"
+    npzs = sorted(inf.glob("*_ekf.npz")) if inf.exists() else []
+    if not npzs:
+        print("  [skip] fig18_ekf_realdata — no results/inference/*_ekf.npz (run inference --ekf)")
+        return
+    d = np.load(npzs[0])
+    gnss, adapt, p = d["gnss"], d["adaptive"], d["p_degraded"]
+    # local ENU-ish metres: centre and scale lon by cos(lat) already handled upstream; here the
+    # arrays are already projected x,y in metres from inference. Recentre for readability.
+    g = gnss - gnss.mean(0); a = adapt - adapt.mean(0)
+    deg = p > 0.5
+    fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(12.4, 4.9), gridspec_kw={"width_ratios": [1.25, 1]})
+    # (a) trajectory
+    ax0.plot(g[:, 0], g[:, 1], "-", color=C_NEU, lw=1.3, alpha=0.7, label="Raw GNSS")
+    ax0.plot(a[:, 0], a[:, 1], "-", color=C_OURS, lw=2.2, label="Adaptive EKF (ours)")
+    ax0.scatter(g[deg, 0], g[deg, 1], s=16, color=C_DEG, edgecolor=C_MARK, lw=0.3,
+                zorder=5, label="Predicted DEGRADED")
+    ax0.set_xlabel("East (m)"); ax0.set_ylabel("North (m)"); ax0.set_aspect("equal", "datalim")
+    blegend(ax0, loc="best"); style(ax0); panel(ax0, "a")
+    # (b) P(DEGRADED) timeline
+    t = np.arange(len(p))
+    ax1.fill_between(t, 0, p, color=C_ENS, alpha=0.35)
+    ax1.plot(t, p, "-", color=C_OURS, lw=2.0)
+    ax1.axhline(0.5, color=C_MARK, ls="--", lw=1.4)
+    ax1.text(len(p) * 0.02, 0.53, "trust threshold", color=C_MARK, fontsize=FONTS["annot"], fontweight="bold")
+    ax1.set_xlabel("Epoch (1 Hz)"); ax1.set_ylabel("P(DEGRADED)  +5 s"); ax1.set_ylim(0, 1.02)
+    style(ax1); panel(ax1, "b")
+    save(fig, "fig18_ekf_realdata")
+
+
 def main():
     src = _full_from_json()
     print(f"SENTINEL-GNSS paper figures -> {OUT}")
-    print(f"Full-model numbers source: {src}  | palette: Okabe-Ito (colour-blind safe)")
+    print(f"Full-model numbers source: {src}  | palette: cividis (colour-blind safe)")
     figs = [fig_multihorizon, fig_perclass, fig_comparison, fig_ablation, fig_crosscity_degraded,
             fig_crosscity_gap, fig_ekf_rmse, fig_ekf_trajectory, fig_deg_progress, fig_dataset,
             fig_splits, fig_latency, fig_reactive_vs_proactive, fig_architecture, fig_pipeline,
+            fig_ensemble, fig_persistence, fig_ekf_realdata,
             fig_main_results, fig_crosscity_panel, fig_ekf_panel]
     for fn in figs:
         try:

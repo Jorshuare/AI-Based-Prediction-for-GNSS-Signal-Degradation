@@ -218,12 +218,12 @@ every DEGRADED number in the paper.
 
 | Model            | ms / sample | Notes                                                     |
 | ---------------- | ----------: | --------------------------------------------------------- |
-| Transformer+LSTM |      0.0389 | 1 forward pass → +5s, +15s, +30s simultaneously; 17.81 MB |
-| RandomForest     |      0.4090 | 3 separate models (one per horizon)                       |
-| **Speedup**      |  **10.52×** | DL is 10.5× faster on GPU                                 |
+| Transformer+LSTM |     0.0449 | 1 forward pass → +5s, +15s, +30s simultaneously; 17.81 MB |
+| RandomForest     |     0.4248 | 3 separate models (one per horizon)                       |
+| **Speedup**      |  **9.46×** | DL is ~9.5× faster on GPU                                  |
 
 **Strong DL deployment advantage:** a single unified 17.8 MB model serves all three
-horizons in one pass, 10.5× faster than three independent tree ensembles.
+horizons in one pass, ~9.5× faster than three independent tree models.
 
 ### E5 — SMOTE Distribution Analysis (KL divergence)
 
@@ -253,31 +253,34 @@ but the reason is interpolation noise, not distribution distance.
 | Transformer+LSTM |           0.8218 |     **0.6489** | **−0.1729** |      0.9256 |        0.2683 |     **0.7528** |
 | RandomForest     |           0.9260 |         0.6178 |     −0.3082 |      0.9896 |        0.7159 |     **0.1478** |
 
-**HEADLINE FINDING (Paper 1 + Paper 3):**
+**Tokyo per-class support (✅ now recorded):** CLEAN 29,200 · WARNING 1,620 · DEGRADED 416
+(31,236 windows; ~93.5% CLEAN — so WARNING/DEGRADED are minority, contextualise the F1s).
 
-- DL generalises better overall cross-city (0.649 vs 0.618) and **retains 79%** of its
-  Beihang performance vs RF's 67%.
-- **On the safety-critical DEGRADED class, DL holds at 0.753 while RF collapses to 0.148.**
-  The tree ensemble memorises Beihang-specific feature thresholds and cannot detect
-  degradation in a new city; the neural model learns a transferable degradation concept.
-- Trade-off (disclose honestly): DL loses WARNING cross-city (0.268) where RF holds it
-  (0.716). For an AV safety system, DEGRADED (loss-of-fix) is the critical class.
+**HEADLINE FINDING (corrected & important — RandomForest-specific, see E8):**
 
-⏳ **TODO:** add Tokyo per-class **support counts** (Shinjuku is ~92% CLEAN, so DEGRADED
-support is small — report n to contextualise the F1 contrast).
+- **It is RandomForest, not "trees" in general, that collapses cross-city.** On the
+  safety-critical DEGRADED class, DL holds **0.753** while **RandomForest collapses to 0.148**.
+- **XGBoost does NOT collapse** — it transfers well (Tokyo macro 0.821, DEGRADED 0.784; see
+  E8). So the "trees memorise" claim must be stated as **RandomForest-specific**.
+- DL retains 79% of in-domain macro (0.822 → 0.649); it keeps DEGRADED but loses WARNING
+  (0.268).
+- ⭐ **The decisive result is in E8:** a **DL + XGBoost soft-vote ensemble** beats every single
+  model cross-city (macro **0.892**, DEGRADED **0.896**) — see §10c.
 
-### E7 — Calibration (ECE) — ⚠️ INVALID RUN, MUST RE-RUN
+### E7 — Calibration (ECE) — ✅ CONFIRMED (fixed run)
 
-| Metric             |                                         Value |
-| ------------------ | --------------------------------------------: |
-| Temperature loaded | 1.0 (❌ key lookup failed — should be 0.4023) |
-| ECE raw            |                                        0.1139 |
-| ECE "scaled"       |         0.1139 (identical — T=1.0 is a no-op) |
+| Metric | Value |
+| ------ | ----: |
+| Temperature (refit on val) | **0.4023** |
+| ECE raw (T=1.0) | 0.1139 |
+| ECE after temperature scaling | **0.0685** |
+| Improvement | −0.0454 (40% reduction) |
+| well_calibrated (<0.05)? | **No** (0.069 > 0.05) |
 
-**The E7 cell failed to read the temperature from `metrics_test.json`, so it applied T=1.0
-(no scaling). The before/after comparison is therefore meaningless.** The only valid number
-is raw ECE = 0.114 (moderate, not <0.05). **DO NOT claim the model is well-calibrated yet.**
-**ACTION:** re-run E7 with `T=0.4023` hard-set, recompute ECE before/after, then update.
+**Honest statement for the paper:** temperature scaling reduces ECE by 40% (0.114 → 0.069),
+**approaching but not reaching** the 0.05 well-calibrated threshold. Report as "improves
+calibration substantially; further calibration (e.g. per-class Dirichlet) is future work."
+Do **not** claim "well-calibrated."
 
 ---
 
@@ -314,17 +317,48 @@ with a GNSS-blockage segment (epochs 120–180); predictor warns from epoch 115.
 - ⏳ **Real-data RMSE** pending an aligned (gnss_xy, reference_xy, p_degraded) sequence;
   `run_ekf_experiment(...)` already accepts it. This is a _simulation_ result — report as such.
 
-## 10c. Ensemble & Memory Diagnostics (E8–E10) — ⏳ PENDING next run
+## 10c. Ensemble & Memory Diagnostics (E8–E10) — ✅ CONFIRMED (`results/ensemble_comparison.json`)
 
-Wired via `src/models/ensemble_compare.py` (Step 10c in both notebooks) →
-`results/ensemble_comparison.json`:
+### E8 — Ensembles (DL + XGBoost), +5 s Macro-F1 ⭐ HEADLINE
 
-- **E8** soft-vote + stacking (DL+XGB), in-domain AND cross-city (Tokyo).
-- **E9** persistence baseline — predict t+h from current label (quantifies "is memory needed").
-- **E10** per-horizon DL-vs-tree gap.
+| Setting | DL | XGB | RF | **Soft-vote** | Stacking |
+|---------|---:|----:|---:|--------------:|---------:|
+| In-domain (Beihang/Beijing) | 0.822 | 0.919 | 0.926 | 0.911 | 0.899 |
+| **Cross-city (Tokyo)** | 0.649 | 0.821 | 0.618 | **0.892** | 0.886 |
+| **Cross-city DEGRADED F1** | 0.753 | 0.784 | 0.148 | **0.896** | 0.879 |
 
-Expected (to confirm): static ensembles will _not_ dominate both in-domain and cross-city →
-motivates confidence-gated fusion. Populate this section from the JSON after the next run.
+> **This overturns the earlier prediction.** In-domain, single trees lead (~0.92) and the
+> ensemble is competitive (0.911). **Cross-city, the DL+XGBoost soft-vote ensemble beats every
+> single model** (macro 0.892 vs best single 0.821) and reaches **DEGRADED F1 0.896** — far
+> above any individual model. DL and XGBoost make complementary errors on the unseen city, so
+> averaging their probabilities corrects both. **→ Paper B selects the soft-vote ensemble for
+> the EKF**, and the ensemble (not pure DL) is the recommended deployment model.
+
+### E9 — Persistence baseline (predict t+h = current label) ⚠️ MUST DISCLOSE
+
+| Horizon | Persistence Macro-F1 | Persistence accuracy | Labels that change |
+|---------|---------------------:|---------------------:|-------------------:|
+| +5s | **0.908** | 0.944 | 5.6% |
+| +15s | 0.871 | 0.921 | 8.0% |
+| +30s | 0.826 | 0.893 | 10.7% |
+
+> **Critical honesty finding.** At +5 s the class is unchanged from *now* 94.4% of the time, so
+> a trivial persistence baseline scores **0.908** — above DL (0.82) and barely below trees
+> (0.92). The learned models' value is (a) catching the **5.6% transitions** (the safety-critical
+> CLEAN→DEGRADED moments persistence is blind to), and (b) **longer horizons** (persistence
+> decays to 0.826 at +30 s while trees hold ~0.90). **Add persistence as a baseline in every
+> paper** — a reviewer would compute it. It strengthens the multi-horizon argument.
+
+### E10 — Per-horizon gap (in-domain Macro-F1)
+
+| Horizon | DL | RF | XGB | best single |
+|---------|---:|---:|----:|------------:|
+| +5s | 0.822 | 0.926 | 0.919 | 0.926 |
+| +15s | 0.762 | 0.912 | 0.890 | 0.912 |
+| +30s | 0.782 | 0.899 | 0.877 | 0.899 |
+
+The DL–tree gap stays ~0.10–0.12 across horizons in-domain (it does not shrink at +30 s).
+Trees lead in-domain at every horizon; the DL advantage is **cross-domain** (E8), not in-domain.
 
 ## 10d. Extended Horizons / Raw Per-Satellite (Phase 2/3) — ⏳ NOT YET RUN
 

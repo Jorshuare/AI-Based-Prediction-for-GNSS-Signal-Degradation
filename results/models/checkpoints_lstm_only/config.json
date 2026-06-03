@@ -1,0 +1,37 @@
+{
+  "n_features": 37,
+  "d_model": 128,
+  "n_heads": 8,
+  "n_tf_layers": 2,
+  "d_ff": 512,
+  "lstm_hidden": 256,
+  "n_lstm_layers": 2,
+  "n_classes": 3,
+  "dropout": 0.3,
+  "batch_size": 256,
+  "max_epochs": 150,
+  "lr": 0.001,
+  "weight_decay": 0.0001,
+  "warmup_epochs": 5,
+  "grad_clip": 1.0,
+  "early_stop_patience": 50,
+  "min_epoch_for_best": 15,
+  "focal_gamma": 1.0,
+  "class_weights": [
+    1.0,
+    2.0,
+    5.0
+  ],
+  "label_smoothing": 0.1,
+  "aux_head_weight": 0.3,
+  "horizon_weights": {
+    "5s": 1.0,
+    "15s": 1.0,
+    "30s": 1.0
+  },
+  "seed": 42,
+  "amp": true,
+  "num_workers": 0,
+  "save_every": 10,
+  "model_type": "lstm_only"
+}

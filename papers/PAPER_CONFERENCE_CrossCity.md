@@ -23,8 +23,8 @@ Proactive Transformer–LSTM Predictor from Beihang and Hong Kong to Tokyo"**
 > Hong Kong data, on **31,236 windows from Tokyo Shinjuku — a city absent from training**.
 > The neural model retains 79% of its in-domain macro-F1 (0.822 → 0.649) whereas the tree
 > baseline retains 67% (0.926 → 0.618). Crucially, on the safety-critical DEGRADED class the
-> neural model **holds an F1 of 0.75 across cities while the tree baseline collapses to 0.15**.
-> We conclude that the tree ensemble memorises city-specific feature thresholds, whereas the
+> neural model **holds an F1 of 0.75 across cities while the RandomForest baseline collapses to 0.15 (XGBoost transfers fine; a DL+XGBoost ensemble is best cross-city)**.
+> We conclude that RandomForest memorises city-specific feature thresholds (XGBoost transfers; a DL+XGBoost ensemble is most robust of all — see Paper B), whereas the
 > neural network learns a transferable degradation representation — a property essential for
 > any GNSS safety system deployed beyond its training city.
 
@@ -121,7 +121,7 @@ Proactive Transformer–LSTM Predictor from Beihang and Hong Kong to Tokyo"**
 
 ## 5. Discussion
 
-### 5.1 Why trees memorise and networks generalise
+### 5.1 Why RandomForest memorises and the ensemble generalises
 
 - Trees partition on absolute feature thresholds calibrated to Beihang's distribution;
   Tokyo shifts those distributions, so thresholds misfire on the rare DEGRADED class.

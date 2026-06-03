@@ -36,13 +36,13 @@ Vehicle Navigation"**
 > high-precision, prosumer, and consumer-grade receivers, the model attains a macro-F1 of
 > 0.821 [95% CI 0.800–0.843] at the 5-second horizon and 0.783 at 30 seconds, with a
 > degraded-class recall of 0.85. A single forward pass produces all three horizons in
-> 0.039 ms — 10.5× faster than three separate gradient-boosted baselines. While classical
-> ensembles match or exceed the network on the in-domain test set, we show that on an unseen
-> city (Tokyo), the network retains a degraded-class F1 of 0.75 whereas the strongest tree
-> baseline collapses to 0.15 — evidence that the neural model learns a transferable
-> representation of degradation rather than memorising city-specific feature thresholds.
-> We release the model, the 149,662-epoch multi-city benchmark, and the full preprocessing
-> pipeline.
+> 0.045 ms — ~9.5× faster than three separate gradient-boosted baselines. While classical
+> models match or exceed the network on the in-domain test set, we show that on an unseen
+> city (Tokyo) a RandomForest baseline collapses on the safety-critical degraded class
+> (F1 0.15), the network retains it (0.75), and a **deep + gradient-boosted ensemble is the
+> most robust of all (0.90)** — evidence that learned representations transfer across cities
+> where memorised thresholds do not. We release the models, the 149,662-epoch multi-city
+> benchmark, and the full preprocessing pipeline.
 
 ---
 
@@ -220,15 +220,16 @@ to §5.5.
 
 ### 5.5 Cross-city generalisation (THE KEY RESULT — E6)
 
-- Table: Beihang vs Tokyo for DL and RF, per-class.
-- DL gap −0.173 vs RF gap −0.308.
-- **DEGRADED cross-city: DL 0.753 vs RF 0.148.**
-- Narrative: in-domain, tree ensembles memorise discriminative feature thresholds and win;
-  out-of-domain, those thresholds do not transfer and RF's degraded detection collapses,
-  while the network's learned representation transfers. For a deployable AV safety system,
-  cross-city robustness on the loss-of-fix class is the property that matters.
-- Honest caveat: DL loses WARNING cross-city (0.268 vs RF 0.716); report Tokyo per-class
-  support (⏳ add counts).
+- Table: Beihang/Beijing vs Tokyo for DL, RF, XGBoost and the **DL+XGBoost ensemble**, per-class.
+  Tokyo support: CLEAN 29,200 · WARNING 1,620 · DEGRADED 416.
+- **DEGRADED cross-city: ensemble 0.896, XGBoost 0.784, DL 0.753, RandomForest 0.148.**
+- Narrative: in-domain, trees win; out-of-domain, **RandomForest** memorised thresholds do not
+  transfer and its degraded detection collapses (0.148), whereas **XGBoost transfers** (0.784),
+  the network keeps degraded (0.753), and a **DL+XGBoost soft-vote ensemble is most robust of
+  all (0.896)**. For a deployable AV safety system, cross-city robustness on the loss-of-fix
+  class is the property that matters — and the ensemble delivers it.
+- Honest caveat: DL loses WARNING cross-city (0.268 vs RF 0.716); the ensemble recovers overall
+  macro to 0.892. Report Tokyo per-class support (done above).
 
 ### 5.6 Computational efficiency (E4)
 

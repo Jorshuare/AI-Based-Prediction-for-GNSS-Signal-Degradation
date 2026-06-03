@@ -59,21 +59,29 @@ Transformer–LSTM (full), soft-vote ensemble, stacking ensemble.
 Identical windows/splits; in-domain test **and** cross-city (Tokyo); Macro-F1, MCC,
 per-class F1, bootstrap CIs; inference latency.
 
-### 3.3 Results (✅ confirmed Run 14 + E8–E10 from `ensemble_comparison.json`)
+### 3.3 Results (✅ confirmed Run 15 — RESULTS_REFERENCE §7, §10c)
 
-- In-domain leaderboard (Table from RESULTS_REFERENCE §7).
-- **E8 ensembles** (⏳ from `ensemble_comparison.json`): soft-vote / stacking, in-domain + Tokyo.
-- **E9 persistence baseline** (⏳): how much the present already determines t+h — explains why
-  short-horizon prediction is "easy" and where sequence models should help.
-- **E10 per-horizon gap** (⏳): does the DL–tree gap shrink at +30 s?
-- **E1/E2** (✅): temporal _order_ contributes ~3%; removing temporal features doesn't hurt RF
-  → the deep model's value is transfer, not memory.
+- **In-domain (+5 s Macro-F1):** RF 0.926, XGB 0.919, soft-vote 0.911, DL 0.822 — trees lead.
+- **Cross-city Tokyo (+5 s):** **soft-vote 0.892**, stacking 0.886, XGB 0.821, DL 0.649,
+  RF 0.618. On DEGRADED: **soft-vote 0.896**, XGB 0.784, DL 0.753, **RF 0.148**.
+- **E8 (headline):** a **DL + XGBoost soft-vote ensemble beats every single model cross-city**
+  (and on the safety-critical DEGRADED class) — DL and XGB make complementary errors that
+  averaging corrects. Trees lead in-domain; the ensemble leads where it matters (unseen city).
+- **Correction:** it is **RandomForest specifically** that collapses cross-city (DEGRADED
+  0.148); **XGBoost transfers well** (0.784). State "RandomForest-specific", not "trees".
+- **E9 persistence:** at +5 s the label is unchanged 94.4% of the time → a persistence baseline
+  scores 0.908. Report persistence as a baseline; the models' value is transitions + longer
+  horizons.
+- **E1/E2:** temporal *order* contributes ~3%; removing temporal features doesn't hurt RF →
+  the value is representation transfer, not memory.
 
-### 3.4 Selection
+### 3.4 Selection ⭐
 
-Deploy the Transformer–LSTM: best cross-city DEGRADED retention (0.75 vs 0.15), 10.5× faster,
-single model for 3 horizons, calibrated probabilities. Ensembles don't dominate both regimes
-(static fusion can't tell which domain it's in) → future work: confidence-gated fusion.
+**Deploy the DL + XGBoost soft-vote ensemble.** It is competitive in-domain (0.911) and the
+**best model cross-city** (macro 0.892, DEGRADED 0.896) — exactly the robustness a deployed AV
+system needs. This ensemble is what we integrate into the adaptive EKF (§4). (Pure DL remains
+the choice if a single lightweight model is mandatory: 17.8 MB, ~9.5× faster than 3 trees.)
+Future work: confidence-gated fusion to also top the in-domain leaderboard.
 
 ## 4. Prediction-Informed Adaptive EKF
 

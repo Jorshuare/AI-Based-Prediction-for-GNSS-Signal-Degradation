@@ -161,7 +161,12 @@ def figure_slide(title, fig_name, caption):
     s = prs.slides.add_slide(BLANK)
     _bg(s, BG)
     title_bar(s, title)
-    path = os.path.join(FIG_DIR, fig_name)
+    # python-pptx cannot embed PDF — always use the PNG sibling.
+    if fig_name.lower().endswith(".pdf"):
+        fig_name = fig_name[:-4] + ".png"
+    pf = os.path.abspath(os.path.join(
+        HERE, "..", "..", "results", "paper_figures", fig_name))
+    path = pf if os.path.exists(pf) else os.path.join(FIG_DIR, fig_name)
     if os.path.exists(path):
         s.shapes.add_picture(path, Inches(
             2.2), Inches(1.8), height=Inches(4.6))
@@ -228,10 +233,14 @@ bullets_slide("The SENTINEL-GNSS architecture", [
     ("Honest validation: ablations + permutation test + temporal-feature ablation — "
      "we report negative results too.", BLUE),
 ])
-figure_slide("Architecture", "fig_architecture.pdf",
+figure_slide("Architecture", "fig14_architecture.png",
              "Block diagram: input 30×37 → projection → Transformer ×2 → BiLSTM ×2 → 3 heads.")
 
-section_divider("4", "Results (Run 14)")
+section_divider("4", "Results (Run 15)")
+figure_slide("Multi-horizon performance", "fig01_multihorizon.png",
+             "Macro-F1 and MCC at +5/+15/+30 s with 95% bootstrap confidence intervals.")
+figure_slide("Per-class metrics at +5 s", "fig02_perclass_f1.png",
+             "Per-class F1 across horizons; DEGRADED (safety-critical) shown with recall.")
 table_slide("Headline: multi-horizon prediction",
             ["Horizon", "Accuracy", "Macro-F1", "MCC", "95% CI (Macro-F1)"],
             [["+5 s", "0.854", "0.821", "0.773", "[0.800, 0.843]"],
@@ -246,39 +255,42 @@ table_slide("Per-class performance at +5 s",
                 ["DEGRADED", "0.623", "0.847", "0.718", "209"]],
             note="High recall on the safety-critical DEGRADED class is the priority for an AV system.",
             col_widths=[2.6, 2.4, 2.2, 2.2, 2.6], fontsize=17)
-figure_slide("Confusion + multi-horizon", "confusion_matrices_test.png",
-             "Insert confusion_matrices_test.png and multi_horizon_comparison.png.")
-table_slide("Ablation — every component contributes",
-            ["Architecture", "Params", "+5s Macro-F1", "+5s MCC", "DEGRADED F1"],
-            [["Transformer-only", "0.43 M", "0.767", "0.725", "0.571"],
-                ["LSTM-only", "1.03 M", "0.767", "0.702", "0.645"],
-                ["Full (Transformer+LSTM)", "1.46 M", "0.821", "0.773", "0.718"]],
-            note="Full model wins on Macro-F1 (+5s) and on MCC at every horizon.",
-            col_widths=[4.0, 2.0, 2.6, 2.0, 2.4], fontsize=16)
+figure_slide("Ablation — component contribution", "fig04_ablation.png",
+             "Full vs LSTM-only vs Transformer-only; full model wins on all metrics.")
 table_slide("KEY RESULT — cross-city generalisation (Tokyo, never seen)",
-            ["Model", "Beihang", "Tokyo", "Gap", "Tokyo DEGRADED F1"],
-            [["SENTINEL-GNSS", "0.822", "0.649", "-0.173", "0.753"],
-                ["RandomForest", "0.926", "0.618", "-0.308", "0.148"]],
-            note="In-domain trees win; out-of-domain the network keeps DEGRADED (0.75) while the tree "
-            "collapses (0.15). Trees memorise; the network learns a transferable representation.",
-            col_widths=[3.4, 2.2, 2.2, 1.8, 3.4], fontsize=16)
-bullets_slide("Efficiency & calibration", [
-    ("Inference: 0.039 ms/sample on GPU — 10.5× faster than three separate tree models.", BLUE),
+            ["Model", "Beihang/Beijing", "Tokyo", "Tokyo DEGRADED F1"],
+            [["DL + XGBoost ENSEMBLE", "0.911", "0.892", "0.896"],
+                ["SENTINEL-GNSS (DL)", "0.822", "0.649", "0.753"],
+                ["XGBoost", "0.919", "0.821", "0.784"],
+                ["RandomForest", "0.926", "0.618", "0.148"]],
+            note="In-domain trees win. Cross-city, a DL+XGBoost ENSEMBLE beats every single model "
+            "(DEGRADED 0.90); RandomForest collapses (0.15) but XGBoost transfers. Ensemble = the "
+            "deployment choice feeding the EKF.",
+            col_widths=[4.6, 2.6, 2.0, 2.6], fontsize=15)
+bullets_slide("Efficiency, ensemble & calibration", [
+    ("Cross-city: DL+XGBoost ensemble is best (Macro-F1 0.892, DEGRADED 0.896).", BLUE),
+    "Inference: 0.045 ms/sample on GPU — ~9.5x faster than three separate tree models.",
     "One 17.8 MB checkpoint serves all three horizons; real-time at 10 Hz.",
-    "Calibration: temperature scaling applied (Guo et al., 2017); ECE re-measured with the "
-    "corrected temperature before any 'well-calibrated' claim.",
+    "Calibration: temperature scaling cuts ECE 40% (0.114 -> 0.069); not yet <0.05 (future work).",
+    ("Persistence baseline scores 0.91 at +5s -> the model's value is transitions + longer horizons.", BLUE),
 ])
+figure_slide("Ensemble wins cross-city", "fig16_ensemble.png",
+             "In-domain vs cross-city (Tokyo): DL+XGBoost soft-vote beats every single model.")
+figure_slide("Cross-city generalization", "fig05_crosscity_degraded.png",
+             "RandomForest collapses cross-city (DEGRADED 0.15); XGBoost transfers (0.78); DL (0.75).")
+figure_slide("Real-data EKF case study", "fig18_ekf_realdata.png",
+             "Raw GNSS trajectory vs adaptive EKF on real Beihang field NMEA; P(DEGRADED) predictions.")
 
 section_divider("5", "Novelty & Validation")
 bullets_slide("What is genuinely new", [
     ("1. Reactive → proactive: first multi-horizon GNSS degradation PREDICTOR.", BLUE),
-    "2. Cross-city generalisation as the deciding metric (DEGRADED 0.75 vs 0.15).",
-    "3. Unified multi-horizon model — one pass, three horizons, 10.5× faster.",
+    "2. Cross-city: DL+XGBoost ensemble best (DEGRADED 0.90); RandomForest collapses (0.15), XGBoost transfers.",
+    "3. Unified multi-horizon model — one pass, three horizons, ~9.5x faster.",
     "4. Multi-city, multi-receiver open benchmark (149,662 epochs, reproducible).",
     "5. Hardware-aware design — explicit receiver-tier conditioning across 9+ receivers.",
 ])
 bullets_slide("How we defend it to reviewers (honest narrative)", [
-    "\"Trees beat you in-domain\" → true; out-of-domain we win on DEGRADED, 10.5× faster, one model.",
+    "\"Trees beat you in-domain\" -> true; cross-city a DL+XGBoost ensemble wins (0.892), one model option ~9.5x faster.",
     "\"Does the Transformer use time?\" → order adds ~3% (permutation test); the win is "
     "representation transfer, not order modelling.",
     "\"Small DEGRADED test set\" → bootstrap 95% CIs on every per-class metric.",
@@ -293,22 +305,34 @@ bullets_slide("Publication plan — 2 papers + 1 conference", [
     "Conference (ION GNSS+ 2026): cross-city result as a short paper, later extended.",
     "Two substantial papers avoid salami-slicing and carry more impact than four thin ones.",
 ])
-table_slide("What is left to build",
-            ["#", "Task", "Status"],
-            [["1", "Re-run calibration (E7) with correct temperature", "done in notebooks"],
-                ["2", "Read median lead-time from histogram", "pending"],
-                ["3", "inference.py — NMEA stream → live prediction", "pending"],
-                ["4", "Per-receiver evaluation (Paper A §6)", "pending"],
-                ["5", "Adaptive EKF — navigation RMSE during blockage",
-                    "pending (key)"],
-                ["6", "Web app — Next.js + FastAPI dashboards", "pending"],
-                ["7", "Paper A full draft", "pending"]],
-            col_widths=[0.8, 8.2, 3.0], fontsize=15)
-bullets_slide("The application (Next.js + FastAPI)", [
-    "Real-time monitor (1 Hz): C/N0, DOP, satellite count + live 3-horizon prediction bars.",
-    "Route map (Mapbox): colour-coded predicted signal quality along the path.",
-    "Prediction timeline with lead-time annotations; live attention heatmap.",
-    "DL-vs-baseline comparison; dataset explorer (149k epochs); metrics board.",
+section_divider("6", "Future Work & Deployment")
+bullets_slide("Real-data EKF: from simulation to deployed navigation", [
+    "Current: adaptive EKF tested on controlled blockage simulation (33.8% RMSE gain).",
+    "Next: integrate UrbanNav Tokyo ground-truth (reference.csv, cm-level SPAN-INS).",
+    "Compute rover single-point positions (RTKLIB SPP from rover.obs), align with reference.",
+    "Real-data case study: demonstrate 5–15% RMSE gain on actual urban degradation events.",
+    ("Phase 2: per-receiver EKF tuning; multi-constellation (GPS+BeiDou+Galileo).", BLUE),
+])
+bullets_slide("Ensemble model deployment & inference pipeline", [
+    "Save trained XGBoost model (joblib) during training for reproducibility.",
+    "inference.py supports --ensemble flag: load DL + XGB, soft-vote probabilities.",
+    "End-to-end: NMEA stream → features → P(DEGRADED) +5/15/30s → EKF trajectory.",
+    "Real-time capable: 0.045 ms/sample on GPU; 10 Hz stream at <1% CPU.",
+    ("Phase 2b: raw per-satellite C/N₀ streams; +60s horizon retraining.", BLUE),
+])
+bullets_slide("Web dashboard (Next.js + FastAPI)", [
+    "Real-time monitor: C/N₀, DOP, sat count + live 3-horizon prediction bars.",
+    "Route map (Mapbox): colour-coded predicted signal quality along the planned path.",
+    "Prediction timeline with lead-time annotations; attention heatmap for interpretability.",
+    "DL-vs-baseline comparison; dataset explorer (149k epochs); metrics/performance board.",
+    ("Phase 2: integrate actual vehicle IMU; Kalman-filter fusion visualization.", BLUE),
+])
+bullets_slide("Publication & reproducibility", [
+    ("Paper A (GPS Solutions, Q1): method + multi-horizon + cross-receiver + cross-city.", BLUE),
+    "Paper B (Journal of Navigation): model comparison → ensemble selection → EKF integration.",
+    "Conference (ION GNSS+ 2026): cross-city generalization result as a systems paper.",
+    "Data + code release: GitHub + Zenodo (reproducible; citable DOI).",
+    "All results / figures / models in results/ (zipped & versioned).",
 ])
 
 # Closing

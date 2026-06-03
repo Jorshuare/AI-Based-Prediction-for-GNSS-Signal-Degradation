@@ -1,0 +1,114 @@
+{
+  "E1_permutation": {
+    "dl_original": 0.8218,
+    "dl_shuffled": 0.7897,
+    "dl_drop": 0.032,
+    "rf_original": 0.926,
+    "rf_shuffled": 0.8931,
+    "rf_drop": 0.0329
+  },
+  "E2_temporal_ablation": {
+    "rf_all": 0.926,
+    "rf_no_temp": 0.9271,
+    "drop": -0.0012,
+    "dl_ref": 0.8218,
+    "removed_features": [
+      "cnr_trend",
+      "cnr_variance",
+      "fix_continuity",
+      "fix_transitions",
+      "position_variance",
+      "sat_drop_rate",
+      "sat_visibility",
+      "sat_mean",
+      "sat_min"
+    ]
+  },
+  "E3_per_class_bootstrap_ci": {
+    "CLEAN": {
+      "mean": 0.9275,
+      "ci_low": 0.9147,
+      "ci_high": 0.9407
+    },
+    "WARNING": {
+      "mean": 0.82,
+      "ci_low": 0.7971,
+      "ci_high": 0.8423
+    },
+    "DEGRADED": {
+      "mean": 0.7169,
+      "ci_low": 0.6711,
+      "ci_high": 0.7621
+    },
+    "MacroF1": {
+      "mean": 0.8215,
+      "ci_low": 0.8001,
+      "ci_high": 0.843
+    }
+  },
+  "E4_latency": {
+    "dl_ms": 0.04488,
+    "rf_ms": 0.42477,
+    "speedup": 9.46,
+    "ckpt_mb": 17.81,
+    "device": "cuda"
+  },
+  "E5_smote_distribution": {
+    "smote_train": {
+      "C": 0.3333,
+      "W": 0.3333,
+      "D": 0.3333
+    },
+    "nsmote_train": {
+      "C": 0.1833,
+      "W": 0.6007,
+      "D": 0.216
+    },
+    "test": {
+      "C": 0.4336,
+      "W": 0.4425,
+      "D": 0.124
+    },
+    "kl_smote": 0.116689,
+    "kl_nsmote": 0.169222,
+    "closer_to_test": "SMOTE"
+  },
+  "E6_cross_city_tokyo": {
+    "n_windows": 31236,
+    "support": {
+      "CLEAN": 29200,
+      "WARNING": 1620,
+      "DEGRADED": 416
+    },
+    "dl_macro_f1": 0.6489,
+    "rf_macro_f1": 0.6178,
+    "dl_per_class": {
+      "C": 0.9256,
+      "W": 0.2683,
+      "D": 0.7528
+    },
+    "rf_per_class": {
+      "C": 0.9896,
+      "W": 0.7159,
+      "D": 0.1478
+    },
+    "Beihang_dl": 0.8218,
+    "Beihang_rf": 0.926,
+    "dl_gap": -0.1729,
+    "rf_gap": -0.3082
+  },
+  "E7_calibration": {
+    "temperature": 0.4023,
+    "ece_raw": 0.113906,
+    "ece_scaled": 0.068467,
+    "improvement": 0.045439,
+    "well_calibrated": false
+  },
+  "_metadata": {
+    "timestamp": "2026-06-03 10:04 UTC",
+    "dl_epoch": 15,
+    "n_test": 1686,
+    "dl_ref_macroF1": 0.8218,
+    "rf_ref_macroF1": 0.926
+  }
+}
