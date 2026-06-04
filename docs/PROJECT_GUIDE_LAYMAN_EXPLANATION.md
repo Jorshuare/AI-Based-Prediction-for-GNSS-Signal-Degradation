@@ -49,7 +49,10 @@ A car navigating with GNSS gets position fixes every second. When the signal is 
 
 ### **Results (Synthetic Blockage Scenario)**
 
-We tested this on a controlled scenario (artificial GNSS blockage, epochs 120–180). The predictor warns from epoch 115.
+We tested this on a **controlled simulation** (NOT real data) to validate the concept:
+- Synthetic 300-epoch trajectory with **artificial blockage** (epochs 120–180)
+- Blockage includes simulated noise spikes and multipath bias
+- The predictor (our model) **warns from epoch 115** (proactive, 5 seconds early)
 
 | Filter Type | Position Error During Blockage |
 |---|---|
@@ -57,7 +60,9 @@ We tested this on a controlled scenario (artificial GNSS blockage, epochs 120–
 | Standard Kalman Filter (fixed trust) | 45.6 m |
 | **Our Adaptive EKF** | **36.0 m (-34% vs raw)** |
 
-**Translation:** When GNSS is failing, our adaptive filter keeps the position error at 36 metres instead of 54 metres—a 34% improvement.
+**Translation:** When GNSS is failing, our adaptive filter keeps position error at 36 m instead of 54 m—a **34% improvement**.
+
+**Important:** This is a proof-of-concept on synthetic blockage. It validates that the EKF mechanism works. Real-world validation (Phase 2a) uses actual UrbanNav Tokyo data with real blockage events and cm-level ground truth.
 
 ### **Next Phase: Real-Data Validation (Option B)**
 

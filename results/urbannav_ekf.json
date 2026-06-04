@@ -1,0 +1,66 @@
+{
+  "n_epochs": 20949,
+  "rmse_overall": {
+    "gnss_only": 8.423,
+    "fixed_ekf": 7.08,
+    "adaptive_ekf": 36.206
+  },
+  "n_degraded_epochs": 16666,
+  "rmse_degraded_segment": {
+    "gnss_only": 8.835,
+    "fixed_ekf": 6.289,
+    "adaptive_ekf": 36.051
+  },
+  "adaptive_improvement_pct_degraded": -308.0,
+  "adaptive_improvement_pct_overall": -329.8,
+  "scenario": "Shinjuku",
+  "timestamp": "2026-06-04T21:27:32.943494",
+  "_justifications": {
+    "phase_2a_necessity": [
+      "Synthetic demo (33.8% gain) proves concept, but reviewers demand real-world proof.",
+      "UrbanNav provides cm-level ground truth (SPAN-INS RTK), enabling actual RMSE validation.",
+      "Shinjuku: urban canyon with real blockage events (unlike synthetic, which is artificial).",
+      "Public dataset ensures reproducibility and peer-review acceptance."
+    ],
+    "urbannav_tokyo_selection": [
+      "(1) Ground truth accuracy: SPAN-INS post-processed, cm-level (not meter-level GPS).",
+      "    \u2192 Validates EKF RMSE improvement against reference, not just relative gain.",
+      "(2) Real blockage scenario: Dense buildings, multipath, actual signal degradation.",
+      "    \u2192 Tests if model learned generalizable patterns (not Beihang-specific bias).",
+      "(3) IMU integration: High-rate accelerometer + gyro (not mock data).",
+      "    \u2192 Validates sensor fusion, dead-reckoning capability during GNSS loss.",
+      "(4) Public + peer-reviewed: Essential for journal submission (IJRR, Sensors, etc.).",
+      "    \u2192 Reviewers will accept UrbanNav; proprietary data raises reproducibility concerns."
+    ],
+    "adaptive_ekf_design_justification": [
+      "State vector (9D): [x, y, vx, vy, \u03c8, b, ba_x, ba_y]",
+      "  x, y: position (m); vx, vy: velocity (m/s); \u03c8: heading (rad)",
+      "  b: GNSS clock bias (m); ba_x, ba_y: accelerometer biases (m/s\u00b2)",
+      "",
+      "Dynamics (predict step):",
+      "  \u2022 Position: \u1e8b = vx, \u1e8f = vy (integrating velocity)",
+      "  \u2022 Velocity: v\u0307 = a_nav = R(\u03c8) @ (a_imu - ba) with rotation to nav frame",
+      "  \u2022 Heading: \u03c8\u0307 = \u03c9_z (yaw rate from gyro)",
+      "  \u2022 Biases: slow random walk (assume constant, small changes)",
+      "",
+      "Measurement (update step):",
+      "  \u2022 Observe position [x, y] from GNSS (no heading, velocity obs)",
+      "  \u2022 Fixed-R: R = 3m\u00b2 (clean), regardless of signal quality",
+      "  \u2022 Adaptive-R: R(t) = r_base + (r_deg - r_base) * P(DEGRADED|t)",
+      "    When P(D)=0: R=9m\u00b2 (trust GNSS)",
+      "    When P(D)=1: R=10000m\u00b2 (distrust GNSS, rely on motion)",
+      "",
+      "Why adaptive helps:",
+      "  \u2022 5s predictor lead time: P(DEGRADED at t+5s) known at time t",
+      "  \u2022 If blockage predicted: preemptively inflate R at t \u2192 shift to dead-reckoning",
+      "  \u2022 When blockage hits (t+5s): filter already leaning on IMU, not GNSS",
+      "  \u2022 Result: smoother trajectory, lower RMSE during actual failure."
+    ],
+    "expected_results": [
+      "Synthetic blockage: 33.8% gain (controlled 120\u2013180 epoch blockage, perfect P(D))",
+      "UrbanNav Shinjuku: 15\u201330% expected (real blockage is messier, harder to predict)",
+      "If actual gain <15%: indicates model struggles with UrbanNav geometry (retrain on urban data)",
+      "If actual gain >30%: indicates strong transfer; model learned general degradation physics."
+    ]
+  }
+}

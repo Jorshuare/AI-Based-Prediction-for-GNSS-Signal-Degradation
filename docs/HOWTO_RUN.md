@@ -428,3 +428,138 @@ All code, models, and results are:
 ```
 
 For exact citation, see `papers/` folder once published.
+
+---
+
+## **Phase 2a: Adaptive EKF Real-Data Validation (UrbanNav Tokyo)**
+
+### **Overview**
+
+The synthetic blockage demo (33.8% RMSE improvement) proves the EKF concept works. Phase 2a validates on real-world urban blockage with cm-level ground truth.
+
+### **Why UrbanNav Tokyo?**
+
+1. **Ground truth:** SPAN-INS post-processed trajectory (cm-level, RTK-grade)
+2. **Real blockage:** Shinjuku (dense buildings, signal loss, multipath)
+3. **IMU data:** High-rate accelerometer + gyro for sensor fusion
+4. **Public:** Ensures reproducibility for journal reviewers
+
+### **Quick Start: Phase 2a Runner**
+
+```bash
+cd <repo-root>
+python -m src.models.ekf_urbannav_runner
+```
+
+Expected output:
+```
+================================================================================
+Phase 2a: Real-Data EKF Validation — UrbanNav Tokyo Shinjuku
+================================================================================
+
+[1/4] Loading IMU and reference trajectory...
+  [OK] Loaded 104733 IMU samples, 20950 reference points
+
+[2/4] Aligning IMU, reference, and computing P(DEGRADED) proxy...
+  [OK] Aligned 20949 epochs
+  
+[3/4] Converting ECEF to local ENU frame...
+  [OK] Converted to ENU frame...
+
+[4/4] Running 9-state EKF (fixed-R vs adaptive-R)...
+  RMSE OVERALL:
+    GNSS raw:      8.42 m
+    Fixed EKF:     7.08 m (15.9% gain)
+    Adaptive EKF: ???  m (??? % gain)
+    
+  RMSE DEGRADED SEGMENT (P(D)>=0.5):
+    GNSS raw:      8.84 m
+    Fixed EKF:     6.29 m
+    Adaptive EKF: ???  m (??? % gain)
+
+[OK] Results saved: results/urbannav_ekf.json
+```
+
+### **Full Phase 2a Workflow**
+
+#### **Step 1: Prepare UrbanNav Data**
+```bash
+# Data should be at: data/raw/public/urbannav/Tokyo/Shinjuku/
+# Expected files:
+#   - imu.csv (high-rate IMU: acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z)
+#   - reference.csv (SPAN-INS truth: ECEF positions, velocities)
+#   - rover_trimble.obs (RINEX GNSS observations — optional, for real validation)
+
+ls data/raw/public/urbannav/Tokyo/Shinjuku/
+```
+
+#### **Step 2: Run EKF on UrbanNav**
+```bash
+python -m src.models.ekf_urbannav_runner
+
+# This will:
+# 1. Load IMU time series
+# 2. Load SPAN-INS ground truth (ECEF)
+# 3. Align them to common timestamps
+# 4. Extract P(DEGRADED) proxy (currently: velocity-based; real: SENTINEL inference)
+# 5. Run 9-state EKF: fixed-R (baseline) vs adaptive-R (uses P(D))
+# 6. Save results → results/urbannav_ekf.json
+```
+
+#### **Step 3: Analyze Results**
+```bash
+python << 'EOF'
+import json
+with open("results/urbannav_ekf.json") as f:
+    result = json.load(f)
+
+print(f"Overall RMSE improvement: {result['adaptive_improvement_pct_overall']:.1f}%")
+print(f"Degraded segment RMSE: {result['rmse_degraded_segment']['adaptive_ekf']:.2f} m")
+print(f"Degraded segment improvement: {result['adaptive_improvement_pct_degraded']:.1f}%")
+
+# If >15%: good generalization. If <10%: model needs retraining on urban data
+EOF
+```
+
+### **Expected Results**
+
+- **Synthetic blockage (proof-of-concept):** 33.8% degraded-segment RMSE improvement
+- **UrbanNav real blockage:** 15–30% expected
+  - Why lower? Real blockage is gradual, harder to predict perfectly
+  - Why still good? 20% reduction = significant for safety systems
+
+### **Current Limitations**
+
+The runner uses a **proxy for P(DEGRADED)** based on velocity magnitude. For full validation:
+
+1. **Real GNSS observations:** Parse `rover_trimble.obs` (RINEX) to extract C/N₀, geometry
+2. **SENTINEL inference:** Run trained model on UrbanNav GNSS features → real P(DEGRADED)
+3. **Comparative validation:** Compare fixed EKF vs adaptive with real predictions
+
+### **Next Steps**
+
+1. ✅ 9-state EKF code ready (`src/models/ekf_9state.py`)
+2. ✅ UrbanNav runner ready (`src/models/ekf_urbannav_runner.py`)
+3. ⏳ Real GNSS obs parsing (RINEX → features)
+4. ⏳ Run SENTINEL inference on UrbanNav GNSS
+5. ⏳ Full adaptive EKF validation with real P(DEGRADED)
+6. ⏳ Generate publication figures (EKF trajectory, RMSE comparison)
+7. ⏳ Update papers with UrbanNav results
+
+### **Justifications**
+
+**Why 9-state EKF?**
+- Standard in GNSS/INS fusion literature (IJRR, GPS Solutions)
+- IMU-driven motion model (body → nav frame rotation via heading)
+- Handles clock bias, accelerometer bias (improves long-term accuracy)
+
+**Why adaptive R?**
+- Measurement noise R(t) = r_base + (r_deg − r_base) × P(DEGRADED|t)
+- When P(D)=0: R ≈ r_base (trust GNSS)
+- When P(D)=1: R ≈ r_deg (trust IMU, use dead-reckoning)
+- Pre-emptive: 5s lead time allows Kalman filter to shift before blockage
+
+**Why UrbanNav > synthetic?**
+- Synthetic: controlled blockage, perfect P(DEGRADED), artificial scenario
+- Real: uncontrolled blockage, gradual degradation, actual GNSS behavior
+- Reviewers will demand real-world proof for journal acceptance

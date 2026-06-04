@@ -47,9 +47,9 @@
     }
   },
   "E4_latency": {
-    "dl_ms": 0.04488,
-    "rf_ms": 0.42477,
-    "speedup": 9.46,
+    "dl_ms": 0.03849,
+    "rf_ms": 0.4294,
+    "speedup": 11.16,
     "ckpt_mb": 17.81,
     "device": "cuda"
   },
@@ -105,7 +105,7 @@
     "well_calibrated": false
   },
   "_metadata": {
-    "timestamp": "2026-06-03 10:04 UTC",
+    "timestamp": "2026-06-04 19:19 UTC",
     "dl_epoch": 15,
     "n_test": 1686,
     "dl_ref_macroF1": 0.8218,
