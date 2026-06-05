@@ -145,46 +145,123 @@ def ecef_to_local_enu(ecef_coords, ref_ecef):
     return enu[:, :2]  # Return East, North only
 
 
-def extract_p_degraded_proxy(ref_df, window=50):
+def build_degradation_scenario(n, dt, n_windows=5, seed=42):
     """
-    Estimate P(DEGRADED) from reference velocity magnitude (proxy for urban canyon).
+    Build a CONTROLLED, physically-honest GNSS degradation scenario.
 
-    In urban canyons, velocity is typically lower (congestion, turns).
-    This is a weak proxy; in production, use SENTINEL-GNSS predictions.
+    This is the scientifically correct way to validate the adaptive filter on a
+    real trajectory + real IMU when no real GNSS position solution is available.
+    The key property is that GNSS errors and the P(DEGRADED) detector are BOTH
+    caused by the same physical blockage windows, but are generated INDEPENDENTLY
+    (not circularly): the noise is physical; the detector is an imperfect predictor
+    with a realistic 5-second lead time and decay.
 
-    For validation purposes: base on velocity magnitude with some random noise.
+    Parameters
+    ----------
+    n         : number of epochs
+    dt        : timestep (s)
+    n_windows : number of blockage windows to inject
+    seed      : RNG seed for reproducibility
 
-    Returns:
-        p_degraded : (N,) array of [0, 1] proxy probabilities
+    Returns
+    -------
+    is_blocked   : (N,) bool, ground-truth blockage mask (for fair RMSE segmentation)
+    gnss_std     : (N,) per-epoch GNSS noise std (m) — physical
+    gnss_bias    : (N, 2) slowly-varying multipath bias (m) — physical, blockage-only
+    p_degraded   : (N,) detector output in [0,1] — SENTINEL stand-in, leads blockage by ~5 s
     """
-    n = len(ref_df)
+    rng = np.random.default_rng(seed)
 
-    # Velocity magnitude as weak proxy
-    if 'vel_x' in ref_df.columns and 'vel_y' in ref_df.columns:
-        vel_mag = np.sqrt(ref_df['vel_x']**2 + ref_df['vel_y']**2)
-    else:
-        # Fallback: synthetic random proxy
-        vel_mag = np.random.uniform(0.1, 2.0, n)
+    base_std = 3.0       # clean GNSS std (m) — typical SPP horizontal
+    deg_std = 25.0       # degraded GNSS std (m) — urban multipath
+    lead = int(round(5.0 / dt))   # 5-second predictor lead time (model horizon)
 
-    # Smooth velocity
-    vel_smooth = pd.Series(vel_mag).rolling(window=window, center=True, min_periods=1).mean()
+    is_blocked = np.zeros(n, dtype=bool)
+    # Place windows in the central 70% so lead-time ramps stay in range.
+    centers = np.linspace(0.15, 0.85, n_windows)
+    for c in centers:
+        dur = int(rng.integers(int(10 / dt), int(25 / dt)))   # 10–25 s blockage
+        start = int(c * n)
+        end = min(start + dur, n)
+        is_blocked[start:end] = True
 
-    # Normalize to [0, 1]: low velocity → possible urban canyon
-    vel_normalized = (vel_smooth.max() - vel_smooth) / (vel_smooth.max() - vel_smooth.min() + 1e-6)
+    # Physical GNSS noise std: elevated during blockage.
+    gnss_std = np.where(is_blocked, deg_std, base_std).astype(float)
 
-    # Soft transition via sigmoid (not binary)
-    p_degraded = 1.0 / (1.0 + np.exp(-3.0 * (vel_normalized.values - 0.5)))
+    # Physical multipath bias: a bounded random walk active only during blockage.
+    gnss_bias = np.zeros((n, 2), dtype=float)
+    b = np.zeros(2)
+    for k in range(n):
+        if is_blocked[k]:
+            b = b + rng.normal(0, 1.5, 2)          # bias wanders during blockage
+            b = np.clip(b, -30, 30)
+        else:
+            b = b * 0.7                            # bias decays once signal returns
+        gnss_bias[k] = b
 
-    # Add some realism: occasional blockage events (simulate real degradation)
-    for start in np.arange(0, n, np.random.randint(3000, 5000)):
-        length = np.random.randint(100, 500)
-        end = min(start + length, n)
-        p_degraded[int(start):int(end)] = np.clip(
-            p_degraded[int(start):int(end)] + np.random.uniform(0.3, 0.7, int(end-start)),
-            0, 1
-        )
+    # Detector (SENTINEL stand-in): rises ~5 s BEFORE each blockage, high during,
+    # decays after. This is what enables PRE-EMPTIVE adaptation.
+    p_degraded = np.zeros(n, dtype=float)
+    in_block = is_blocked.astype(float)
+    # Find rising edges to apply the lead.
+    edges = np.flatnonzero(np.diff(np.r_[0, in_block]) > 0)
+    for s in edges:
+        p_degraded[max(0, s - lead):s] = np.linspace(0, 1, min(lead, s) if s > 0 else 1)[-min(lead, s):] if s > 0 else 0
+    p_degraded = np.maximum(p_degraded, in_block)            # high during blockage
+    # Smooth + add realistic detector noise, then clip.
+    p_degraded = pd.Series(p_degraded).rolling(window=int(2 / dt), center=True,
+                                               min_periods=1).mean().values
+    p_degraded = np.clip(p_degraded + rng.normal(0, 0.05, n), 0, 1)
 
-    return p_degraded
+    return is_blocked, gnss_std, gnss_bias, p_degraded
+
+
+def run_cv_kf(gnss_xy, dt, r_var, q=0.5):
+    """
+    Constant-velocity loosely-coupled linear Kalman filter (the textbook baseline).
+
+    State: [x, y, vx, vy]. This is the 'second equation' we run alongside the
+    9-state EKF so we can justify the added IMU complexity by comparison.
+
+    Parameters
+    ----------
+    gnss_xy : (N, 2) GNSS positions (m)
+    dt      : timestep (s)
+    r_var   : scalar or (N,) measurement-noise variance (m²); pass per-epoch for adaptive
+    q       : process-noise spectral density
+
+    Returns
+    -------
+    positions : (N, 2) filtered trajectory
+    """
+    n = len(gnss_xy)
+    F = np.array([[1, 0, dt, 0], [0, 1, 0, dt], [0, 0, 1, 0], [0, 0, 0, 1]], float)
+    H = np.array([[1, 0, 0, 0], [0, 1, 0, 0]], float)
+    Q = q * np.array([
+        [dt**4 / 4, 0, dt**3 / 2, 0],
+        [0, dt**4 / 4, 0, dt**3 / 2],
+        [dt**3 / 2, 0, dt**2, 0],
+        [0, dt**3 / 2, 0, dt**2],
+    ])
+    r_arr = np.full(n, r_var) if np.ndim(r_var) == 0 else np.asarray(r_var)
+
+    # Seed velocity from first displacement (same principle as the 9-state fix).
+    v0 = (gnss_xy[min(5, n - 1)] - gnss_xy[0]) / (min(5, n - 1) * dt) if n >= 2 else np.zeros(2)
+    x = np.array([gnss_xy[0, 0], gnss_xy[0, 1], v0[0], v0[1]], float)
+    P = np.diag([10.0, 10.0, 5.0, 5.0])
+
+    out = np.zeros((n, 2))
+    out[0] = x[:2]
+    for k in range(1, n):
+        x = F @ x
+        P = F @ P @ F.T + Q
+        R = np.eye(2) * r_arr[k]
+        S = H @ P @ H.T + R
+        K = P @ H.T @ np.linalg.inv(S)
+        x = x + K @ (gnss_xy[k] - H @ x)
+        P = (np.eye(4) - K @ H) @ P
+        out[k] = x[:2]
+    return out
 
 
 def align_data(imu_df, ref_df):
@@ -242,10 +319,77 @@ def align_data(imu_df, ref_df):
     # Extract ECEF ground truth
     truth_xyz = ref_aligned[['ecef_x', 'ecef_y', 'ecef_z']].values
 
-    # P(DEGRADED) proxy from velocity (urban canyon indicator)
-    p_degraded = extract_p_degraded_proxy(ref_aligned, window=50)
+    return imu_accel, imu_gyro, truth_xyz, len(ref_aligned)
 
-    return imu_accel, imu_gyro, truth_xyz, p_degraded, len(ref_aligned)
+
+def run_severity_sweep(truth_enu, dt, bias_levels=(5, 10, 20, 30, 45, 60, 80),
+                       window_s=12, n_windows=6, seed=11):
+    """
+    Characterise WHEN adaptive measurement-noise inflation helps, by sweeping the
+    severity of GNSS multipath bias during blockage.
+
+    This is the honest, rigorous answer to 'does adaptive-R help?' — instead of one
+    cherry-picked number, we map the crossover: adaptive-R (coast on the motion model)
+    beats fixed-R (track the biased GNSS) only once the degraded-GNSS error exceeds the
+    dead-reckoning drift over the outage. Uses the clean linear CV-KF so the result
+    reflects the adaptation policy, not IMU mechanization quirks.
+
+    Returns
+    -------
+    rows : list of dicts with per-bias-level blocked-segment RMSE for raw/fixed/adaptive
+    """
+    n = len(truth_enu)
+    rng = np.random.default_rng(seed)
+
+    # Fixed blockage windows shared across all severity levels (fair comparison).
+    is_blocked = np.zeros(n, bool)
+    dur = int(window_s / dt)
+    for c in np.linspace(0.15, 0.85, n_windows):
+        s = int(c * n)
+        is_blocked[s:min(s + dur, n)] = True
+
+    # Detector with 5 s lead (same policy for every level).
+    lead = int(5.0 / dt)
+    p = is_blocked.astype(float)
+    edges = np.flatnonzero(np.diff(np.r_[0, p]) > 0)
+    for s in edges:
+        a = max(0, s - lead)
+        p[a:s] = np.linspace(0, 1, s - a) if s > a else p[a:s]
+    p = pd.Series(np.maximum(p, is_blocked.astype(float))).rolling(
+        int(2 / dt), center=True, min_periods=1).mean().values
+    p = np.clip(p, 0, 1)
+
+    base_std, r_base, r_deg = 3.0, 3.0, 30.0
+    r_fixed = np.full(n, r_base ** 2)
+    r_adapt = (r_base + (r_deg - r_base) * p) ** 2
+
+    def rmse(a, b, m):
+        return float(np.sqrt(np.mean(np.sum((a[m] - b[m]) ** 2, axis=1))))
+
+    rows = []
+    for bias_max in bias_levels:
+        # Physical degraded GNSS: random-walk multipath bias capped at bias_max.
+        bias = np.zeros((n, 2)); b = np.zeros(2)
+        for k in range(n):
+            if is_blocked[k]:
+                b = np.clip(b + rng.normal(0, bias_max / 12, 2), -bias_max, bias_max)
+            else:
+                b *= 0.7
+            bias[k] = b
+        std = np.where(is_blocked, base_std + bias_max * 0.4, base_std)
+        gnss = truth_enu + bias + rng.normal(0, 1, (n, 2)) * std[:, None]
+
+        raw = rmse(gnss, truth_enu, is_blocked)
+        fix = rmse(run_cv_kf(gnss, dt, r_fixed), truth_enu, is_blocked)
+        adp = rmse(run_cv_kf(gnss, dt, r_adapt), truth_enu, is_blocked)
+        rows.append({
+            "bias_max_m": bias_max,
+            "raw": round(raw, 2),
+            "fixed_R": round(fix, 2),
+            "adaptive_R": round(adp, 2),
+            "adaptive_vs_fixed_pct": round(100 * (fix - adp) / fix, 1) if fix > 0 else 0.0,
+        })
+    return rows
 
 
 def run_phase_2a(scenario='Shinjuku'):
@@ -279,104 +423,166 @@ def run_phase_2a(scenario='Shinjuku'):
     print(f"  [OK] Loaded {len(imu_df)} IMU samples, {len(ref_df)} reference points")
 
     # Align data
-    print("[2/4] Aligning IMU, reference, and computing P(DEGRADED) proxy...")
+    print("[2/5] Aligning IMU and reference trajectory...")
     try:
-        imu_accel, imu_gyro, truth_xyz, p_degraded, n_aligned = align_data(imu_df, ref_df)
+        imu_accel, imu_gyro, truth_xyz, n_aligned = align_data(imu_df, ref_df)
         print(f"  [OK] Aligned {n_aligned} epochs")
         print(f"       IMU accel shape: {imu_accel.shape}")
         print(f"       Truth ECEF shape: {truth_xyz.shape}")
-        print(f"       P(DEGRADED) mean: {p_degraded.mean():.3f} (proxy)")
     except Exception as e:
         print(f"  [ERROR] Alignment failed: {e}")
         return None
 
     # Convert ECEF to local ENU for RMSE
-    print("[3/4] Converting ECEF to local ENU frame...")
-    ref_ecef = truth_xyz[0]  # Reference point = first truth position
+    print("[3/5] Converting ECEF to local ENU frame...")
+    ref_ecef = truth_xyz[0]
     truth_enu = ecef_to_local_enu(truth_xyz, ref_ecef)
+    n = len(truth_enu)
+    dt = 0.1
     print(f"  [OK] Converted to ENU frame: {truth_enu.shape}")
 
-    # GNSS measurement (simulated from reference with noise)
-    # In real scenario, would use actual GNSS observations from RINEX
-    gnss_enu = truth_enu + np.random.randn(*truth_enu.shape) * np.sqrt(
-        p_degraded[:, None] * 50 + (1 - p_degraded[:, None]) * 5
-    )
-    print(f"  [OK] Generated GNSS measurements (truth + adaptive noise)")
+    # Build a CONTROLLED, physically-honest degradation scenario.
+    print("[4/5] Building controlled degradation scenario (real trajectory + IMU)...")
+    is_blocked, gnss_std, gnss_bias, p_degraded = build_degradation_scenario(n, dt)
+    rng = np.random.default_rng(7)
+    # GNSS = truth + physical multipath bias + physical noise. Generated
+    # INDEPENDENTLY of p_degraded (no circularity): both stem from is_blocked,
+    # but the detector p_degraded leads and is imperfect, like a real predictor.
+    gnss_enu = truth_enu + gnss_bias + rng.normal(0, 1, (n, 2)) * gnss_std[:, None]
+    blk_pct = 100.0 * is_blocked.mean()
+    print(f"  [OK] {is_blocked.sum()} blocked epochs ({blk_pct:.1f}% of run), "
+          f"P(DEGRADED) mean={p_degraded.mean():.3f}")
 
-    # Run EKF
-    print("[4/4] Running 9-state EKF (fixed-R vs adaptive-R)...")
-    print(f"       Testing on {len(truth_enu)} epochs...\n")
+    # Run all filters.
+    print("[5/5] Running filters: CV-KF and 9-state EKF (fixed-R vs adaptive-R)...")
+    print(f"       Testing on {n} epochs...\n")
 
-    result = run_ekf_experiment_9state(
-        imu_accel, imu_gyro, gnss_enu, truth_enu, p_degraded
-    )
+    def rmse(a, b, mask=None):
+        if mask is not None:
+            a, b = a[mask], b[mask]
+        return float(np.sqrt(np.mean(np.sum((a - b) ** 2, axis=1))))
 
-    # Format output
-    print(f"  RMSE OVERALL (all {len(truth_enu)} epochs):")
-    print(f"    GNSS raw:      {result['rmse_overall']['gnss_only']:7.2f} m")
-    print(f"    Fixed EKF:     {result['rmse_overall']['fixed_ekf']:7.2f} m (gain: {100*(result['rmse_overall']['gnss_only']-result['rmse_overall']['fixed_ekf'])/result['rmse_overall']['gnss_only']:5.1f}%)")
-    print(f"    Adaptive EKF:  {result['rmse_overall']['adaptive_ekf']:7.2f} m (gain: {result['adaptive_improvement_pct_overall']:5.1f}%)\n")
+    # Adaptive measurement variance for the linear CV-KF (same policy as the EKF):
+    # var grows from r_base² to r_deg² with P(DEGRADED).
+    r_base, r_deg = 3.0, 30.0
+    r_var_fixed = np.full(n, r_base ** 2)
+    r_var_adapt = (r_base + (r_deg - r_base) * p_degraded) ** 2
 
-    if 'rmse_degraded_segment' in result:
-        n_deg = result['n_degraded_epochs']
-        print(f"  RMSE DEGRADED SEGMENT ({n_deg} epochs, P(D)>=0.5):")
-        print(f"    GNSS raw:      {result['rmse_degraded_segment']['gnss_only']:7.2f} m")
-        print(f"    Fixed EKF:     {result['rmse_degraded_segment']['fixed_ekf']:7.2f} m")
-        print(f"    Adaptive EKF:  {result['rmse_degraded_segment']['adaptive_ekf']:7.2f} m (gain: {result['adaptive_improvement_pct_degraded']:5.1f}%)\n")
+    params = EKF9StateParams(dt=dt, r_base=r_base, r_degraded=r_deg)
 
-    # Augment with justifications
-    result['scenario'] = scenario
-    result['timestamp'] = datetime.utcnow().isoformat()
-    result['_justifications'] = {
-        'phase_2a_necessity': [
-            'Synthetic demo (33.8% gain) proves concept, but reviewers demand real-world proof.',
-            'UrbanNav provides cm-level ground truth (SPAN-INS RTK), enabling actual RMSE validation.',
-            'Shinjuku: urban canyon with real blockage events (unlike synthetic, which is artificial).',
-            'Public dataset ensures reproducibility and peer-review acceptance.'
-        ],
-        'urbannav_tokyo_selection': [
-            '(1) Ground truth accuracy: SPAN-INS post-processed, cm-level (not meter-level GPS).',
-            '    → Validates EKF RMSE improvement against reference, not just relative gain.',
-            '(2) Real blockage scenario: Dense buildings, multipath, actual signal degradation.',
-            '    → Tests if model learned generalizable patterns (not Beihang-specific bias).',
-            '(3) IMU integration: High-rate accelerometer + gyro (not mock data).',
-            '    → Validates sensor fusion, dead-reckoning capability during GNSS loss.',
-            '(4) Public + peer-reviewed: Essential for journal submission (IJRR, Sensors, etc.).',
-            '    → Reviewers will accept UrbanNav; proprietary data raises reproducibility concerns.'
-        ],
-        'adaptive_ekf_design_justification': [
-            'State vector (9D): [x, y, vx, vy, ψ, b, ba_x, ba_y]',
-            '  x, y: position (m); vx, vy: velocity (m/s); ψ: heading (rad)',
-            '  b: GNSS clock bias (m); ba_x, ba_y: accelerometer biases (m/s²)',
-            '',
-            'Dynamics (predict step):',
-            '  • Position: ẋ = vx, ẏ = vy (integrating velocity)',
-            '  • Velocity: v̇ = a_nav = R(ψ) @ (a_imu - ba) with rotation to nav frame',
-            '  • Heading: ψ̇ = ω_z (yaw rate from gyro)',
-            '  • Biases: slow random walk (assume constant, small changes)',
-            '',
-            'Measurement (update step):',
-            '  • Observe position [x, y] from GNSS (no heading, velocity obs)',
-            '  • Fixed-R: R = 3m² (clean), regardless of signal quality',
-            '  • Adaptive-R: R(t) = r_base + (r_deg - r_base) * P(DEGRADED|t)',
-            '    When P(D)=0: R=9m² (trust GNSS)',
-            '    When P(D)=1: R=10000m² (distrust GNSS, rely on motion)',
-            '',
-            'Why adaptive helps:',
-            '  • 5s predictor lead time: P(DEGRADED at t+5s) known at time t',
-            '  • If blockage predicted: preemptively inflate R at t → shift to dead-reckoning',
-            '  • When blockage hits (t+5s): filter already leaning on IMU, not GNSS',
-            '  • Result: smoother trajectory, lower RMSE during actual failure.'
-        ],
-        'expected_results': [
-            'Synthetic blockage: 33.8% gain (controlled 120–180 epoch blockage, perfect P(D))',
-            'UrbanNav Shinjuku: 15–30% expected (real blockage is messier, harder to predict)',
-            'If actual gain <15%: indicates model struggles with UrbanNav geometry (retrain on urban data)',
-            'If actual gain >30%: indicates strong transfer; model learned general degradation physics.'
-        ]
+    # Constant-velocity linear KF (the 'second equation').
+    cv_fixed = run_cv_kf(gnss_enu, dt, r_var_fixed)
+    cv_adapt = run_cv_kf(gnss_enu, dt, r_var_adapt)
+
+    # 9-state EKF (IMU-aided).
+    ekf_fixed = EKF9State(params)
+    pos_ekf_fixed, _ = ekf_fixed.run(imu_accel, imu_gyro, gnss_enu, p_degraded, adaptive=False)
+    ekf_adapt = EKF9State(params)
+    pos_ekf_adapt, _ = ekf_adapt.run(imu_accel, imu_gyro, gnss_enu, p_degraded, adaptive=True)
+
+    methods = {
+        "gnss_raw": gnss_enu,
+        "cv_kf_fixed": cv_fixed,
+        "cv_kf_adaptive": cv_adapt,
+        "ekf9_fixed": pos_ekf_fixed,
+        "ekf9_adaptive": pos_ekf_adapt,
     }
 
-    # Save
+    overall = {k: round(rmse(v, truth_enu), 3) for k, v in methods.items()}
+    blocked = {k: round(rmse(v, truth_enu, is_blocked), 3) for k, v in methods.items()}
+
+    def gain(ref, val):
+        return round(100.0 * (ref - val) / ref, 1) if ref > 0 else 0.0
+
+    # Print a clean comparison table.
+    print(f"  {'Method':<18}{'Overall RMSE':>14}{'Blocked RMSE':>14}{'Blocked gain':>14}")
+    print(f"  {'-'*58}")
+    ref_blocked = blocked["gnss_raw"]
+    for k in methods:
+        g = gain(ref_blocked, blocked[k])
+        gtxt = "—" if k == "gnss_raw" else f"{g:+.1f}%"
+        print(f"  {k:<18}{overall[k]:>11.2f} m{blocked[k]:>11.2f} m{gtxt:>14}")
+    print()
+
+    # Headline numbers: adaptive vs fixed during blockage (the safety-critical metric).
+    ekf_adapt_gain_blocked = gain(blocked["ekf9_fixed"], blocked["ekf9_adaptive"])
+    ekf_adapt_gain_vs_raw = gain(blocked["gnss_raw"], blocked["ekf9_adaptive"])
+    print(f"  >> 9-state adaptive vs fixed (blocked segment): {ekf_adapt_gain_blocked:+.1f}%")
+    print(f"  >> 9-state adaptive vs raw GNSS (blocked segment): {ekf_adapt_gain_vs_raw:+.1f}%\n")
+
+    # Severity sweep: WHEN does adaptive-R help? (the honest, rigorous answer)
+    print("  Severity sweep (CV-KF, blocked-segment RMSE vs multipath severity):")
+    sweep = run_severity_sweep(truth_enu, dt)
+    print(f"  {'bias_max':>9}{'raw':>9}{'fixed-R':>9}{'adapt-R':>9}{'adapt vs fixed':>16}")
+    crossover = None
+    for r in sweep:
+        print(f"  {r['bias_max_m']:>7} m{r['raw']:>8.1f}{r['fixed_R']:>9.1f}"
+              f"{r['adaptive_R']:>9.1f}{r['adaptive_vs_fixed_pct']:>14.1f}%")
+        if crossover is None and r['adaptive_vs_fixed_pct'] > 0:
+            crossover = r['bias_max_m']
+    if crossover is not None:
+        print(f"\n  >> Crossover: adaptive-R starts winning at ~{crossover} m multipath bias.")
+    else:
+        print(f"\n  >> Adaptive-R did not beat fixed-R in the tested range.")
+    print()
+
+    # Assemble result.
+    result = {
+        "scenario": scenario,
+        "timestamp": datetime.utcnow().isoformat(),
+        "n_epochs": n,
+        "n_blocked_epochs": int(is_blocked.sum()),
+        "blocked_pct": round(blk_pct, 2),
+        "p_degraded_mean": round(float(p_degraded.mean()), 3),
+        "rmse_overall": overall,
+        "rmse_blocked_segment": blocked,
+        "gains_vs_raw_blocked": {k: gain(ref_blocked, blocked[k]) for k in methods},
+        "ekf9_adaptive_vs_fixed_blocked_pct": ekf_adapt_gain_blocked,
+        "ekf9_adaptive_vs_raw_blocked_pct": ekf_adapt_gain_vs_raw,
+        "severity_sweep": sweep,
+        "adaptive_crossover_bias_m": crossover,
+        "config": {
+            "dt": dt, "r_base_m": r_base, "r_degraded_m": r_deg,
+            "predictor_lead_s": 5.0,
+        },
+        "_methodology": [
+            "HONEST SCOPE: This is a controlled (semi-synthetic) validation on a REAL",
+            "trajectory (SPAN-INS cm-level truth) with REAL high-rate IMU. GNSS positions",
+            "are synthesised as truth + physical multipath bias + noise, elevated only inside",
+            "discrete blockage windows. A real GNSS position solution (RTKLIB SPP from the",
+            "RINEX rover_trimble.obs) would replace the synthetic GNSS in a fully-real run.",
+            "",
+            "NO CIRCULARITY: GNSS errors are driven by the physical blockage mask; the",
+            "P(DEGRADED) detector is generated separately and imperfectly (5 s lead, smoothing,",
+            "noise). The adaptive filter therefore cannot 'cheat' by reading the noise it must",
+            "reject.",
+            "",
+            "FOUR FILTERS COMPARED: a constant-velocity linear KF (fixed & adaptive R) as the",
+            "textbook baseline, and the 9-state IMU-aided EKF (fixed & adaptive R). This",
+            "justifies the IMU complexity: the EKF should beat the CV-KF during blockage because",
+            "dead-reckoning needs the inertial motion model.",
+        ],
+        "_justifications": {
+            "why_adaptive_helps": [
+                "R(t) = r_base + (r_deg - r_base) * P(DEGRADED|t).",
+                "5 s predictor lead time lets R rise BEFORE the outage, so the filter is already",
+                "leaning on the inertial motion model when GNSS becomes biased.",
+                "During blockage, inflated R shrinks the Kalman gain so the biased GNSS is rejected.",
+            ],
+            "tuning_per_literature": [
+                "Groves (2013) / Petovello (2015): inflate R to reflect ACTUAL degraded error,",
+                "not infinity. We use r_degraded=30 m (var 900) vs the 25 m injected error — modest,",
+                "stable inflation, avoiding the divergence seen with r_degraded=100 m.",
+                "Source: Groves, Principles of GNSS/INS/Multisensor Navigation, 2nd ed.",
+            ],
+            "ekf_initialization_fix": [
+                "Velocity is seeded from the first clean GNSS displacement and heading from its",
+                "direction. Without this, dead-reckoning is rotated by a wrong heading and diverges",
+                "(the root cause of the earlier -366% result).",
+            ],
+        },
+    }
+
     result_file = RESULTS / "urbannav_ekf.json"
     with open(result_file, 'w') as f:
         json.dump(result, f, indent=2)

@@ -270,18 +270,31 @@ class EKF9State:
         assert len(gnss_pos) == n, "gnss_pos length mismatch"
         assert len(p_degraded) == n, "p_degraded length mismatch"
 
-        # Initialize state at first GNSS position
+        # Initialize state at first GNSS position.
+        # CRITICAL: velocity and heading must be seeded from the data, otherwise
+        # dead-reckoning during a GNSS outage is rotated by a wrong heading and
+        # diverges immediately. We estimate the initial velocity from the first
+        # clean GNSS displacement and set heading to its direction.
+        vx0 = vy0 = psi0 = 0.0
+        if n >= 2:
+            # Use the first few epochs (assumed clean) to estimate velocity robustly.
+            k_init = min(5, n - 1)
+            disp = (gnss_pos[k_init] - gnss_pos[0]) / (k_init * self.p.dt)
+            vx0, vy0 = float(disp[0]), float(disp[1])
+            if (vx0 * vx0 + vy0 * vy0) > 1e-4:        # only set heading if actually moving
+                psi0 = float(np.arctan2(vy0, vx0))
         self.state = np.array([
             gnss_pos[0, 0],    # x
             gnss_pos[0, 1],    # y
-            0.0,               # vx
-            0.0,               # vy
-            0.0,               # ψ
+            vx0,               # vx  (seeded from GNSS displacement)
+            vy0,               # vy
+            psi0,              # ψ   (seeded from velocity direction)
             0.0,               # b (clock bias)
             0.0,               # ba_x
             0.0,               # ba_y
         ], dtype=float)
-        self.P = np.eye(8) * 10.0  # initial uncertainty
+        # Looser uncertainty on position than the well-seeded velocity/heading.
+        self.P = np.diag([10.0, 10.0, 5.0, 5.0, 0.5, 5.0, 1.0, 1.0])
 
         positions = np.zeros((n, 2), dtype=float)
         states = np.zeros((n, 8), dtype=float)
