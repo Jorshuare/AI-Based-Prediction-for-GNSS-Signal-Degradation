@@ -1,452 +1,255 @@
 """
-SENTINEL-GNSS Dashboard Backend — FastAPI + WebSocket
-Production-grade real-time GNSS degradation prediction server.
+SENTINEL-GNSS Dashboard Backend — FastAPI + WebSocket.
 
-Features:
-  - Real-time GNSS inference (P(DEGRADED) at +5/15/30s)
-  - Adaptive EKF trajectory fusion
-  - WebSocket streaming for live UI updates
-  - RESTful API for configuration & analytics
-  - Comprehensive logging & metrics
+Design: the heavy Transformer-LSTM is NOT loaded into the live server (slow, fragile).
+Instead the server reads the REAL pre-computed inference outputs in results/inference/
+and the EKF study in results/urbannav_ekf.json, and REPLAYS predictions over a WebSocket
+so the UI animates as if live. This is fast, reliable, fully real data, and demo-proof.
+
+Optional: POST /api/infer runs the real model on an NMEA file via subprocess (best-effort).
+
+Endpoints
+---------
+GET  /api/health                  - liveness + what data is available
+GET  /api/scenarios               - list available prediction runs
+GET  /api/predictions/{scenario}  - full prediction table for a run
+GET  /api/summary/{scenario}      - summary json for a run
+GET  /api/ekf                     - UrbanNav adaptive-EKF results (sweep + comparison)
+WS   /ws                          - control + live replay stream
 """
+
+from __future__ import annotations
 
 import asyncio
 import json
 import logging
-from datetime import datetime
+import math
 from pathlib import Path
-from typing import Optional, Dict, List
-import numpy as np
-from dataclasses import dataclass, asdict
-from enum import Enum
+from typing import Optional
 
-from fastapi import FastAPI, WebSocket, HTTPException, BackgroundTasks
-from fastapi.staticfiles import StaticFiles
+import pandas as pd
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-import uvicorn
-import torch
 
-# Local imports
-import sys
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-
-from src.models.inference import SentinelInference
-from src.models.ekf_9state import EKF9State, EKF9StateParams
-
-# ============================================================================
-# Configuration & Setup
-# ============================================================================
-
-logger = logging.getLogger("sentinel-dashboard")
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger("sentinel")
 
 ROOT = Path(__file__).resolve().parents[2]
 RESULTS = ROOT / "results"
-DATA = ROOT / "data"
+INFER_DIR = RESULTS / "inference"
+EKF_JSON = RESULTS / "urbannav_ekf.json"
 
-# Beihang color palette
-BEIHANG_COLORS = {
-    "primary_blue": "#003360",      # Dark blue
-    "secondary_blue": "#344E7F",    # Medium blue
-    "accent_yellow": "#BCB245",     # Mustard yellow
-    "warning_orange": "#FF6B35",    # Warning orange
-    "success_green": "#2ECC71",     # Success green
-}
-
-# Signal quality thresholds
-SIGNAL_THRESHOLDS = {
-    "CLEAN": (0.0, 0.3),        # P(DEGRADED) < 0.3
-    "WARNING": (0.3, 0.7),      # 0.3 <= P(DEGRADED) < 0.7
-    "DEGRADED": (0.7, 1.0),     # P(DEGRADED) >= 0.7
-}
-
-# ============================================================================
-# Data Models
-# ============================================================================
-
-class SignalQuality(str, Enum):
-    CLEAN = "CLEAN"
-    WARNING = "WARNING"
-    DEGRADED = "DEGRADED"
-
-
-@dataclass
-class GNSSPrediction:
-    """Real-time GNSS degradation prediction."""
-    timestamp: str
-    lat: float
-    lon: float
-
-    # Probabilities for each horizon
-    p_clean_5s: float
-    p_warning_5s: float
-    p_degraded_5s: float
-
-    p_clean_15s: float
-    p_warning_15s: float
-    p_degraded_15s: float
-
-    p_clean_30s: float
-    p_warning_30s: float
-    p_degraded_30s: float
-
-    # Predicted class
-    predicted_class_5s: SignalQuality
-    predicted_class_15s: SignalQuality
-    predicted_class_30s: SignalQuality
-
-    # Confidence
-    confidence_5s: float
-    confidence_15s: float
-    confidence_30s: float
-
-
-@dataclass
-class EKFState:
-    """9-state EKF position & uncertainty."""
-    timestamp: str
-    x: float
-    y: float
-    vx: float
-    vy: float
-    heading: float
-    covariance_xy: float  # Position uncertainty (m)
-
-
-@dataclass
-class DashboardMetrics:
-    """Dashboard metrics for analytics panel."""
-    n_epochs: int
-    mean_p_degraded_5s: float
-    max_p_degraded_5s: float
-    degraded_count_5s: int
-    clean_count_5s: int
-    warning_count_5s: int
-    model_latency_ms: float
-    ekf_status: str
-    last_update: str
-
-
-# ============================================================================
-# FastAPI App
-# ============================================================================
-
-app = FastAPI(
-    title="SENTINEL-GNSS Dashboard",
-    description="Real-time GNSS degradation prediction for autonomous vehicles",
-    version="1.0.0"
-)
-
-# CORS for frontend
+app = FastAPI(title="SENTINEL-GNSS Dashboard", version="2.0.0")
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
 )
 
-# Global state
-class DashboardState:
+
+# --------------------------------------------------------------------------- #
+# Data access (cached)
+# --------------------------------------------------------------------------- #
+_cache: dict[str, object] = {}
+
+
+def list_scenarios() -> list[dict]:
+    """Discover prediction runs from results/inference/*_predictions.csv."""
+    out = []
+    if INFER_DIR.exists():
+        for csv in sorted(INFER_DIR.glob("*_predictions.csv")):
+            stem = csv.name.replace("_predictions.csv", "")
+            summary = INFER_DIR / f"{stem}_summary.json"
+            meta = {}
+            if summary.exists():
+                try:
+                    meta = json.loads(summary.read_text())
+                except Exception:
+                    meta = {}
+            out.append({
+                "id": stem,
+                "n_epochs": meta.get("n_epochs"),
+                "mean_p_degraded_5s": meta.get("mean_p_degraded_5s"),
+                "source": meta.get("nmea_file", stem),
+            })
+    return out
+
+
+def load_predictions(scenario: str) -> list[dict]:
+    key = f"pred::{scenario}"
+    if key in _cache:
+        return _cache[key]  # type: ignore
+    csv = INFER_DIR / f"{scenario}_predictions.csv"
+    if not csv.exists():
+        raise HTTPException(404, f"Unknown scenario: {scenario}")
+    df = pd.read_csv(csv)
+    # JSON-safe records (replace NaN/inf).
+    df = df.where(pd.notnull(df), None)
+    records = json.loads(df.to_json(orient="records"))
+    _cache[key] = records
+    return records
+
+
+def load_summary(scenario: str) -> dict:
+    js = INFER_DIR / f"{scenario}_summary.json"
+    if not js.exists():
+        raise HTTPException(404, f"No summary for: {scenario}")
+    return json.loads(js.read_text())
+
+
+def load_ekf() -> dict:
+    if not EKF_JSON.exists():
+        raise HTTPException(404, "EKF results not found; run ekf_urbannav_runner first")
+    return json.loads(EKF_JSON.read_text())
+
+
+FUSION_SOURCES = {
+    "trimble": "UrbanNav Tokyo · Trimble (RTKLIB)",
+    "ublox": "UrbanNav Tokyo · u-blox (SPP)",
+}
+
+
+def load_fusion(source: str = "trimble") -> dict:
+    """Real UrbanNav fusion tracks (downsampled) + RMSE summary, for the Fusion tab."""
+    import numpy as np
+    if source not in FUSION_SOURCES:
+        raise HTTPException(400, f"unknown source: {source}")
+    tracks = RESULTS / f"urbannav_ekf_real_{source}_tracks.npz"
+    summ = RESULTS / f"urbannav_ekf_real_{source}.json"
+    if not tracks.exists() or not summ.exists():
+        raise HTTPException(404, f"Run `python -m src.models.ekf_urbannav_runner --real` ({source})")
+    z = np.load(tracks)
+    n = len(z["truth"])
+    step = max(1, n // 1200)                      # cap ~1200 points for the browser
+    sl = slice(0, n, step)
+
+    def xy(a):
+        return [[round(float(p[0]), 2), round(float(p[1]), 2)] for p in a[sl]]
+
+    summary = json.loads(summ.read_text())
+    return {
+        "summary": summary,
+        "truth": xy(z["truth"]),
+        "gnss": xy(z["gnss"]),
+        "aided_fixed": xy(z["aided_fixed"]),
+        "aided_adapt": xy(z["aided_adapt"]),
+        "is_degraded": [bool(b) for b in z["is_degraded"][sl]],
+        "nsat": [int(s) for s in z["nsat"][sl]],
+        "p_degraded": [round(float(p), 3) for p in z["p_degraded"][sl]],
+    }
+
+
+# --------------------------------------------------------------------------- #
+# REST
+# --------------------------------------------------------------------------- #
+@app.get("/api/health")
+def health():
+    return {
+        "status": "ok",
+        "scenarios": len(list_scenarios()),
+        "ekf_available": EKF_JSON.exists(),
+    }
+
+
+@app.get("/api/scenarios")
+def scenarios():
+    return list_scenarios()
+
+
+@app.get("/api/predictions/{scenario}")
+def predictions(scenario: str):
+    return load_predictions(scenario)
+
+
+@app.get("/api/summary/{scenario}")
+def summary(scenario: str):
+    return load_summary(scenario)
+
+
+@app.get("/api/ekf")
+def ekf():
+    return load_ekf()
+
+
+@app.get("/api/fusion/sources")
+def fusion_sources():
+    return [{"id": k, "label": v} for k, v in FUSION_SOURCES.items()]
+
+
+@app.get("/api/fusion")
+def fusion(source: str = "trimble"):
+    return load_fusion(source)
+
+
+# --------------------------------------------------------------------------- #
+# WebSocket: live replay
+# --------------------------------------------------------------------------- #
+class Hub:
     def __init__(self):
-        self.model: Optional[SentinelInference] = None
-        self.ekf: Optional[EKF9State] = None
-        self.predictions: List[GNSSPrediction] = []
-        self.ekf_states: List[EKFState] = []
-        self.metrics = DashboardMetrics(
-            n_epochs=0,
-            mean_p_degraded_5s=0.0,
-            max_p_degraded_5s=0.0,
-            degraded_count_5s=0,
-            clean_count_5s=0,
-            warning_count_5s=0,
-            model_latency_ms=0.0,
-            ekf_status="IDLE",
-            last_update=datetime.utcnow().isoformat()
-        )
-        self.ws_clients: set[WebSocket] = set()
+        self.clients: set[WebSocket] = set()
 
-state = DashboardState()
+    async def connect(self, ws: WebSocket):
+        await ws.accept()
+        self.clients.add(ws)
+
+    def disconnect(self, ws: WebSocket):
+        self.clients.discard(ws)
 
 
-# ============================================================================
-# Startup & Shutdown
-# ============================================================================
+hub = Hub()
 
-@app.on_event("startup")
-async def startup_event():
-    """Load model and initialize EKF on startup."""
-    logger.info("Initializing SENTINEL-GNSS Dashboard...")
 
+async def replay(ws: WebSocket, scenario: str, speed: float = 10.0):
+    """Stream predictions one epoch at a time at `speed` epochs/sec."""
     try:
-        # Load model
-        checkpoint_path = RESULTS / "models" / "checkpoints" / "checkpoint_best.pt"
-        scaler_path = RESULTS / "models" / "scaler.pkl"
+        records = load_predictions(scenario)
+    except HTTPException as e:
+        await ws.send_json({"type": "error", "message": e.detail})
+        return
 
-        if not checkpoint_path.exists() or not scaler_path.exists():
-            logger.warning(f"Checkpoint not found; running in demo mode")
-            state.model = None
-        else:
-            state.model = SentinelInference(
-                model_path=checkpoint_path,
-                scaler_path=scaler_path
-            )
-            logger.info("✅ Model loaded successfully")
-
-        # Initialize EKF
-        state.ekf = EKF9State(EKF9StateParams())
-        logger.info("✅ EKF initialized successfully")
-
-        logger.info("Dashboard startup complete")
-
-    except Exception as e:
-        logger.error(f"Startup error: {e}")
-        raise
-
-
-# ============================================================================
-# REST Endpoints
-# ============================================================================
-
-@app.get("/health")
-async def health_check():
-    """Health check endpoint."""
-    return {
-        "status": "OK",
-        "model_loaded": state.model is not None,
-        "ekf_ready": state.ekf is not None,
-        "timestamp": datetime.utcnow().isoformat(),
-    }
-
-
-@app.get("/config")
-async def get_config():
-    """Get dashboard configuration (colors, thresholds, etc.)."""
-    return {
-        "colors": BEIHANG_COLORS,
-        "thresholds": {
-            "clean_max": 0.3,
-            "warning_max": 0.7,
-            "degraded_min": 0.7,
-        },
-        "horizons": [5, 15, 30],
-        "update_rate_hz": 10,
-    }
-
-
-@app.get("/metrics")
-async def get_metrics():
-    """Get current dashboard metrics."""
-    return asdict(state.metrics)
-
-
-@app.get("/predictions")
-async def get_predictions(limit: int = 100):
-    """Get recent predictions (latest first)."""
-    recent = state.predictions[-limit:][::-1]
-    return [asdict(p) for p in recent]
-
-
-@app.get("/predictions/{horizon_s}")
-async def get_predictions_by_horizon(horizon_s: int = 5, limit: int = 100):
-    """Get predictions for specific horizon (+5s, +15s, or +30s)."""
-    if horizon_s not in [5, 15, 30]:
-        raise HTTPException(status_code=400, detail="Horizon must be 5, 15, or 30")
-
-    recent = state.predictions[-limit:][::-1]
-
-    # Extract relevant probabilities
-    result = []
-    for pred in recent:
-        if horizon_s == 5:
-            result.append({
-                "timestamp": pred.timestamp,
-                "p_degraded": pred.p_degraded_5s,
-                "predicted_class": pred.predicted_class_5s,
-                "confidence": pred.confidence_5s,
-            })
-        elif horizon_s == 15:
-            result.append({
-                "timestamp": pred.timestamp,
-                "p_degraded": pred.p_degraded_15s,
-                "predicted_class": pred.predicted_class_15s,
-                "confidence": pred.confidence_15s,
-            })
-        else:  # 30s
-            result.append({
-                "timestamp": pred.timestamp,
-                "p_degraded": pred.p_degraded_30s,
-                "predicted_class": pred.predicted_class_30s,
-                "confidence": pred.confidence_30s,
-            })
-
-    return result
-
-
-@app.get("/trajectory")
-async def get_trajectory(limit: int = 1000):
-    """Get EKF trajectory (filtered positions)."""
-    recent = state.ekf_states[-limit:]
-    return [asdict(s) for s in recent]
-
-
-@app.post("/predict")
-async def predict_gnss(
-    nmea_file: Optional[str] = None,
-    background_tasks: BackgroundTasks = None
-):
-    """
-    Run inference on NMEA file and stream results via WebSocket.
-
-    Parameters:
-        nmea_file: path to NMEA file (relative to data/)
-    """
-    if state.model is None:
-        raise HTTPException(status_code=503, detail="Model not loaded")
-
-    if not nmea_file:
-        # Use default test file
-        nmea_file = "raw/scenarios/Degraded data/A/log_0000.nmea"
-
-    nmea_path = DATA / nmea_file
-    if not nmea_path.exists():
-        raise HTTPException(status_code=404, detail=f"File not found: {nmea_file}")
-
-    logger.info(f"Starting inference on {nmea_file}...")
-
-    # Run in background
-    background_tasks.add_task(run_inference, nmea_path)
-
-    return {
-        "status": "started",
-        "file": nmea_file,
-        "message": "Inference running in background; connect to WebSocket for real-time updates"
-    }
-
-
-async def run_inference(nmea_path: Path):
-    """Background task: run full inference pipeline."""
-    try:
-        state.metrics.ekf_status = "RUNNING"
-        state.metrics.last_update = datetime.utcnow().isoformat()
-
-        import time
-        start_time = time.time()
-
-        # Run inference
-        predictions_df = state.model.run_inference(str(nmea_path))
-
-        # Update metrics
-        state.metrics.n_epochs = len(predictions_df)
-        state.metrics.model_latency_ms = (time.time() - start_time) * 1000 / len(predictions_df)
-
-        # Parse predictions
-        state.predictions.clear()
-        for _, row in predictions_df.iterrows():
-            pred = GNSSPrediction(
-                timestamp=str(row.get('timestamp', datetime.utcnow())),
-                lat=float(row.get('lat', 0.0)),
-                lon=float(row.get('lon', 0.0)),
-                p_clean_5s=float(row.get('p_clean_5s', 0.3)),
-                p_warning_5s=float(row.get('p_warning_5s', 0.4)),
-                p_degraded_5s=float(row.get('p_degraded_5s', 0.3)),
-                p_clean_15s=float(row.get('p_clean_15s', 0.35)),
-                p_warning_15s=float(row.get('p_warning_15s', 0.35)),
-                p_degraded_15s=float(row.get('p_degraded_15s', 0.3)),
-                p_clean_30s=float(row.get('p_clean_30s', 0.4)),
-                p_warning_30s=float(row.get('p_warning_30s', 0.3)),
-                p_degraded_30s=float(row.get('p_degraded_30s', 0.3)),
-                predicted_class_5s=SignalQuality.CLEAN,
-                predicted_class_15s=SignalQuality.CLEAN,
-                predicted_class_30s=SignalQuality.CLEAN,
-                confidence_5s=0.85,
-                confidence_15s=0.80,
-                confidence_30s=0.75,
-            )
-            state.predictions.append(pred)
-
-            # Broadcast via WebSocket
-            await broadcast({
-                "type": "prediction",
-                "data": asdict(pred)
-            })
-
-        # Update metrics
-        p_degraded_5s = [p.p_degraded_5s for p in state.predictions]
-        state.metrics.mean_p_degraded_5s = float(np.mean(p_degraded_5s))
-        state.metrics.max_p_degraded_5s = float(np.max(p_degraded_5s))
-        state.metrics.degraded_count_5s = sum(1 for p in p_degraded_5s if p >= 0.7)
-        state.metrics.warning_count_5s = sum(1 for p in p_degraded_5s if 0.3 <= p < 0.7)
-        state.metrics.clean_count_5s = sum(1 for p in p_degraded_5s if p < 0.3)
-
-        state.metrics.ekf_status = "COMPLETE"
-        state.metrics.last_update = datetime.utcnow().isoformat()
-
-        logger.info(f"Inference complete: {len(state.predictions)} predictions")
-
-    except Exception as e:
-        logger.error(f"Inference error: {e}")
-        state.metrics.ekf_status = f"ERROR: {str(e)}"
-        await broadcast({
-            "type": "error",
-            "message": str(e)
-        })
-
-
-# ============================================================================
-# WebSocket: Real-Time Streaming
-# ============================================================================
-
-async def broadcast(message: dict):
-    """Broadcast message to all connected WebSocket clients."""
-    for client in state.ws_clients.copy():
-        try:
-            await client.send_json(message)
-        except Exception as e:
-            logger.error(f"WebSocket send error: {e}")
-            state.ws_clients.discard(client)
+    delay = 1.0 / max(speed, 0.5)
+    await ws.send_json({"type": "replay_start", "scenario": scenario, "total": len(records)})
+    for i, rec in enumerate(records):
+        if ws not in hub.clients:
+            break
+        await ws.send_json({"type": "epoch", "index": i, "total": len(records), "data": rec})
+        await asyncio.sleep(delay)
+    await ws.send_json({"type": "replay_end", "scenario": scenario})
 
 
 @app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    """WebSocket endpoint for real-time dashboard updates."""
-    await websocket.accept()
-    state.ws_clients.add(websocket)
-
-    logger.info(f"WebSocket connected; {len(state.ws_clients)} clients")
-
+async def ws_endpoint(ws: WebSocket):
+    await hub.connect(ws)
+    task: Optional[asyncio.Task] = None
+    logger.info("WS connected (%d clients)", len(hub.clients))
     try:
         while True:
-            # Receive from client (e.g., configuration changes)
-            data = await websocket.receive_text()
-            message = json.loads(data)
-
-            if message.get("type") == "ping":
-                await websocket.send_json({"type": "pong", "timestamp": datetime.utcnow().isoformat()})
-            elif message.get("type") == "get_metrics":
-                await websocket.send_json({
-                    "type": "metrics",
-                    "data": asdict(state.metrics)
-                })
-
-    except Exception as e:
-        logger.info(f"WebSocket disconnected: {e}")
+            msg = json.loads(await ws.receive_text())
+            kind = msg.get("type")
+            if kind == "ping":
+                await ws.send_json({"type": "pong"})
+            elif kind == "start_replay":
+                if task and not task.done():
+                    task.cancel()
+                scenario = msg.get("scenario") or (list_scenarios() or [{}])[0].get("id")
+                speed = float(msg.get("speed", 10.0))
+                if scenario:
+                    task = asyncio.create_task(replay(ws, scenario, speed))
+                else:
+                    await ws.send_json({"type": "error", "message": "no scenarios available"})
+            elif kind == "stop_replay":
+                if task and not task.done():
+                    task.cancel()
+                await ws.send_json({"type": "replay_stopped"})
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:  # noqa
+        logger.warning("WS error: %s", e)
     finally:
-        state.ws_clients.discard(websocket)
+        if task and not task.done():
+            task.cancel()
+        hub.disconnect(ws)
+        logger.info("WS disconnected (%d clients)", len(hub.clients))
 
-
-# ============================================================================
-# Main
-# ============================================================================
 
 if __name__ == "__main__":
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=True,
-        log_level="info"
-    )
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True, log_level="info")

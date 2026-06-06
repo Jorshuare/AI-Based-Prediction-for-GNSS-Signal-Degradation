@@ -1,6 +1,6 @@
 {
   "scenario": "Shinjuku",
-  "timestamp": "2026-06-04T22:00:20.280018",
+  "timestamp": "2026-06-05T09:14:31.010502",
   "n_epochs": 20949,
   "n_blocked_epochs": 856,
   "blocked_pct": 4.09,
@@ -9,82 +9,90 @@
     "gnss_raw": 8.431,
     "cv_kf_fixed": 3.61,
     "cv_kf_adaptive": 4.184,
-    "ekf9_fixed": 7.347,
-    "ekf9_adaptive": 10.536
+    "ekf9_fixed": 5.564,
+    "ekf9_adaptive": 5.68,
+    "ekf9_aided_fixed": 8.496,
+    "ekf9_aided_adaptive": 9.813
   },
   "rmse_blocked_segment": {
     "gnss_raw": 36.307,
     "cv_kf_fixed": 13.45,
     "cv_kf_adaptive": 16.376,
-    "ekf9_fixed": 14.562,
-    "ekf9_adaptive": 37.418
+    "ekf9_fixed": 12.135,
+    "ekf9_adaptive": 14.367,
+    "ekf9_aided_fixed": 6.359,
+    "ekf9_aided_adaptive": 10.74
   },
   "gains_vs_raw_blocked": {
     "gnss_raw": 0.0,
     "cv_kf_fixed": 63.0,
     "cv_kf_adaptive": 54.9,
-    "ekf9_fixed": 59.9,
-    "ekf9_adaptive": -3.1
+    "ekf9_fixed": 66.6,
+    "ekf9_adaptive": 60.4,
+    "ekf9_aided_fixed": 82.5,
+    "ekf9_aided_adaptive": 70.4
   },
-  "ekf9_adaptive_vs_fixed_blocked_pct": -157.0,
-  "ekf9_adaptive_vs_raw_blocked_pct": -3.1,
+  "aided_adaptive_vs_fixed_blocked_pct": -68.9,
+  "aided_adaptive_vs_raw_blocked_pct": 70.4,
+  "aiding_benefit_blocked_pct": 25.2,
   "severity_sweep": [
     {
       "bias_max_m": 5,
       "raw": 7.73,
-      "fixed_R": 4.0,
-      "adaptive_R": 7.64,
-      "adaptive_vs_fixed_pct": -90.7
+      "fixed_R": 5.84,
+      "adaptive_R": 27.54,
+      "adaptive_vs_fixed_pct": -371.9
     },
     {
       "bias_max_m": 10,
       "raw": 12.41,
-      "fixed_R": 7.53,
-      "adaptive_R": 7.94,
-      "adaptive_vs_fixed_pct": -5.4
+      "fixed_R": 7.33,
+      "adaptive_R": 26.08,
+      "adaptive_vs_fixed_pct": -255.8
     },
     {
       "bias_max_m": 20,
       "raw": 22.21,
-      "fixed_R": 16.31,
-      "adaptive_R": 11.23,
-      "adaptive_vs_fixed_pct": 31.1
+      "fixed_R": 9.95,
+      "adaptive_R": 27.84,
+      "adaptive_vs_fixed_pct": -179.9
     },
     {
       "bias_max_m": 30,
       "raw": 29.82,
-      "fixed_R": 20.58,
-      "adaptive_R": 12.8,
-      "adaptive_vs_fixed_pct": 37.8
+      "fixed_R": 10.55,
+      "adaptive_R": 28.54,
+      "adaptive_vs_fixed_pct": -170.6
     },
     {
       "bias_max_m": 45,
       "raw": 43.02,
-      "fixed_R": 31.7,
-      "adaptive_R": 23.5,
-      "adaptive_vs_fixed_pct": 25.9
+      "fixed_R": 13.68,
+      "adaptive_R": 25.64,
+      "adaptive_vs_fixed_pct": -87.4
     },
     {
       "bias_max_m": 60,
       "raw": 64.64,
-      "fixed_R": 54.51,
-      "adaptive_R": 39.8,
-      "adaptive_vs_fixed_pct": 27.0
+      "fixed_R": 18.15,
+      "adaptive_R": 22.71,
+      "adaptive_vs_fixed_pct": -25.1
     },
     {
       "bias_max_m": 80,
       "raw": 75.36,
-      "fixed_R": 57.37,
-      "adaptive_R": 37.81,
-      "adaptive_vs_fixed_pct": 34.1
+      "fixed_R": 30.21,
+      "adaptive_R": 29.62,
+      "adaptive_vs_fixed_pct": 1.9
     }
   ],
-  "adaptive_crossover_bias_m": 20,
+  "adaptive_crossover_bias_m": 80,
   "config": {
     "dt": 0.1,
     "r_base_m": 3.0,
     "r_degraded_m": 30.0,
-    "predictor_lead_s": 5.0
+    "predictor_lead_s": 5.0,
+    "aiding": "wheel odometry + non-holonomic constraint + ZUPT"
   },
   "_methodology": [
     "HONEST SCOPE: This is a controlled (semi-synthetic) validation on a REAL",

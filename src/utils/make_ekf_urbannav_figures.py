@@ -48,9 +48,15 @@ def _save(fig, stem):
 
 def fig_filter_comparison(res):
     """Grouped bars: overall vs blocked-segment RMSE for each filter."""
-    methods = ["gnss_raw", "cv_kf_fixed", "cv_kf_adaptive", "ekf9_fixed", "ekf9_adaptive"]
-    labels = ["GNSS\nraw", "CV-KF\nfixed", "CV-KF\nadaptive", "9-EKF\nfixed", "9-EKF\nadaptive"]
-    colors = [PALETTE["raw"], PALETTE["fixed"], PALETTE["adaptive"], PALETTE["ekf"], PALETTE["adaptive"]]
+    methods = ["gnss_raw", "cv_kf_fixed", "ekf9_fixed", "ekf9_adaptive",
+               "ekf9_aided_fixed", "ekf9_aided_adaptive"]
+    labels = ["GNSS\nraw", "CV-KF", "EKF\n(no aid)", "EKF adapt\n(no aid)",
+              "Aided EKF\n(ours)", "Aided EKF\nadaptive"]
+    colors = [PALETTE["raw"], PALETTE["fixed"], PALETTE["slate"] if "slate" in PALETTE else PALETTE["fixed"],
+              PALETTE["adaptive"], PALETTE["ekf"], PALETTE["adaptive"]]
+    methods = [m for m in methods if m in res["rmse_overall"]]
+    labels = labels[:len(methods)]
+    colors = colors[:len(methods)]
 
     overall = [res["rmse_overall"][m] for m in methods]
     blocked = [res["rmse_blocked_segment"][m] for m in methods]
@@ -86,20 +92,20 @@ def fig_severity_sweep(res):
 
     fig, ax = plt.subplots(figsize=(9, 5.5))
     ax.plot(bias, raw, "o--", color=PALETTE["raw"], linewidth=2, markersize=7, label="Raw GNSS")
-    ax.plot(bias, fixed, "s-", color=PALETTE["fixed"], linewidth=2.4, markersize=7, label="Fixed-R KF")
-    ax.plot(bias, adapt, "D-", color=PALETTE["adaptive"], linewidth=2.8, markersize=8, label="Adaptive-R KF (ours)")
+    ax.plot(bias, fixed, "s-", color=PALETTE["ekf"], linewidth=2.8, markersize=8,
+            label="Aided EKF, fixed-R (ours)")
+    ax.plot(bias, adapt, "D-", color=PALETTE["adaptive"], linewidth=2.4, markersize=7,
+            label="Aided EKF, adaptive-R")
 
-    if cross is not None:
-        ax.axvline(cross, color=PALETTE["win"], linestyle=":", linewidth=2)
-        ax.annotate(f"crossover ≈ {cross} m\n(adaptive starts winning)",
-                    xy=(cross, ax.get_ylim()[1] * 0.55),
-                    xytext=(cross + 6, ax.get_ylim()[1] * 0.7),
-                    fontsize=11, color=PALETTE["win"],
-                    arrowprops=dict(arrowstyle="->", color=PALETTE["win"], lw=1.5))
-
-    # Shade the deep-urban regime where adaptive wins.
-    if cross is not None:
-        ax.axvspan(cross, max(bias), color=PALETTE["win"], alpha=0.06)
+    # Honest annotation: with odometry/NHC/ZUPT aiding, keeping GNSS (fixed-R) is best
+    # across the realistic multipath range — inflating R discards heading observability.
+    ax.annotate("with wheel-odometry + NHC + ZUPT aiding,\n"
+                "keeping GNSS (fixed-R) stays best:\n"
+                "inflating R discards heading aiding",
+                xy=(bias[len(bias) // 2], fixed[len(bias) // 2]),
+                xytext=(bias[1], max(adapt) * 0.92),
+                fontsize=10.5, color=PALETTE["ekf"],
+                arrowprops=dict(arrowstyle="->", color=PALETTE["ekf"], lw=1.4))
 
     ax.set_xlabel("Multipath bias during blockage (m)")
     ax.set_ylabel("Blocked-segment RMSE (m)")

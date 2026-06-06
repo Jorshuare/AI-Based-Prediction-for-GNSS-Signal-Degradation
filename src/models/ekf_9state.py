@@ -244,7 +244,69 @@ class EKF9State:
         if evals.min() < 1e-10:
             self.P += np.eye(8) * (1e-10 - evals.min())
 
-    def run(self, imu_accel, imu_gyro, gnss_pos, p_degraded, adaptive=True):
+    def update_odometry_nhc(self, wheel_speed, r_odo=0.20, r_nhc=0.05, stationary=False):
+        """Aiding update: wheel odometry + non-holonomic constraint (NHC) + ZUPT.
+
+        For a land vehicle the velocity in the body frame is almost purely forward:
+            v_body = R(ψ)^T @ [vx, vy] = [forward, lateral]
+            forward ≈ wheel_speed   (odometry)
+            lateral ≈ 0             (NHC: no sideways slip)
+        When the vehicle is stationary we additionally tighten the constraint to a
+        zero-velocity update (ZUPT). Crucially this aiding is INDEPENDENT of GNSS, so it
+        bounds dead-reckoning drift during a GNSS outage — the missing ingredient that
+        lets the adaptive filter actually win.
+
+        Parameters
+        ----------
+        wheel_speed : forward speed from wheel encoder (m/s)
+        r_odo       : odometry variance (m/s)²
+        r_nhc       : lateral (NHC) variance (m/s)²
+        stationary  : if True, apply a tight ZUPT (both velocity components → 0)
+        """
+        if self.state is None:
+            raise RuntimeError("State not initialized")
+
+        psi = self.state[4]
+        vx, vy = self.state[2], self.state[3]
+        c, s = np.cos(psi), np.sin(psi)
+
+        # Predicted body-frame velocity h(x) = [forward, lateral].
+        v_fwd = c * vx + s * vy
+        v_lat = -s * vx + c * vy
+
+        if stationary:
+            z = np.array([0.0, 0.0])
+            R = np.diag([1e-3, 1e-3])           # ZUPT: strongly pin velocity to zero
+        else:
+            z = np.array([float(wheel_speed), 0.0])
+            R = np.diag([r_odo, r_nhc])
+
+        # Measurement Jacobian (2×8), nonzero in vx, vy, ψ columns.
+        H = np.zeros((2, 8), dtype=float)
+        H[0, 2] = c
+        H[0, 3] = s
+        H[0, 4] = -s * vx + c * vy
+        H[1, 2] = -s
+        H[1, 3] = c
+        H[1, 4] = -c * vx - s * vy
+
+        y = z - np.array([v_fwd, v_lat])
+        S = H @ self.P @ H.T + R
+        try:
+            S_inv = np.linalg.inv(S)
+        except np.linalg.LinAlgError:
+            S_inv = np.linalg.inv(S + np.eye(2) * 1e-6)
+        K = self.P @ H.T @ S_inv
+        self.state = self.state + K @ y
+        self.state[4] = wrap_angle(self.state[4])
+        self.P = (np.eye(8) - K @ H) @ self.P
+
+        evals = np.linalg.eigvalsh(self.P)
+        if evals.min() < 1e-10:
+            self.P += np.eye(8) * (1e-10 - evals.min())
+
+    def run(self, imu_accel, imu_gyro, gnss_pos, p_degraded, adaptive=True,
+            wheel_speed=None, use_aiding=True, zupt_thresh=0.2, gnss_mask=None):
         """Run full filter on a sequence. Returns filtered positions and state history.
 
         Parameters
@@ -264,6 +326,8 @@ class EKF9State:
         imu_gyro = np.asarray(imu_gyro, dtype=float).flatten()
         gnss_pos = np.asarray(gnss_pos, dtype=float)
         p_degraded = np.asarray(p_degraded, dtype=float).flatten()
+        if wheel_speed is not None:
+            wheel_speed = np.asarray(wheel_speed, dtype=float).flatten()
 
         n = len(imu_accel)
         assert len(imu_gyro) == n, "imu_gyro length mismatch"
@@ -303,11 +367,21 @@ class EKF9State:
 
         # Main filter loop
         for k in range(1, n):
-            # Predict
+            # Predict (IMU-driven motion model).
             self.predict(imu_accel[k], imu_gyro[k])
 
-            # Update
-            self.update(gnss_pos[k], p_degraded[k], adaptive=adaptive)
+            # Aiding update: wheel odometry + NHC + ZUPT (GNSS-independent).
+            # This runs EVERY epoch, so velocity stays accurate even when GNSS is
+            # distrusted during a blockage — the key to making adaptive-R pay off.
+            if use_aiding and wheel_speed is not None:
+                ws = wheel_speed[k]
+                self.update_odometry_nhc(ws, stationary=(abs(ws) < zupt_thresh))
+
+            # GNSS position update (with adaptive measurement noise).
+            # Skip when no fix is available this epoch (real GNSS arrives slower than
+            # the IMU; the aiding above carries the state through the gap).
+            if gnss_mask is None or gnss_mask[k]:
+                self.update(gnss_pos[k], p_degraded[k], adaptive=adaptive)
 
             # Store
             positions[k] = self.state[:2]

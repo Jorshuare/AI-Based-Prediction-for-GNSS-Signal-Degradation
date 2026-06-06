@@ -1,0 +1,41 @@
+{
+  "scenario": "Shinjuku",
+  "gnss_source": "ublox",
+  "engine": "georinex GPS-only L1 SPP on rover_ublox.obs",
+  "data_mode": "FULLY REAL: real GNSS positions + real IMU + real wheel odometry + cm truth",
+  "timestamp": "2026-06-06T03:47:01.459004",
+  "n_epochs": 20949,
+  "n_real_fixes": 20729,
+  "n_degraded_epochs": 6237,
+  "mean_sats": 6.05,
+  "rmse_overall": {
+    "gnss_raw": 54.284,
+    "cv_kf": 42.242,
+    "aided_ekf_fixed": 48.056,
+    "aided_ekf_adaptive": 67.044
+  },
+  "rmse_degraded_segment": {
+    "gnss_raw": 78.372,
+    "cv_kf": 48.11,
+    "aided_ekf_fixed": 61.798,
+    "aided_ekf_adaptive": 82.99
+  },
+  "degraded_gain_vs_raw": {
+    "gnss_raw": 0.0,
+    "cv_kf": 38.6,
+    "aided_ekf_fixed": 21.1,
+    "aided_ekf_adaptive": -5.9
+  },
+  "config": {
+    "dt": 0.1,
+    "r_base_m": 8.0,
+    "r_degraded_m": 40.0,
+    "degraded_def": "real GNSS fix with <=5 satellites (poor geometry)",
+    "p_degraded_source": "geometry proxy (satellite count); SENTINEL model used on labelled data"
+  },
+  "_methodology": [
+    "FULLY REAL GNSS via georinex GPS-only L1 SPP on rover_ublox.obs. Errors are REAL urban multipath/NLOS, not synthetic.",
+    "The EKF predicts at 10 Hz on real IMU + wheel-odometry and updates on real fixes.",
+    "Degradation is defined by REAL satellite geometry (<=5 sats), not injected windows."
+  ]
+}
