@@ -28,8 +28,12 @@ numbers traceable to `papers/RESULTS_REFERENCE.md` / the results JSONs.
 | **`figC1_main_results`** | Composite (a) multi-horizon (b) per-class (c) ablation | Paper A main figure |
 | **`figC2_crosscity`** | Composite (a) Tokyo per-class (b) gap | Paper A §5.5 / Conference |
 | **`figC3_ekf`** | Composite (a) trajectory (b) RMSE | Paper B §4.4 |
+| **`fig21_urbannav_filter_comparison`** | Blocked-segment RMSE per filter (UrbanNav Tokyo) | Paper B §4 |
+| **`fig22_urbannav_severity_sweep`** | When adaptive-R helps (multipath severity crossover) | Paper B §4 |
+| **`fig23_inference_comparison`** | (a) model/ensemble cross-city quality (b) fusion RMSE — the full inference stack | Paper A/B, docs §6 |
 
-> Evaluation figures from `evaluate.py` (confusion matrices, ROC, PR, calibration, attention
+> Generate the EKF/inference figures with `make_ekf_urbannav_figures` and
+> `make_inference_comparison`. Evaluation figures from `evaluate.py` (confusion matrices, ROC, PR, calibration, attention
 > heatmaps, feature saliency, lead-time histogram) live in `../figures/` and complement these.
 >
 > **Key narrative (Run 15):** in-domain trees lead; **cross-city, the DL+XGBoost soft-vote

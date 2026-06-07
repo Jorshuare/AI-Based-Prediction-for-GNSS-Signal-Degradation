@@ -123,18 +123,38 @@ notebooks into `results/reviewer_experiments.json`. Consolidated metrics land in
 
 ```bash
 python -m src.models.inference --nmea "data/raw/scenarios/Degraded data/A/log_0000.nmea" \
-                               --ensemble --ekf
+                               --ensemble --ekf --ekf_horizon 5s
 ```
-| Flag | Effect |
-|---|---|
-| `--nmea PATH` | input NMEA file (required) |
-| `--ensemble` | soft-vote with the saved XGBoost (`results/ensemble_xgb_model.joblib`) |
-| `--ekf` | also run the adaptive EKF on the predicted P(DEGRADED) |
-| `--receiver-tier N` | 0–3 hardware tier (default 0) |
 
-Outputs (auto-discovered by the dashboard): `results/inference/<stem>_predictions.csv`,
-`<stem>_summary.json`, `<stem>_ekf.npz`. Edge cases handled: missing/malformed NMEA, too-few epochs,
-no-fix periods, checkpoint mismatch.
+### 6.1 All inference options (and what each buys you)
+
+| Flag | Default | Effect | Expected result |
+|---|---|---|---|
+| `--nmea PATH` | *(required)* | the input NMEA file | drives everything below |
+| `--out DIR` | `results/inference` | output directory | where the CSV/JSON/NPZ land |
+| `--checkpoint PATH` | best checkpoint | which trained model to use | swap models without code changes |
+| `--scaler PATH` | trained scaler | feature scaler (must match the checkpoint) | correct feature normalisation |
+| `--receiver_tier N` | `0` | hardware tier 0–3 | adapts thresholds to receiver quality |
+| `--ensemble` | off | soft-vote the DL with the saved XGBoost (`ensemble_xgb_model.joblib`) | **best cross-city quality** (Tokyo +5 s Macro-F1 0.65→**0.89**, DEGRADED 0.75→**0.90**) |
+| `--ekf` | off | run the adaptive EKF on the predicted P(DEGRADED) | adds a fused position track; real Tokyo blocked-RMSE **−49 %** vs raw |
+| `--ekf_horizon {5s,15s,30s}` | `5s` | which horizon’s P(DEGRADED) drives the EKF | shorter = sharper/pre-emptive, longer = earlier but softer |
+
+**Outputs** (auto-discovered by the dashboard): `results/inference/<stem>_predictions.csv`,
+`<stem>_summary.json`, and (with `--ekf`) `<stem>_ekf.npz`. Edge cases handled: missing/malformed
+NMEA, too-few epochs, no-fix periods, checkpoint/scaler mismatch.
+
+### 6.2 Comparing the inference configurations
+
+The trade-offs above are summarised in **`results/paper_figures/fig23_inference_comparison.png`**
+(generate with `python -m src.utils.make_inference_comparison`):
+- **(a) Prediction stage** — cross-city Tokyo quality for RandomForest vs Transformer-LSTM vs
+  XGBoost vs the **DL+XGB ensemble**. The ensemble wins (0.89 Macro-F1 / 0.90 DEGRADED); RandomForest
+  collapses on DEGRADED (0.15).
+- **(b) Fusion stage** — real Tokyo blocked-segment RMSE for raw GNSS vs simple KF vs **aided EKF**.
+  The aided EKF cuts error by **+49 %** (47.4 → 24.3 m).
+
+*Recommended production configuration:* `--ensemble --ekf` — best prediction quality **and** the
+fused position track.
 
 ---
 
@@ -194,7 +214,8 @@ dial), process noise `q_*`, ZUPT threshold, and the odometry/NHC aiding (`update
 
 ```bash
 python -m src.utils.make_paper_figures             # fig01–fig18, composites (cividis, 300 dpi)
-python -m src.utils.make_ekf_urbannav_figures      # fig21, fig22
+python -m src.utils.make_ekf_urbannav_figures      # fig21 (filters), fig22 (severity sweep)
+python -m src.utils.make_inference_comparison       # fig23 (inference-stack comparison)
 ```
 Style: cividis/Beihang palette (single source), 300 dpi, no titles, bold 14 pt labels, (a)/(b)/(c)
 panel labels. Index: `results/paper_figures/README.md`.

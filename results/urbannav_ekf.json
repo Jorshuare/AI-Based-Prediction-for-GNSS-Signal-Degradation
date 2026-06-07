@@ -1,6 +1,6 @@
 {
   "scenario": "Shinjuku",
-  "timestamp": "2026-06-05T09:14:31.010502",
+  "timestamp": "2026-06-07T08:27:13.221638",
   "n_epochs": 20949,
   "n_blocked_epochs": 856,
   "blocked_pct": 4.09,
@@ -120,7 +120,7 @@
     ],
     "tuning_per_literature": [
       "Groves (2013) / Petovello (2015): inflate R to reflect ACTUAL degraded error,",
-      "not infinity. We use r_degraded=30 m (var 900) vs the 25 m injected error \u2014 modest,",
+      "not infinity. We use r_degraded=30 m (var 900) vs the 25 m injected error -- modest,",
       "stable inflation, avoiding the divergence seen with r_degraded=100 m.",
       "Source: Groves, Principles of GNSS/INS/Multisensor Navigation, 2nd ed."
     ],

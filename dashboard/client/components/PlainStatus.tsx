@@ -1,6 +1,7 @@
 "use client";
 import { motion } from "framer-motion";
 import { FiShield, FiAlertTriangle, FiAlertOctagon } from "@/lib/icons";
+import { useT } from "@/lib/i18n";
 import type { Horizon } from "@/lib/types";
 
 /**
@@ -8,23 +9,24 @@ import type { Horizon } from "@/lib/types";
  * vehicle is doing about it. No jargon.
  */
 export default function PlainStatus({ pDeg, horizon }: { pDeg: number; horizon: Horizon }) {
+  const { t } = useT();
   const state =
     pDeg < 0.3
       ? {
           bg: "#ECFDF3", fg: "#127A3E", ring: "#86E0AC", Icon: FiShield,
-          title: "GNSS signal is healthy",
-          body: `Positioning is reliable. The system expects clean satellite signals for at least the next ${horizon} seconds. No action needed.`,
+          title: t("status_healthy_t"),
+          body: t("status_healthy_b", { h: horizon }),
         }
       : pDeg < 0.7
       ? {
           bg: "#FEF6E7", fg: "#8A6400", ring: "#F3D78A", Icon: FiAlertTriangle,
-          title: "Signal quality is dropping",
-          body: `A partial loss of satellites is likely within ${horizon} seconds. The vehicle is getting ready to lean on its motion sensors so positioning stays smooth.`,
+          title: t("status_dropping_t"),
+          body: t("status_dropping_b", { h: horizon }),
         }
       : {
           bg: "#FDECEA", fg: "#8E2418", ring: "#F2B3AB", Icon: FiAlertOctagon,
-          title: "GNSS is unreliable right now",
-          body: `Strong degradation is expected within ${horizon} seconds. The system is switching to inertial and wheel-odometry dead-reckoning to keep the position accurate until the signal recovers.`,
+          title: t("status_unreliable_t"),
+          body: t("status_unreliable_b", { h: horizon }),
         };
 
   const { Icon } = state;

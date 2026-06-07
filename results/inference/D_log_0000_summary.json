@@ -1,0 +1,35 @@
+{
+  "nmea_file": "data\\raw\\scenarios\\scenario_d\\D\\log_0000.nmea",
+  "n_epochs": 597,
+  "window_size": 30,
+  "receiver_tier": 0,
+  "class_counts_5s": {
+    "CLEAN": 568,
+    "WARNING": 0,
+    "DEGRADED": 0
+  },
+  "mean_p_degraded_5s": 0.1776,
+  "class_counts_15s": {
+    "CLEAN": 568,
+    "WARNING": 0,
+    "DEGRADED": 0
+  },
+  "mean_p_degraded_15s": 0.1737,
+  "class_counts_30s": {
+    "CLEAN": 568,
+    "WARNING": 0,
+    "DEGRADED": 0
+  },
+  "mean_p_degraded_30s": 0.1596,
+  "first_degraded_window_5s": null,
+  "predictions_csv": "C:\\Users\\Joel\\Desktop\\Beihang University\\Team-Pilot-Project\\results\\inference\\D_log_0000_predictions.csv",
+  "status": "ok",
+  "ekf": {
+    "status": "ok",
+    "horizon": "5s",
+    "n_positions": 568,
+    "note": "No ground truth in NMEA \u2192 filtered trajectories saved; RMSE needs a reference trajectory (pass to run_ekf_experiment).",
+    "mean_p_degraded": 0.1776,
+    "ekf_npz": "C:\\Users\\Joel\\Desktop\\Beihang University\\Team-Pilot-Project\\results\\inference\\D_log_0000_ekf.npz"
+  }
+}

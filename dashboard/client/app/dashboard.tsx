@@ -6,6 +6,8 @@ import { api, WS_URL, type WsMessage } from "@/lib/api";
 import { BEIHANG } from "@/lib/colors";
 import { horizonProbs, type Horizon, type Prediction, type Scenario } from "@/lib/types";
 import { Card, ChartCard, SectionTitle, useMounted } from "@/lib/ui";
+import { I18nProvider, useT } from "@/lib/i18n";
+import { playBuzzer, primeAudio } from "@/lib/buzzer";
 import { FiRadio, FiNavigation, FiBarChart2 } from "@/lib/icons";
 import Header from "@/components/Header";
 import Tabs, { type TabDef } from "@/components/Tabs";
@@ -15,7 +17,7 @@ import ProbabilityBars from "@/components/ProbabilityBars";
 import TimeSeriesChart from "@/components/TimeSeriesChart";
 import TrajectoryMap from "@/components/TrajectoryMap";
 import MetricsGrid from "@/components/MetricsGrid";
-import AlarmCenter, { type Alarm } from "@/components/AlarmCenter";
+import AlarmCenter, { type AlertEpisode } from "@/components/AlarmCenter";
 import EkfPanel from "@/components/EkfPanel";
 import FusionView from "@/components/FusionView";
 import PlainStatus from "@/components/PlainStatus";
@@ -23,29 +25,42 @@ import LeadTimeCard from "@/components/LeadTimeCard";
 
 const MAX_POINTS = 400;
 
-const TABS: TabDef[] = [
-  { id: "live", label: "Live Prediction", icon: <FiRadio size={16} /> },
-  { id: "fusion", label: "Sensor Fusion", icon: <FiNavigation size={16} /> },
-  { id: "analytics", label: "Analytics", icon: <FiBarChart2 size={16} /> },
-];
-
 export default function Dashboard() {
+  return (
+    <I18nProvider>
+      <DashboardInner />
+    </I18nProvider>
+  );
+}
+
+function DashboardInner() {
+  const { t } = useT();
   const mounted = useMounted();
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [scenario, setScenario] = useState<string>("");
   const [horizon, setHorizon] = useState<Horizon>(5);
   const [tab, setTab] = useState("live");
   const [minimal, setMinimal] = useState(false);
+  const [muted, setMuted] = useState(false);
   const [connected, setConnected] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(15);
   const [stream, setStream] = useState<Prediction[]>([]);
   const [total, setTotal] = useState(0);
-  const [alarms, setAlarms] = useState<Alarm[]>([]);
+  const [activeEp, setActiveEp] = useState<AlertEpisode | null>(null);
+  const [history, setHistory] = useState<AlertEpisode[]>([]);
   const [warnEpoch, setWarnEpoch] = useState<number | null>(null);
   const [onsetEpoch, setOnsetEpoch] = useState<number | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const speedRef = useRef(speed); speedRef.current = speed;
+  const mutedRef = useRef(muted); mutedRef.current = muted;
+  const epRef = useRef<AlertEpisode | null>(null);
+
+  const TABS: TabDef[] = [
+    { id: "live", label: t("nav_live"), icon: <FiRadio size={16} /> },
+    { id: "fusion", label: t("nav_fusion"), icon: <FiNavigation size={16} /> },
+    { id: "analytics", label: t("nav_analytics"), icon: <FiBarChart2 size={16} /> },
+  ];
 
   useEffect(() => {
     api.scenarios().then((s) => {
@@ -55,19 +70,28 @@ export default function Dashboard() {
   }, []);
 
   const onEpoch = useCallback((p: Prediction) => {
-    const t = new Date().toLocaleTimeString();
-    // lead-time bookkeeping (set once): +30 s head warns early, +5 s head = imminent
     if (p.pred_30s === "DEGRADED") setWarnEpoch((w) => (w == null ? p.window : w));
     if (p.pred_5s === "DEGRADED") setOnsetEpoch((o) => (o == null ? p.window : o));
-    // natural-language alerts (no dashes)
-    if (p.p_degraded_5s > 0.8) {
-      const a: Alarm = { id: `${p.window}-c`, level: "CRITICAL", time: t,
-        message: `GNSS degradation is imminent within 5 seconds (P=${(p.p_degraded_5s * 100).toFixed(0)}%). The system is handing off to inertial backup.` };
-      setAlarms((prev) => [a, ...prev].slice(0, 6));
-    } else if (p.p_degraded_15s > 0.6) {
-      const a: Alarm = { id: `${p.window}-w`, level: "WARNING", time: t,
-        message: `Signal degradation is likely within 15 seconds (P=${(p.p_degraded_15s * 100).toFixed(0)}%). Preparing backup sensors.` };
-      setAlarms((prev) => [a, ...prev].slice(0, 6));
+
+    // Coalesce consecutive same-level epochs into ONE episode (seamless, no flooding).
+    const level: AlertEpisode["level"] | null =
+      p.p_degraded_5s > 0.8 ? "CRITICAL" : p.p_degraded_15s > 0.6 ? "WARNING" : null;
+    const pVal = level === "CRITICAL" ? p.p_degraded_5s : p.p_degraded_15s;
+    const cur = epRef.current;
+
+    if (level === null) {
+      if (cur) { setHistory((h) => [{ ...cur, endEpoch: p.window }, ...h].slice(0, 30)); epRef.current = null; setActiveEp(null); }
+      return;
+    }
+    if (cur && cur.level === level) {
+      const upd = { ...cur, endEpoch: p.window, count: cur.count + 1, peakP: Math.max(cur.peakP, pVal) };
+      epRef.current = upd; setActiveEp(upd);
+    } else {
+      if (cur) setHistory((h) => [{ ...cur, endEpoch: p.window }, ...h].slice(0, 30));
+      const ep: AlertEpisode = { id: `${p.window}-${level}`, level, startEpoch: p.window, endEpoch: p.window,
+        startTime: new Date().toLocaleTimeString(), count: 1, peakP: pVal };
+      epRef.current = ep; setActiveEp(ep);
+      if (level === "CRITICAL" && !mutedRef.current) playBuzzer();   // once per episode
     }
   }, []);
 
@@ -81,7 +105,8 @@ export default function Dashboard() {
       const msg: WsMessage = JSON.parse(ev.data);
       if (msg.type === "replay_start") {
         setStream([]); setTotal(msg.total); setPlaying(true);
-        setAlarms([]); setWarnEpoch(null); setOnsetEpoch(null);
+        setActiveEp(null); setHistory([]); epRef.current = null;
+        setWarnEpoch(null); setOnsetEpoch(null);
       } else if (msg.type === "epoch") {
         setStream((prev) => [...prev.slice(-(MAX_POINTS - 1)), msg.data]); onEpoch(msg.data);
       } else if (msg.type === "replay_end" || msg.type === "replay_stopped") setPlaying(false);
@@ -90,6 +115,7 @@ export default function Dashboard() {
   }, [onEpoch]);
 
   const play = useCallback(() => {
+    primeAudio();   // unlock audio inside the user gesture
     const ws = wsRef.current;
     if (ws?.readyState === WebSocket.OPEN && scenario)
       ws.send(JSON.stringify({ type: "start_replay", scenario, speed: speedRef.current }));
@@ -106,9 +132,10 @@ export default function Dashboard() {
 
   return (
     <div style={{ background: BEIHANG.mist, minHeight: "100vh" }} className="flex flex-col">
-      <Header minimal={minimal} onToggle={() => setMinimal((m) => !m)} connected={connected} />
+      <Header minimal={minimal} onToggle={() => setMinimal((m) => !m)} connected={connected}
+        muted={muted} onToggleMute={() => setMuted((m) => !m)} />
 
-      <main className="mx-auto w-full max-w-[1500px] flex-1 px-4 py-6 md:px-6">
+      <main className="mx-auto w-full max-w-[1640px] flex-1 px-4 py-6 md:px-6">
         <div className="mb-5"><Tabs tabs={TABS} active={tab} onChange={setTab} /></div>
 
         <AnimatePresence mode="wait">
@@ -124,24 +151,24 @@ export default function Dashboard() {
 
               <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
                 <Card delay={0.05}>
-                  <SectionTitle hint="The dial shows the chance that GPS will become unreliable within the selected look-ahead time. Green is safe, red is danger.">Live signal quality (+{horizon}s)</SectionTitle>
+                  <SectionTitle hint="The dial shows the chance that GPS will become unreliable within the selected look-ahead time. Green is safe, red is danger.">{t("signal_quality")} (+{horizon}s)</SectionTitle>
                   <div className="flex justify-center py-2"><SignalGauge pDegraded={pDeg} confidence={conf} /></div>
                 </Card>
                 <Card delay={0.1}>
-                  <SectionTitle hint="The three possible states and how likely each is right now. CLEAN = good, WARNING = patchy, DEGRADED = unreliable.">Class probabilities (+{horizon}s)</SectionTitle>
-                  {probs ? <div className="py-3"><ProbabilityBars probs={probs} /></div> : <Empty />}
+                  <SectionTitle hint="The three possible states and how likely each is right now. CLEAN = good, WARNING = patchy, DEGRADED = unreliable.">{t("class_probs")} (+{horizon}s)</SectionTitle>
+                  {probs ? <div className="py-3"><ProbabilityBars probs={probs} /></div> : <Empty text={t("press_play")} />}
                 </Card>
-                <Card delay={0.15}><AlarmCenter alarms={alarms} /></Card>
+                <Card delay={0.15}><AlarmCenter active={activeEp} history={history} /></Card>
               </div>
 
               {!minimal && (
                 <>
                   <Card><LeadTimeCard warnEpoch={warnEpoch} onsetEpoch={onsetEpoch} /></Card>
                   <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-                    <ChartCard title="Vehicle trajectory (risk-coloured)" hint="The route driven so far. Each dot is coloured by how risky the GPS signal was at that spot.">
+                    <ChartCard title={t("trajectory")} hint="The route driven so far. Each dot is coloured by how risky the GPS signal was at that spot.">
                       <TrajectoryMap data={stream} />
                     </ChartCard>
-                    <ChartCard title="P(DEGRADED) timeline"
+                    <ChartCard title={t("timeline")}
                       hint="History of the degradation probability for all three look-ahead times. Hover anywhere to read the exact values. The dashed lines are the warning thresholds."
                       csvRows={stream as unknown as Record<string, unknown>[]} csvName="sentinel_predictions.csv">
                       <TimeSeriesChart data={stream} />
@@ -161,7 +188,7 @@ export default function Dashboard() {
           {tab === "analytics" && (
             <motion.div key="analytics" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.25 }} className="flex flex-col gap-5">
               <Card>
-                <SectionTitle hint="A study on real Tokyo data: which positioning filter best survives GPS blackouts, and when it pays to distrust the satellites.">Adaptive sensor-fusion analytics</SectionTitle>
+                <SectionTitle hint="A study on real Tokyo data: which positioning filter best survives GPS blackouts, and when it pays to distrust the satellites.">{t("analytics_title")}</SectionTitle>
                 <EkfPanel />
               </Card>
             </motion.div>
@@ -170,12 +197,12 @@ export default function Dashboard() {
       </main>
 
       <footer className="px-6 py-5 text-center text-xs font-medium text-white" style={{ background: BEIHANG.primary }}>
-        SENTINEL-GNSS © 2026 · Beihang University · RCSSTEAP · Predictive GNSS degradation &amp; adaptive sensor fusion
+        SENTINEL-GNSS © 2026 · Beihang University · RCSSTEAP
       </footer>
     </div>
   );
 }
 
-function Empty() {
-  return <div className="flex h-44 items-center justify-center text-sm" style={{ color: BEIHANG.slate }}>Press Play to start the live stream.</div>;
+function Empty({ text }: { text: string }) {
+  return <div className="flex h-44 items-center justify-center text-sm" style={{ color: BEIHANG.slate }}>{text}</div>;
 }

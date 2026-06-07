@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { api } from "@/lib/api";
 import { BEIHANG } from "@/lib/colors";
 import { useElementWidth, InfoDot } from "@/lib/ui";
+import { useT } from "@/lib/i18n";
 import type { EkfResult } from "@/lib/types";
 
 const LABELS: Record<string, string> = {
@@ -11,11 +12,12 @@ const LABELS: Record<string, string> = {
   cv_kf_fixed: "CV-KF",
   ekf9_fixed: "EKF",
   ekf9_adaptive: "EKF adapt",
-  ekf9_aided_fixed: "Aided EKF (ours)",
-  ekf9_aided_adaptive: "Aided adaptive",
+  ekf9_aided_fixed: "Aided EKF (fixed-R)",
+  ekf9_aided_adaptive: "Aided EKF (adaptive-R)",
 };
 
 export default function EkfPanel() {
+  const { t } = useT();
   const [ekf, setEkf] = useState<EkfResult | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [sweepRef, sweepW] = useElementWidth<HTMLDivElement>();
@@ -28,7 +30,7 @@ export default function EkfPanel() {
   const order = Object.keys(LABELS).filter((k) => k in ekf.rmse_blocked_segment);
   const maxV = Math.max(...order.map((k) => ekf.rmse_blocked_segment[k]));
   const sweep = ekf.severity_sweep ?? [];
-  const W = Math.max(sweepW, 280), H = 300, pad = 36;
+  const W = Math.max(sweepW, 280), H = 380, pad = 40;
   const sMax = Math.max(...sweep.flatMap((r) => [r.raw, r.fixed_R, r.adaptive_R]), 1);
   const sx = (i: number) => pad + ((W - 2 * pad) * i) / Math.max(sweep.length - 1, 1);
   const sy = (v: number) => H - pad - ((H - 2 * pad) * v) / sMax;
@@ -40,7 +42,7 @@ export default function EkfPanel() {
       {/* Bars */}
       <div>
         <div className="mb-3 flex items-center gap-2">
-          <h4 className="text-base font-bold" style={{ color: BEIHANG.primary }}>Blocked-segment RMSE by filter</h4>
+          <h4 className="text-base font-bold" style={{ color: BEIHANG.primary }}>{t("ekf_blocked_title")}</h4>
           <InfoDot text="Position error (metres) measured only during GNSS-blockage windows, vs cm-level truth. Lower is better." />
         </div>
         <div className="flex flex-col gap-2.5">
@@ -50,7 +52,7 @@ export default function EkfPanel() {
             return (
               <div key={k} className="flex items-center gap-3">
                 <span className="w-36 shrink-0 text-right text-sm font-bold" style={{ color: BEIHANG.ink }}>{LABELS[k]}</span>
-                <div className="h-7 flex-1 overflow-hidden rounded-lg" style={{ background: BEIHANG.mist }}>
+                <div className="h-9 flex-1 overflow-hidden rounded-lg" style={{ background: BEIHANG.mist }}>
                   <motion.div className="h-full rounded-lg"
                     initial={{ width: 0 }} animate={{ width: `${(v / maxV) * 100}%` }}
                     transition={{ delay: idx * 0.06, duration: 0.5 }}
@@ -64,16 +66,17 @@ export default function EkfPanel() {
           })}
         </div>
         <p className="mt-3 text-sm leading-relaxed" style={{ color: BEIHANG.slate }}>
-          Aided EKF (wheel-odometry + NHC + ZUPT) cuts blocked RMSE to{" "}
-          <b style={{ color: BEIHANG.primary }}>{ekf.rmse_blocked_segment["ekf9_aided_fixed"]?.toFixed(1)} m</b>{" "}
-          (+{ekf.gains_vs_raw_blocked["ekf9_aided_fixed"]}% vs raw).
+          {t("ekf_caption", {
+            v: ekf.rmse_blocked_segment["ekf9_aided_fixed"]?.toFixed(1) ?? "—",
+            g: ekf.gains_vs_raw_blocked["ekf9_aided_fixed"],
+          })}
         </p>
       </div>
 
       {/* Sweep */}
       <div ref={sweepRef}>
         <div className="mb-3 flex items-center gap-2">
-          <h4 className="text-base font-bold" style={{ color: BEIHANG.primary }}>When does adaptive-R help?</h4>
+          <h4 className="text-base font-bold" style={{ color: BEIHANG.primary }}>{t("ekf_when_title")}</h4>
           <InfoDot text="Sweeps how severe the GNSS multipath is. With aiding, keeping GNSS (fixed-R) stays best — inflating R throws away heading observability." />
         </div>
         <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H}>
@@ -89,10 +92,10 @@ export default function EkfPanel() {
           ))}
         </svg>
         <div className="mt-1 flex flex-wrap gap-4 text-xs font-bold">
-          <span style={{ color: BEIHANG.slate }}>— raw</span>
-          <span style={{ color: BEIHANG.primary }}>— fixed-R (ours)</span>
-          <span style={{ color: BEIHANG.accent }}>— adaptive-R</span>
-          <span className="ml-auto" style={{ color: BEIHANG.slate }}>x-axis: multipath bias (m)</span>
+          <span style={{ color: BEIHANG.slate }}>— {t("ekf_raw")}</span>
+          <span style={{ color: BEIHANG.primary }}>— {t("ekf_fixed_ours")}</span>
+          <span style={{ color: BEIHANG.accent }}>— {t("ekf_adaptive")}</span>
+          <span className="ml-auto" style={{ color: BEIHANG.slate }}>{t("ekf_xaxis")}</span>
         </div>
       </div>
     </div>

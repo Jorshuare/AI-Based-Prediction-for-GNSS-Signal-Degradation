@@ -214,6 +214,13 @@ recall while borrowing XGBoost’s transfer. This is the production model (saved
 **One-line verdict:** *in-domain, trees win; cross-city, the DL + XGBoost ensemble wins decisively on
 the class that matters (DEGRADED) — which is the real-world deployment condition.*
 
+> The full **inference-stack comparison** — model/ensemble choice (prediction) *and* filter choice
+> (fusion) — is `results/paper_figures/fig23_inference_comparison.png`
+> (`python -m src.utils.make_inference_comparison`). It pairs panel (a) cross-city quality with
+> panel (b) real Tokyo positioning, so the effect of every inference flag (`--ensemble`, `--ekf`) is
+> visible in one figure. The flags and their expected results are tabulated in
+> [03_RUNBOOK_AND_ARCHITECTURE.md](03_RUNBOOK_AND_ARCHITECTURE.md) §6.
+
 ---
 
 ## 8. From prediction to navigation — the adaptive EKF
