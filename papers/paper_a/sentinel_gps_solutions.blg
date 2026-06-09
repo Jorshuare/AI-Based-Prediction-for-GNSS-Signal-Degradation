@@ -1,0 +1,126 @@
+This is BibTeX, Version 0.99d
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: sentinel_gps_solutions.aux
+Reallocating 'name_of_file' (item size: 1) to 16 items.
+The style file: sn-mathphys-num.bst
+Reallocating 'name_of_file' (item size: 1) to 7 items.
+Reallocating 'glb_str_end' (item size: 4) to 20 items.
+Reallocating 'glb_str_ptr' (item size: 4) to 20 items.
+Reallocating 'global_strs' (item size: 1) to 4000000 items.
+Reallocating 'singl_function' (item size: 4) to 100 items.
+Reallocating 'singl_function' (item size: 4) to 100 items.
+Reallocating 'singl_function' (item size: 4) to 100 items.
+Reallocating 'singl_function' (item size: 4) to 100 items.
+Reallocating 'singl_function' (item size: 4) to 100 items.
+Reallocating 'wiz_functions' (item size: 4) to 6000 items.
+Reallocating 'singl_function' (item size: 4) to 100 items.
+Reallocating 'singl_function' (item size: 4) to 100 items.
+Reallocating 'singl_function' (item size: 4) to 100 items.
+Reallocating 'singl_function' (item size: 4) to 100 items.
+Reallocating 'singl_function' (item size: 4) to 100 items.
+Reallocating 'singl_function' (item size: 4) to 100 items.
+Reallocating 'singl_function' (item size: 4) to 100 items.
+Reallocating 'singl_function' (item size: 4) to 100 items.
+Database file #1: refs_a.bib
+I was expecting a `{' or a `('---line 7 of file refs_a.bib
+ : %% 3.  Add each entry below following the @article 
+ :                                                    / @inproceedings / @book format
+I'm skipping whatever remains of this entry
+I was expecting a `{' or a `('---line 7 of file refs_a.bib
+ : %% 3.  Add each entry below following the @article / @inproceedings 
+ :                                                                     / @book format
+I'm skipping whatever remains of this entry
+I was expecting a `{' or a `('---line 7 of file refs_a.bib
+ : %% 3.  Add each entry below following the @article / @inproceedings / @book 
+ :                                                                             format
+I'm skipping whatever remains of this entry
+I was expecting a `{' or a `('---line 24 of file refs_a.bib
+ : 
+ : %
+(Error may have been on previous line)
+I'm skipping whatever remains of this entry
+You're missing a field name---line 197 of file refs_a.bib
+ : 
+ : %%   author  = {Surname, First and Surname2, First2},
+(Error may have been on previous line)
+I'm skipping whatever remains of this entry
+Warning--I didn't find a database entry for "[AuthorYear_AV_GNSS_survey]"
+Warning--I didn't find a database entry for "[AuthorYear_UAS_GNSS]"
+Warning--I didn't find a database entry for "[AuthorYear_GNSS_handbook]"
+Warning--I didn't find a database entry for "[AuthorYear_NLOS_multipath_survey]"
+Warning--I didn't find a database entry for "[AuthorYear_3D_city_model]"
+Warning--I didn't find a database entry for "[AuthorYear_shadow_matching]"
+Warning--I didn't find a database entry for "[AuthorYear_RAIM_classic]"
+Warning--I didn't find a database entry for "[AuthorYear_proactive_GNSS]"
+Warning--I didn't find a database entry for "[AuthorYear_ML_GNSS_review]"
+Warning--I didn't find a database entry for "[AuthorYear_RNN_GNSS]"
+Warning--I didn't find a database entry for "[AuthorYear_XGB_GNSS]"
+Warning--I didn't find a database entry for "[AuthorYear_RAIM_urban_limit]"
+Warning--I didn't find a database entry for "[AuthorYear_ARAIM]"
+Warning--I didn't find a database entry for "[AuthorYear_CNR_monitoring]"
+Warning--I didn't find a database entry for "[AuthorYear_CNR_threshold_NLOS]"
+Warning--I didn't find a database entry for "[AuthorYear_SVM_GNSS]"
+Warning--I didn't find a database entry for "[AuthorYear_RF_GNSS_NLOS]"
+Warning--I didn't find a database entry for "[AuthorYear_XGB_GNSS_integrity]"
+Warning--I didn't find a database entry for "[AuthorYear_CNN_GNSS_temporal]"
+Warning--I didn't find a database entry for "[AuthorYear_RNN_GNSS_INS]"
+Warning--I didn't find a database entry for "[AuthorYear_Vaswani_2017]"
+Warning--I didn't find a database entry for "[AuthorYear_Transformer_transport]"
+Warning--I didn't find a database entry for "[AuthorYear_SMOTE]"
+Warning--I didn't find a database entry for "[AuthorYear_focal_loss_Lin2017]"
+Warning--I didn't find a database entry for "[AuthorYear_Groves_2013]"
+Warning--I didn't find a database entry for "[AuthorYear_geometric_prediction]"
+Warning--I didn't find a database entry for "[AuthorYear_Paper_B_TITS]"
+Warning--I didn't find a database entry for "[AuthorYear_UrbanNav_dataset]"
+Warning--I didn't find a database entry for "[AuthorYear_Hochreiter_LSTM_1997]"
+Warning--I didn't find a database entry for "[AuthorYear_Adam_Kingma2015]"
+Warning--I didn't find a database entry for "[AuthorYear_MCC_Baldi2000]"
+Warning--I didn't find a database entry for "[AuthorYear_XGBoost_Chen2016]"
+sn-mathphys-num.bst [2024/07/19 v1.1  bibliography style]
+Reallocating 'wiz_functions' (item size: 4) to 9000 items.
+Reallocating 'singl_function' (item size: 4) to 100 items.
+Reallocating 'singl_function' (item size: 4) to 100 items.
+Reallocating 'singl_function' (item size: 4) to 100 items.
+Reallocating 'singl_function' (item size: 4) to 100 items.
+You've used 0 entries,
+            7485 wiz_defined-function locations,
+            1247 strings with 11366 characters,
+and the built_in function-call counts, 114 in all, are:
+= -- 0
+> -- 0
+< -- 0
++ -- 0
+- -- 0
+* -- 3
+:= -- 14
+add.period$ -- 0
+call.type$ -- 0
+change.case$ -- 0
+chr.to.int$ -- 0
+cite$ -- 0
+duplicate$ -- 0
+empty$ -- 1
+format.name$ -- 0
+if$ -- 1
+int.to.chr$ -- 1
+int.to.str$ -- 1
+missing$ -- 0
+newline$ -- 46
+num.names$ -- 0
+pop$ -- 0
+preamble$ -- 1
+purify$ -- 0
+quote$ -- 0
+skip$ -- 1
+stack$ -- 0
+substring$ -- 0
+swap$ -- 0
+text.length$ -- 0
+text.prefix$ -- 0
+top$ -- 1
+type$ -- 0
+warning$ -- 0
+while$ -- 0
+width$ -- 0
+write$ -- 44
+(There were 5 error messages)

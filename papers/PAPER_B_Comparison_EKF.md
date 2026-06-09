@@ -61,8 +61,12 @@ per-class F1, bootstrap CIs; inference latency.
 
 ### 3.3 Results (✅ confirmed Run 15 — RESULTS_REFERENCE §7, §10c)
 
-- **In-domain (+5 s Macro-F1):** RF 0.926, XGB 0.919, soft-vote 0.911, DL 0.822 — trees lead.
-- **Cross-city Tokyo (+5 s):** **soft-vote 0.892**, stacking 0.886, XGB 0.821, DL 0.649,
+> **Training corpus:** Beijing (Beihang field Scenarios A–E) + UrbanNav Hong Kong (Medium,
+> Deep, Harsh, Tunnel) — 62,413 windows. **UrbanNav Tokyo: excluded from training; zero-shot
+> cross-city test only.**
+
+- **In-domain test (Beihang campus partition, +5 s Macro-F1):** RF 0.926, XGB 0.919, soft-vote 0.911, DL 0.822 — trees lead.
+- **Cross-city zero-shot (Tokyo Shinjuku, +5 s):** **soft-vote 0.892**, stacking 0.886, XGB 0.821, DL 0.649,
   RF 0.618. On DEGRADED: **soft-vote 0.896**, XGB 0.784, DL 0.753, **RF 0.148**.
 - **E8 (headline):** a **DL + XGBoost soft-vote ensemble beats every single model cross-city**
   (and on the safety-critical DEGRADED class) — DL and XGB make complementary errors that

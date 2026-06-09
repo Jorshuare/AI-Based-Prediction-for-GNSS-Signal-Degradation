@@ -62,6 +62,9 @@ route_planning/analysis/**/*.png
 .vscode/
 Team-Pilot-Project.code-workspace
 
+# ─── Private project guide (comprehensive internal reference) ─────────────────
+PROJECT_COMPLETE_GUIDE.md
+
 # ─── Always track these regardless of above rules ────────────────────────────
 !**/.gitkeep
 !docs/dataset_references/*.pdf

@@ -1,0 +1,33 @@
+{
+  "env": "deep",
+  "label": "Deep Urban (Whampoa)",
+  "status": "ok",
+  "timestamp": "2026-06-07T21:39:42.761950",
+  "n_gt_epochs": 1539,
+  "n_gnss_fixes": 1539,
+  "n_degraded_epochs": 0,
+  "gnss_coverage_pct": 100.0,
+  "mean_nsat": 12.0,
+  "p_degraded_source": "SENTINEL-5s (1509 windows, mean P=0.233)",
+  "mean_p_degraded": 0.233,
+  "r_base_m": 5.0,
+  "r_degraded_m": 40.0,
+  "rmse_overall": {
+    "gnss_raw": 3.85,
+    "cv_kf_fixed": 4.89,
+    "cv_kf_nsat": 4.89,
+    "cv_kf_sentinel": 7.99
+  },
+  "rmse_degraded_segment": {
+    "gnss_raw": null,
+    "cv_kf_fixed": null,
+    "cv_kf_nsat": null,
+    "cv_kf_sentinel": null
+  },
+  "degraded_gain_vs_raw": {
+    "gnss_raw": null,
+    "cv_kf_fixed": null,
+    "cv_kf_nsat": null,
+    "cv_kf_sentinel": null
+  }
+}

@@ -867,9 +867,242 @@ def run_phase_2a_real(scenario='Shinjuku', gnss_source='trimble'):
     return result
 
 
+def run_phase_2b_sentinel(gnss_source: str = 'trimble') -> dict | None:
+    """
+    Phase 2b: Replace the reactive nsat P(DEGRADED) proxy with SENTINEL ML predictions.
+
+    Compares three P(DEGRADED) sources on the Tokyo Shinjuku drive:
+      fixed       — constant R (no adaptation)
+      nsat proxy  — reactive: P = clip((5 - nsat) / 3, 0, 1)
+      SENTINEL-5s — proactive: transformer-LSTM prediction 5 s in advance
+
+    The Tokyo feature matrix is pre-extracted in
+    data/processed/tokyo/tokyo_shinjuku_features.csv.
+    All other data (GNSS, IMU, wheel-odometry, ground truth) is loaded
+    exactly as in run_phase_2a_real.
+
+    Results saved as:
+      results/urbannav_ekf_sentinel_<source>.json
+      results/urbannav_ekf_sentinel_<source>_tracks.npz
+    """
+    from datetime import datetime as _dt, timezone as _tz
+    from scipy.interpolate import interp1d
+
+    print(f"\n{'='*80}")
+    print(f"Phase 2b: SENTINEL-wired EKF (source={gnss_source}) -- Tokyo Shinjuku")
+    print(f"{'='*80}\n")
+
+    # ── 1. Load pre-extracted Tokyo features ─────────────────────────────────
+    features_csv = ROOT / "data" / "processed" / "tokyo" / "tokyo_shinjuku_features.csv"
+    if not features_csv.exists():
+        print(f"  ERROR: {features_csv} not found")
+        return None
+
+    from src.models import feature_prep as fp
+    from src.models.inference import SentinelInference, FEATURE_NAMES
+
+    feat_all = pd.read_csv(features_csv)
+    feat = feat_all[feat_all["source"] == f"tokyo_shinjuku_{gnss_source}"].copy().reset_index(drop=True)
+    if len(feat) < 30:
+        print(f"  ERROR: Only {len(feat)} feature rows for source=tokyo_shinjuku_{gnss_source}")
+        return None
+    print(f"  [OK] Loaded {len(feat)} feature epochs (source=tokyo_shinjuku_{gnss_source})")
+
+    # Apply the exact training preprocessing pipeline
+    feat = fp.impute(feat)
+    feat = fp.clip_features(feat)
+    feat = fp.add_delta_features(feat)
+    feat["receiver_tier"] = 0.0        # Trimble/u-blox F9P = professional tier
+    for c in FEATURE_NAMES:
+        if c not in feat.columns:
+            feat[c] = 0.0
+    feat[FEATURE_NAMES] = feat[FEATURE_NAMES].fillna(0.0)
+
+    # ── 2. SENTINEL inference ─────────────────────────────────────────────────
+    print("  [INFO] Loading SENTINEL model and running inference...")
+    try:
+        si = SentinelInference()
+    except FileNotFoundError as e:
+        print(f"  ERROR: {e}")
+        return None
+
+    Xw, end_idx = si.windows(feat)
+    if Xw is None:
+        print("  ERROR: Not enough feature epochs for SENTINEL windows.")
+        return None
+    probs = si.predict(Xw)
+    p_deg_5s  = probs["5s"][:, 2]    # P(DEGRADED at +5 s) per window
+    p_deg_15s = probs["15s"][:, 2]
+    print(f"  [OK] SENTINEL: {len(p_deg_5s)} windows, "
+          f"mean P(DEG)@5s={p_deg_5s.mean():.3f}, @15s={p_deg_15s.mean():.3f}")
+
+    # GPS TOW for each feature epoch (GPS week 2032, 18 leap-second offset)
+    GPS_EPOCH = pd.Timestamp("1980-01-06 00:00:00", tz="UTC")
+    feat_ts   = pd.to_datetime(feat["timestamp"], format="mixed", utc=True)
+    feat_tow  = (feat_ts - GPS_EPOCH).dt.total_seconds().values + 18.0 - 2032 * 604800.0
+    window_tow = feat_tow[end_idx]    # TOW at last epoch of each window
+
+    # ── 3. Load GNSS + IMU + ground truth (same as Phase 2a real) ────────────
+    print("[1/5] Loading real GNSS, IMU, wheel-odometry, ground truth...")
+    try:
+        spp_tow, spp_ecef, spp_nsat, spp_horiz_std = load_real_gnss(gnss_source)
+    except FileNotFoundError as e:
+        print(f"  ERROR: {e}")
+        return None
+
+    scenario_dir = DATA / "Shinjuku"
+    imu_df = load_imu_data(scenario_dir / "imu.csv")
+    ref_df = load_reference_trajectory(scenario_dir / "reference.csv")
+    imu_accel, imu_gyro, wheel_speed, truth_xyz, n = align_data(imu_df, ref_df)
+
+    ref_df2 = load_reference_trajectory(scenario_dir / "reference.csv")
+    rt_all  = ref_df2["tow_sec"].values
+    imu_tow = imu_df["tow_sec"].values
+    tmin = max(imu_tow.min(), rt_all.min())
+    tmax = min(imu_tow.max(), rt_all.max())
+    ref_mask = (rt_all >= tmin) & (rt_all <= tmax)
+    grid_tow = rt_all[ref_mask][:n]
+
+    ref_ecef0 = truth_xyz[0]
+    truth_enu = ecef_to_local_enu(truth_xyz, ref_ecef0)
+    spp_enu_all = ecef_to_local_enu(spp_ecef, ref_ecef0)
+
+    # Align GNSS onto 10Hz grid
+    gnss_xy   = np.zeros((n, 2))
+    gnss_mask = np.zeros(n, bool)
+    nsat_grid = np.zeros(n, float)
+    j, last_fix = 0, spp_enu_all[0]
+    for k in range(n):
+        while j + 1 < len(spp_tow) and abs(spp_tow[j+1] - grid_tow[k]) <= abs(spp_tow[j] - grid_tow[k]):
+            j += 1
+        if abs(spp_tow[j] - grid_tow[k]) < 0.15:
+            gnss_xy[k]  = spp_enu_all[j]
+            gnss_mask[k] = True
+            nsat_grid[k] = spp_nsat[j]
+            last_fix = spp_enu_all[j]
+        else:
+            gnss_xy[k]  = last_fix
+            nsat_grid[k] = 0
+    print(f"  [OK] {gnss_mask.sum()} GNSS fixes aligned on 10-Hz grid")
+
+    # nsat proxy P(DEGRADED) — reactive baseline
+    nsf = pd.Series(nsat_grid).replace(0, np.nan).interpolate().bfill().ffill().values
+    nsf = pd.Series(nsf).rolling(20, center=True, min_periods=1).mean().values
+    p_nsat = np.clip((5.0 - nsf) / 3.0, 0.0, 1.0)
+
+    # ── 4. Align SENTINEL → EKF grid ─────────────────────────────────────────
+    # window_tow covers the feature time range; grid_tow may be wider.
+    # Use linear interpolation; clamp outside feature range to edge values.
+    p_sentinel_5s = np.interp(grid_tow, window_tow, p_deg_5s,
+                               left=p_deg_5s[0], right=p_deg_5s[-1]).clip(0.0, 1.0)
+    p_sentinel_15s = np.interp(grid_tow, window_tow, p_deg_15s,
+                                left=p_deg_15s[0], right=p_deg_15s[-1]).clip(0.0, 1.0)
+    print(f"  [OK] SENTINEL-5s aligned: mean P={p_sentinel_5s.mean():.3f}, "
+          f"nsat proxy mean P={p_nsat.mean():.3f}")
+
+    # "Degraded" segment for RMSE reporting (same definition as Phase 2a real)
+    is_degraded = gnss_mask & (nsat_grid > 0) & (nsat_grid <= 5)
+    print(f"  [OK] Degraded epochs (<=5 sats): {is_degraded.sum()} ({100*is_degraded.mean():.1f}%)")
+
+    # ── 5. Run filters ────────────────────────────────────────────────────────
+    print("[2/5] Running EKF variants on real GNSS (10 Hz)...")
+    r_base, r_deg = (4.0, 40.0) if gnss_source == "trimble" else (8.0, 40.0)
+    params = EKF9StateParams(dt=0.1, r_base=r_base, r_degraded=r_deg)
+
+    r_fixed_arr   = np.full(n, r_base**2)
+    r_nsat_arr    = (r_base + (r_deg - r_base) * p_nsat)      ** 2
+    r_sent5_arr   = (r_base + (r_deg - r_base) * p_sentinel_5s) ** 2
+    r_sent15_arr  = (r_base + (r_deg - r_base) * p_sentinel_15s) ** 2
+
+    # Fixed-R (baseline)
+    aided_fixed   = EKF9State(params).run(
+        imu_accel, imu_gyro, gnss_xy, p_nsat,
+        adaptive=False, wheel_speed=wheel_speed, gnss_mask=gnss_mask)[0]
+    # Adaptive with nsat proxy (Phase 2a result)
+    aided_nsat    = EKF9State(params).run(
+        imu_accel, imu_gyro, gnss_xy, p_nsat,
+        adaptive=True, wheel_speed=wheel_speed, gnss_mask=gnss_mask)[0]
+    # Adaptive with SENTINEL-5s predictions
+    aided_sent5   = EKF9State(params).run(
+        imu_accel, imu_gyro, gnss_xy, p_sentinel_5s,
+        adaptive=True, wheel_speed=wheel_speed, gnss_mask=gnss_mask)[0]
+    # Adaptive with SENTINEL-15s predictions
+    aided_sent15  = EKF9State(params).run(
+        imu_accel, imu_gyro, gnss_xy, p_sentinel_15s,
+        adaptive=True, wheel_speed=wheel_speed, gnss_mask=gnss_mask)[0]
+
+    def rmse(a, m):
+        return float(np.sqrt(np.mean(np.sum((a[m] - truth_enu[m])**2, axis=1)))) if m.any() else np.nan
+
+    def gain(ref, val):
+        return round(100.0 * (ref - val) / ref, 1) if ref and not np.isnan(ref) and not np.isnan(val) else np.nan
+
+    fix_only = gnss_mask
+    methods = {
+        "gnss_raw":          gnss_xy,
+        "aided_ekf_fixed":   aided_fixed,
+        "aided_ekf_nsat":    aided_nsat,
+        "aided_ekf_sent5s":  aided_sent5,
+        "aided_ekf_sent15s": aided_sent15,
+    }
+    overall  = {k: round(rmse(v, fix_only), 3) for k, v in methods.items()}
+    deg_rmse = {k: round(rmse(v, is_degraded), 3) for k, v in methods.items()} if is_degraded.any() else {}
+
+    print("[3/5] Results (horizontal RMSE vs cm-level truth):\n")
+    print(f"  {'Method':<26}{'Overall RMSE':>14}{'Degraded RMSE':>15}{'Deg. gain':>12}")
+    print(f"  {'-'*67}")
+    for k in methods:
+        ov = overall[k]
+        dv = deg_rmse.get(k, np.nan)
+        g = "-" if k == "gnss_raw" else (f"{gain(deg_rmse.get('gnss_raw', 0), dv):+.1f}%"
+                                          if not np.isnan(dv) else "N/A")
+        print(f"  {k:<26}{ov:>11.2f} m{dv:>12.2f} m{g:>12}")
+    print()
+
+    # ── 6. Save results ───────────────────────────────────────────────────────
+    result = {
+        "scenario": "Shinjuku",
+        "gnss_source": gnss_source,
+        "phase": "2b_sentinel_wired",
+        "timestamp": _dt.utcnow().isoformat(),
+        "n_epochs": int(n),
+        "n_gnss_fixes": int(gnss_mask.sum()),
+        "n_degraded_epochs": int(is_degraded.sum()),
+        "mean_p_sentinel_5s": round(float(p_sentinel_5s.mean()), 3),
+        "mean_p_nsat": round(float(p_nsat.mean()), 3),
+        "rmse_overall": overall,
+        "rmse_degraded_segment": {k: (v if not np.isnan(v) else None)
+                                  for k, v in deg_rmse.items()},
+        "degraded_gain_vs_raw": {k: gain(deg_rmse.get("gnss_raw", 0), deg_rmse.get(k, np.nan))
+                                 for k in methods if k != "gnss_raw"},
+        "_methodology": [
+            "Phase 2b: SENTINEL ML replaces the reactive nsat P(DEGRADED) proxy.",
+            f"SENTINEL-5s: proactive 5-second lookahead from transformer-LSTM.",
+            f"nsat proxy: reactive clip((5-nsat)/3, 0, 1) — same as Phase 2a.",
+            "Both drive the same 9-state EKF; only the trust signal differs.",
+        ],
+    }
+    out_json = RESULTS / f"urbannav_ekf_sentinel_{gnss_source}.json"
+    with open(out_json, "w") as fh:
+        json.dump(result, fh, indent=2)
+    print(f"[4/5] Saved -> {out_json}")
+
+    np.savez(RESULTS / f"urbannav_ekf_sentinel_{gnss_source}_tracks.npz",
+             truth=truth_enu, gnss=gnss_xy, gnss_mask=gnss_mask,
+             aided_fixed=aided_fixed, aided_nsat=aided_nsat,
+             aided_sent5=aided_sent5, aided_sent15=aided_sent15,
+             is_degraded=is_degraded, nsat=nsat_grid,
+             p_nsat=p_nsat, p_sentinel_5s=p_sentinel_5s, p_sentinel_15s=p_sentinel_15s)
+    print(f"[5/5] Saved tracks -> urbannav_ekf_sentinel_{gnss_source}_tracks.npz\n")
+    return result
+
+
 if __name__ == "__main__":
     import sys
-    if "--real" in sys.argv:
+    if "--sentinel" in sys.argv:
+        src = "ublox" if "--ublox" in sys.argv else "trimble"
+        run_phase_2b_sentinel(gnss_source=src)
+    elif "--real" in sys.argv:
         src = "ublox" if "--ublox" in sys.argv else "trimble"
         if "--both" in sys.argv:
             run_phase_2a_real(scenario='Shinjuku', gnss_source='trimble')

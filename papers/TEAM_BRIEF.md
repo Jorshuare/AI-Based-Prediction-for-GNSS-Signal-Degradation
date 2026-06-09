@@ -98,9 +98,11 @@ We have **five layers of validation**:
 
 **The one-line answer to "how do you know it generalises?"**
 
-> "We trained in Beihang + Hong Kong and tested on a city the model never saw (Tokyo). On the
-> safety-critical loss-of-fix class, our model held F1 = 0.75 while the strongest classical
-> baseline (RandomForest) dropped to 0.15, while a DL+XGBoost ensemble reached 0.90. The deep model learns degradation; RandomForest memorises a city."
+> "We trained on Beijing (Beihang) and Hong Kong data, then tested on a city the model never
+> saw (Tokyo — explicitly excluded from training). On the safety-critical loss-of-fix class,
+> our model held F1 = 0.75 while the strongest classical baseline (RandomForest) dropped to
+> 0.15, and a DL+XGBoost ensemble reached 0.90. The deep model learns generalizable degradation
+> representations; RandomForest memorises city-specific thresholds."
 
 ---
 
@@ -209,6 +211,9 @@ attention heatmap, DL-vs-baseline comparison, dataset browser, and the full metr
       a systematic search."
 - [ ] Feature count = **37** everywhere (not 35 — old drafts say 35; that is wrong).
 - [ ] Architecture stated correctly: 8 heads, d=128, d_ff=512, LSTM hidden 256, 1.46M params.
+- [ ] **Training data stated correctly everywhere: trained on Beijing (Beihang field) + UrbanNav
+      Hong Kong (Medium/Deep/Harsh/Tunnel). UrbanNav Tokyo excluded from training — zero-shot
+      cross-city test only. Never say "trained on Beijing only."**
 - [ ] Data balancing stated correctly: DL = no-SMOTE + focal + class weights; SMOTE only for
       tree baselines.
 - [ ] In-domain tree superiority disclosed, not hidden.

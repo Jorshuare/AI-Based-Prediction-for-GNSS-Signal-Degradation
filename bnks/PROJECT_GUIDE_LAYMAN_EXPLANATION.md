@@ -24,8 +24,9 @@ the car can prepare (slow down, lean on its other sensors, or reroute).
   new city" result is our strongest selling point.
 - It runs in well under a millisecond — fast enough for a real vehicle.
 
-**The data:** ~150,000 labelled one-second snapshots from Beihang, Hong Kong, and Tokyo,
-across professional receivers down to ordinary phone chips.
+**The data:** ~150,000 labelled one-second snapshots; training on Beihang (Beijing) and Hong
+Kong data (62,413 windows), with Tokyo held out entirely as the cross-city zero-shot test.
+Receivers span professional units down to ordinary phone chips.
 
 **What we publish (plan):** two journal papers (one on the method, one releasing the dataset)
 plus one conference paper (the "works in a new city" result). Details for the team are in the

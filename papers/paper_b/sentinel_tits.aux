@@ -1,0 +1,91 @@
+\relax 
+\citation{[AuthorYear_AV_positioning_survey]}
+\citation{[AuthorYear_NLOS_survey]}
+\citation{[AuthorYear_RAIM_classic]}
+\citation{[AuthorYear_cooperative_driving]}
+\citation{[AuthorYear_Paper_A_GPS_Solutions]}
+\@writefile{toc}{\contentsline {section}{\numberline {I}Introduction}{1}{}\protected@file@percent }
+\citation{[AuthorYear_Groves_2013],[AuthorYear_Petovello_2015]}
+\citation{[AuthorYear_tight_coupling_urban]}
+\citation{[AuthorYear_factor_graph_GNSS_IMU]}
+\citation{[AuthorYear_Sage_Husa]}
+\citation{[AuthorYear_IMM_GNSS]}
+\citation{[AuthorYear_chi2_GNSS]}
+\citation{[AuthorYear_predictive_adaptive_KF]}
+\citation{[AuthorYear_TLIO],[AuthorYear_RIDI]}
+\citation{[AuthorYear_ML_GNSS_outlier]}
+\citation{[AuthorYear_ML_map_matching]}
+\citation{[AuthorYear_RNN_pseudorange]}
+\citation{[AuthorYear_UrbanNav_dataset]}
+\citation{[AuthorYear_UrbanNav_GNSS]}
+\citation{[AuthorYear_UrbanNav_INS]}
+\citation{[AuthorYear_UrbanNav_lidar]}
+\citation{[AuthorYear_Paper_A_GPS_Solutions]}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Prediction-informed adaptive EKF system overview. SENTINEL produces a five-second advance degradation probability from GNSS signal features. After unsupervised floor calibration, this probability drives the measurement noise covariance schedule, causing the inertial dead-reckoning component to assume navigation authority before the corrupted fix arrives. NHC = non-holonomic constraint; ZUPT = zero-velocity update.}}{2}{}\protected@file@percent }
+\newlabel{fig:system_overview}{{1}{2}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {II}Related Work}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-A}}GNSS/INS Integration for Urban Navigation}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-B}}Adaptive Kalman Filtering}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-C}}Machine Learning for Navigation}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-D}}UrbanNav Dataset}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {III}SENTINEL Prediction Model}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-A}}Receiver-Domain Floor Calibration}{2}{}\protected@file@percent }
+\newlabel{subsec:calibration}{{\mbox  {III-A}}{2}{}{}{}}
+\newlabel{eq:calibration}{{2}{2}{}{}{}}
+\citation{[AuthorYear_NHC_GNSS]}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Effect of unsupervised floor calibration on SENTINEL output distribution (Tokyo Trimble dataset). Raw predictions show a systematic floor at $P_5 = 0.153$ from receiver-domain shift; calibrated predictions correctly assign near-zero probability to the 88\% of clean epochs.}}{3}{}\protected@file@percent }
+\newlabel{fig:calibration}{{2}{3}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {IV}Adaptive Extended Kalman Filter Framework}{3}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-A}}Nine-State IMU-Aided EKF}{3}{}\protected@file@percent }
+\newlabel{subsec:9state_ekf}{{\mbox  {IV-A}}{3}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-B}}Measurement Model}{3}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Adaptive measurement noise standard deviation $\sigma _R(t)$ driven by calibrated SENTINEL output $\hat  {P}_{\mathrm  {calib}}(t)$ at the 5-second horizon. The five-second predictive lead causes $\sigma _R$ to begin rising before the position fix becomes corrupted, enabling the inertial dead-reckoning component to gradually assume navigation authority in anticipation.}}{3}{}\protected@file@percent }
+\newlabel{fig:adaptive_r}{{3}{3}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-C}}Adaptive Measurement Noise Covariance}{3}{}\protected@file@percent }
+\newlabel{subsec:adaptive_r}{{\mbox  {IV-C}}{3}{}{}{}}
+\newlabel{eq:adaptive_r}{{10}{3}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-D}}Joseph-Form Covariance Update}{3}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-E}}Four-State Constant-Velocity EKF (IMU-Free)}{3}{}\protected@file@percent }
+\newlabel{subsec:cv_ekf}{{\mbox  {IV-E}}{3}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {V}Experimental Setup}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-A}}Dataset A: Tokyo Shinjuku (Nine-State EKF)}{4}{}\protected@file@percent }
+\newlabel{subsec:tokyo_setup}{{\mbox  {V-A}}{4}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-B}}Dataset B: UrbanNav Hong Kong (Constant-Velocity EKF)}{4}{}\protected@file@percent }
+\newlabel{subsec:hk_setup}{{\mbox  {V-B}}{4}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces UrbanNav Hong Kong experimental environments}}{4}{}\protected@file@percent }
+\newlabel{tab:hk_envs}{{I}{4}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {VI}Results}{4}{}\protected@file@percent }
+\newlabel{sec:results}{{VI}{4}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-A}}Tokyo: Nine-State EKF Validation}{4}{}\protected@file@percent }
+\newlabel{subsec:tokyo_results}{{\mbox  {VI-A}}{4}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces Tokyo Shinjuku positioning results. RMSE in metres. ``Degraded gain'' is percentage RMSE reduction versus raw GNSS on degraded epochs only.}}{4}{}\protected@file@percent }
+\newlabel{tab:tokyo_results}{{II}{4}{}{}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Tokyo Shinjuku positioning RMSE comparison. The nine-state EKF provides consistently lower RMSE than the constant-velocity baseline. SENTINEL raw is hurt by receiver-domain shift; domain calibration recovers nearly all the benefit of the reactive nsat proxy while providing proactive lead time.}}{4}{}\protected@file@percent }
+\newlabel{fig:tokyo_comparison}{{4}{4}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-B}}Hong Kong: Four-Environment Analysis}{4}{}\protected@file@percent }
+\newlabel{subsec:hk_results}{{\mbox  {VI-B}}{4}{}{}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {VI-B}1}Non-Outage Environments}{4}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {\mbox  {VI-B}2}Tunnel Outage: Key Result}{4}{}\protected@file@percent }
+\citation{[AuthorYear_V2I_GNSS_map]}
+\@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces UrbanNav Hong Kong positioning results. RMSE in metres. ``No-fix gain'' is percentage RMSE reduction versus hold-last on no-fix epochs only (applicable only where no-fix epochs exist).}}{5}{}\protected@file@percent }
+\newlabel{tab:hk_results}{{III}{5}{}{}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Tunnel outage analysis (UrbanNav CHT). Top: SENTINEL calibrated degradation probability rises 5--10~seconds before tunnel entry. Middle: adaptive $\sigma _R$ follows, pre-conditioning the filter before the last valid fix is received. Bottom: cumulative RMSE comparison during the 151-epoch outage; SENTINEL accumulates 30.6\% less error than fixed-$R$ dead-reckoning.}}{5}{}\protected@file@percent }
+\newlabel{fig:tunnel}{{5}{5}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-C}}Severity Sweep: Tuning Sensitivity}{5}{}\protected@file@percent }
+\newlabel{subsec:severity_sweep}{{\mbox  {VI-C}}{5}{}{}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces UrbanNav Hong Kong results across four environments. SENTINEL improves over fixed-$R$ dead reckoning only in the tunnel (30.6\% no-fix RMSE reduction); in non-outage environments the high-quality F9P GNSS dominates and the constant-velocity EKF without IMU cannot help.}}{5}{}\protected@file@percent }
+\newlabel{fig:hk_results}{{6}{5}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {IV}{\ignorespaces Adaptive-$R$ EKF versus fixed-$R$ as a function of injected GNSS bias (Tokyo, nine-state EKF)}}{5}{}\protected@file@percent }
+\newlabel{tab:severity}{{IV}{5}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {VII}Discussion}{5}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VII-A}}When Does Predictive Adaptation Help?}{5}{}\protected@file@percent }
+\citation{[AuthorYear_Platt_scaling]}
+\citation{[AuthorYear_online_noise_estimation]}
+\bibstyle{IEEEtran}
+\bibdata{refs_b}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VII-B}}From Single Vehicle to Fleet-Level Transportation Safety}{6}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VII-C}}Receiver-Domain Shift in Deployment}{6}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VII-D}}Limitations}{6}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {VIII}Conclusion}{6}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{References}{6}{}\protected@file@percent }
+\gdef \@abspage@last{6}

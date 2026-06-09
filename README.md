@@ -159,10 +159,17 @@ python src/utils/analyze_route_testing_v2.py route_planning/Phone_b route_planni
 | NCLT                            | `data/raw/public/nclt/`                     | Michigan  | Campus driving (excluded: GPS-only artifact)    | ✅ Processed               |
 | Oxford RobotCar                 | `data/raw/public/oxford/`                   | Oxford    | Cross-continent (excluded: 2014 position-sigma) | ✅ Processed               |
 
-**Combined labelled dataset (Run 12):** **146,055 rows** × 41 columns across **12 source groups** and 4 cities (Beihang, Hong Kong, Tokyo, Michigan/Oxford excluded from training).
+**Combined labelled dataset (Run 12):** **146,055 rows** × 41 columns across **12 source groups** and 4 cities.
+
+| Role | Cities / Sources |
+|---|---|
+| **Training + in-domain test** | Beihang (Beijing) field collection + UrbanNav Hong Kong (Medium, Deep, Harsh, Tunnel) |
+| **Cross-city zero-shot evaluation only** | UrbanNav Tokyo Shinjuku (never in training) |
+| **Excluded from training** | NCLT (Michigan), Oxford RobotCar, drone data |
+
 Labels: CLEAN ~45%, WARNING ~42%, DEGRADED ~13% (varies by split — see NEXT_STEPS.md).
 
-**Note on exclusions:** Drone data (all CLEAN, no degradation signal), NCLT (num_satellites artifact), and Oxford 2014 (GPS-only, labels derived from position sigma only) are excluded from the primary training/test pipeline via `DEFAULT_EXCLUDE_SOURCES` in `feature_prep.py`. They remain in the combined CSV for research reference.
+**Note on exclusions:** Drone data (all CLEAN, no degradation signal), NCLT (num_satellites artifact), and Oxford 2014 (GPS-only, labels derived from position sigma only) are excluded from the primary training/test pipeline via `DEFAULT_EXCLUDE_SOURCES` in `feature_prep.py`. **UrbanNav Tokyo** data are also excluded from the main train/val/test windows and reserved exclusively for the cross-city zero-shot experiment (E6 in `reviewer_experiments.json`). All excluded sources remain in the combined CSV for research reference.
 
 ---
 

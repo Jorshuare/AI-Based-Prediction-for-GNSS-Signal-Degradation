@@ -164,15 +164,20 @@ better). Reliable probabilities are essential because the fusion filter multipli
 > Source: Run-16 (`results/RUN_SUMMARY.json`, `reviewer_experiments.json`,
 > `ensemble_comparison.json`). Full traceable table in `papers/RESULTS_REFERENCE.md`.
 
-### 7.1 In-domain test (Beihang + HK), +5 s Macro-F1
+### 7.1 In-domain test (trained on Beijing + HK; test partition = Beihang campus sessions), +5 s Macro-F1
+
+> **Training data:** Beihang (Beijing) field scenarios A–E + UrbanNav Hong Kong (Medium, Deep,
+> Harsh, Tunnel). **Tokyo excluded from training — held out for cross-city evaluation only.**
+> The test partition uses held-out Beihang campus driving sessions (never seen during training).
+
 | Model | Macro-F1 | DEGRADED F1 |
 |---|---|---|
 | RandomForest | 0.926 | 0.79 |
 | XGBoost | 0.919 | 0.81 |
 | Transformer-LSTM (full) | 0.821 | 0.72 |
 
-*Reading it:* **in the city you trained on, the tree models lead.** They memorise local patterns
-well. This is expected and we report it honestly.
+*Reading it:* **on the held-out test partition (same distribution as training), the tree models
+lead.** They memorise local patterns well. This is expected and we report it honestly.
 
 ### 7.2 Cross-city Tokyo (held-out), +5 s
 | Model | Macro-F1 | DEGRADED F1 |
