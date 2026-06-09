@@ -1,5 +1,5 @@
 # SENTINEL-GNSS — Run Summary
-**Generated:** 2026-06-03 10:17 UTC  
+**Generated:** 2026-06-04 19:32 UTC  
 **Repo:** https://github.com/Jorshuare/AI-Based-Prediction-for-GNSS-Signal-Degradation  
 
 ## Training Summary (best checkpoint by combined stop-F1 across 3 horizons)

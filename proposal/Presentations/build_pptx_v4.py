@@ -298,6 +298,30 @@ bullets_slide("How we defend it to reviewers (honest narrative)", [
     ("We lead with generalisation + efficiency, not an in-domain leaderboard score.", BLUE),
 ])
 
+section_divider("5.5", "EKF: From Prediction to Position")
+bullets_slide("How EKF Works: Predict-Update Cycle", [
+    ("Extended Kalman Filter fuses two sources of information:", BLUE),
+    "1. GNSS position measurement (noisy, but absolute positioning)",
+    "2. Motion model (dead-reckoning via velocity, but drifts over time)",
+    ("The EKF pre-emptively adapts its trust in GNSS based on predicted degradation:", BLUE),
+    "   • When P(DEGRADED) is high → inflate measurement noise R → lean on motion model",
+    "   • When P(DEGRADED) is low → normal R → use GNSS to correct drift",
+    "Result: smoother trajectory during blockage, faster recovery when GNSS returns.",
+])
+figure_slide("EKF Mechanism: Predict-Update Cycle", "fig_ekf_mechanism_concept.png",
+             "EKF architecture: GNSS measurement + adaptive noise R + motion model prediction.")
+bullets_slide("Synthetic Blockage Validation (Option A)", [
+    ("Controlled scenario: 300-epoch trajectory with simulated GNSS blockage (epochs 120–180).", BLUE),
+    "Predictor (our model) warns from epoch 115, allowing EKF to adapt early (proactive).",
+    ("Results on blockage segment (epochs 120–180):", BLUE),
+    "  • Raw GNSS position RMSE: 54.4 m (noisy)",
+    "  • Fixed-R EKF: 45.6 m (standard filter, constant trust)",
+    "  • Adaptive EKF (ours): 36.0 m (-33.8% vs raw GNSS)",
+    ("Key insight: Prediction-aware filter outperforms fixed filter by 21% on the same GNSS data.", BLUE),
+])
+figure_slide("Synthetic Blockage Results", "fig20_ekf_option_a_synthetic.png",
+             "Trajectory during blockage: raw GNSS (noisy) vs. fixed-R EKF vs. adaptive EKF (ours).")
+
 section_divider("6", "Roadmap & Deliverables")
 bullets_slide("Publication plan — 2 papers + 1 conference", [
     ("Paper A (GPS Solutions, Q1): method + multi-horizon + cross-receiver + cross-city + EKF.", BLUE),
@@ -306,12 +330,18 @@ bullets_slide("Publication plan — 2 papers + 1 conference", [
     "Two substantial papers avoid salami-slicing and carry more impact than four thin ones.",
 ])
 section_divider("6", "Future Work & Deployment")
-bullets_slide("Real-data EKF: from simulation to deployed navigation", [
-    "Current: adaptive EKF tested on controlled blockage simulation (33.8% RMSE gain).",
-    "Next: integrate UrbanNav Tokyo ground-truth (reference.csv, cm-level SPAN-INS).",
-    "Compute rover single-point positions (RTKLIB SPP from rover.obs), align with reference.",
-    "Real-data case study: demonstrate 5–15% RMSE gain on actual urban degradation events.",
-    ("Phase 2: per-receiver EKF tuning; multi-constellation (GPS+BeiDou+Galileo).", BLUE),
+bullets_slide("Real-data EKF: from simulation to deployed navigation (Option B, Phase 2a)", [
+    ("Why UrbanNav Tokyo for validation?", BLUE),
+    "  • UrbanNav provides cm-level ground truth (SPAN-INS post-processed trajectory in reference.csv)",
+    "  • Real GNSS data with actual urban blockage events (not synthetic)",
+    "  • Real IMU data (accelerometer + gyro) for 9-state EKF integration",
+    "  • Unseen city (cross-city test) — same as our model validation",
+    ("What we'll do:", BLUE),
+    "  1. Parse rover GNSS (RINEX) → single-point positions",
+    "  2. Parse IMU (imu.csv) and reference trajectory (reference.csv)",
+    "  3. Run 9-state EKF (IMU-driven prediction, GNSS update) with adaptive R",
+    "  4. Compute real RMSE gain (expected: 15–30% during actual blockage)",
+    "Result: honest real-world validation (no synthetic assumptions).",
 ])
 bullets_slide("Ensemble model deployment & inference pipeline", [
     "Save trained XGBoost model (joblib) during training for reproducibility.",
