@@ -1,0 +1,103 @@
+\relax 
+\bibstyle{sn-mathphys-num}
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\Newlabel{1}{1}
+\citation{[AuthorYear_AV_GNSS_survey]}
+\citation{[AuthorYear_UAS_GNSS]}
+\citation{[AuthorYear_GNSS_handbook]}
+\citation{[AuthorYear_NLOS_multipath_survey]}
+\citation{[AuthorYear_3D_city_model]}
+\citation{[AuthorYear_shadow_matching]}
+\citation{[AuthorYear_RAIM_classic]}
+\citation{[AuthorYear_proactive_GNSS]}
+\citation{[AuthorYear_ML_GNSS_review]}
+\citation{[AuthorYear_RNN_GNSS],[AuthorYear_XGB_GNSS]}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{2}{section.1}\protected@file@percent }
+\newlabel{sec:intro}{{1}{2}{Introduction}{section.1}{}}
+\citation{[AuthorYear_RAIM_classic]}
+\citation{[AuthorYear_RAIM_urban_limit]}
+\citation{[AuthorYear_ARAIM]}
+\citation{[AuthorYear_CNR_monitoring]}
+\citation{[AuthorYear_CNR_threshold_NLOS]}
+\citation{[AuthorYear_3D_city_model],[AuthorYear_shadow_matching]}
+\citation{[AuthorYear_SVM_GNSS],[AuthorYear_RF_GNSS_NLOS]}
+\citation{[AuthorYear_XGB_GNSS_integrity]}
+\citation{[AuthorYear_CNN_GNSS_temporal]}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Related Work}{3}{section.2}\protected@file@percent }
+\newlabel{sec:related}{{2}{3}{Related Work}{section.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}GNSS Integrity Monitoring and Signal Quality Assessment}{3}{subsection.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Machine Learning Applied to GNSS Signal Quality}{3}{subsection.2.2}\protected@file@percent }
+\citation{[AuthorYear_RNN_GNSS_INS]}
+\citation{[AuthorYear_Vaswani_2017]}
+\citation{[AuthorYear_Transformer_transport]}
+\citation{[AuthorYear_SMOTE]}
+\citation{[AuthorYear_focal_loss_Lin2017]}
+\citation{[AuthorYear_Groves_2013]}
+\citation{[AuthorYear_geometric_prediction]}
+\citation{[AuthorYear_Paper_B_TITS]}
+\citation{[AuthorYear_UrbanNav_dataset]}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Class Imbalance in GNSS Datasets}{4}{subsection.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Predictive Navigation Adaptation}{4}{subsection.2.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}Dataset and Feature Engineering}{4}{section.3}\protected@file@percent }
+\newlabel{sec:dataset}{{3}{4}{Dataset and Feature Engineering}{section.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Training Dataset: RCSSTEAP Urban Field Recordings}{4}{subsection.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Cross-City Evaluation Dataset}{5}{subsection.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Degradation Label Generation}{5}{subsection.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Feature Engineering}{5}{subsection.3.4}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces SENTINEL input feature taxonomy (37 features)}}{5}{table.1}\protected@file@percent }
+\newlabel{tab:features}{{1}{5}{SENTINEL input feature taxonomy (37 features)}{table.1}{}}
+\citation{[AuthorYear_Vaswani_2017]}
+\citation{[AuthorYear_Hochreiter_LSTM_1997]}
+\@writefile{toc}{\contentsline {section}{\numberline {4}SENTINEL Architecture}{6}{section.4}\protected@file@percent }
+\newlabel{sec:architecture}{{4}{6}{SENTINEL Architecture}{section.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Overview}{6}{subsection.4.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces SENTINEL architecture. A Transformer encoder with positional encoding processes a 30-epoch, 37-feature input window. The encoded sequence is fed to a two-layer LSTM whose final hidden state is projected by three parallel classification heads to simultaneously produce CLEAN/WARNING/DEGRADED probabilities at 5, 15, and 30-second horizons.}}{6}{figure.1}\protected@file@percent }
+\newlabel{fig:architecture}{{1}{6}{SENTINEL architecture. A Transformer encoder with positional encoding processes a 30-epoch, 37-feature input window. The encoded sequence is fed to a two-layer LSTM whose final hidden state is projected by three parallel classification heads to simultaneously produce CLEAN/WARNING/DEGRADED probabilities at 5, 15, and 30-second horizons}{figure.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Transformer Encoder}{6}{subsection.4.2}\protected@file@percent }
+\citation{[AuthorYear_focal_loss_Lin2017]}
+\citation{[AuthorYear_Adam_Kingma2015]}
+\citation{[AuthorYear_MCC_Baldi2000]}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}LSTM Decoder}{7}{subsection.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Classification Heads}{7}{subsection.4.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Training Objective}{7}{subsection.4.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Experimental Protocol}{7}{section.5}\protected@file@percent }
+\newlabel{sec:experiments}{{5}{7}{Experimental Protocol}{section.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Evaluation Metrics}{7}{subsection.5.1}\protected@file@percent }
+\citation{[AuthorYear_SMOTE]}
+\citation{[AuthorYear_XGBoost_Chen2016]}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Baselines}{8}{subsection.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Cross-City Generalisation Protocol}{8}{subsection.5.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}Results}{8}{section.6}\protected@file@percent }
+\newlabel{sec:results}{{6}{8}{Results}{section.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}In-Domain Performance at the 5-Second Horizon}{8}{subsection.6.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Test-set classification performance at the 5-second prediction horizon. Bold = best per column; underline = second-best. Bootstrap 95\% CI for SENTINEL Macro-F1: [0.745, 0.789].}}{9}{table.2}\protected@file@percent }
+\newlabel{tab:main_results}{{2}{9}{Test-set classification performance at the 5-second prediction horizon. Bold = best per column; underline = second-best. Bootstrap 95\% CI for SENTINEL Macro-F1: [0.745, 0.789]}{table.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Multi-Horizon Performance}{9}{subsection.6.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces SENTINEL performance across prediction horizons with bootstrap 95\% confidence intervals}}{9}{table.3}\protected@file@percent }
+\newlabel{tab:multi_horizon}{{3}{9}{SENTINEL performance across prediction horizons with bootstrap 95\% confidence intervals}{table.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Ablation Study}{9}{subsection.6.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.4}Cross-City Generalisation}{9}{subsection.6.4}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Per-horizon Macro-F1 and DEGRADED recall for SENTINEL, Random Forest, and XGBoost. Tree-based models maintain higher aggregate Macro-F1 at all horizons; SENTINEL maintains superior DEGRADED recall through 15~s, with the gap narrowing at 30~s.}}{10}{figure.2}\protected@file@percent }
+\newlabel{fig:multi_horizon}{{2}{10}{Per-horizon Macro-F1 and DEGRADED recall for SENTINEL, Random Forest, and XGBoost. Tree-based models maintain higher aggregate Macro-F1 at all horizons; SENTINEL maintains superior DEGRADED recall through 15~s, with the gap narrowing at 30~s}{figure.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Cross-city zero-shot evaluation on UrbanNav Tokyo Shinjuku (5-second horizon)}}{10}{table.4}\protected@file@percent }
+\newlabel{tab:cross_city}{{4}{10}{Cross-city zero-shot evaluation on UrbanNav Tokyo Shinjuku (5-second horizon)}{table.4}{}}
+\citation{[AuthorYear_Paper_B_TITS]}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Row-normalised confusion matrices for SENTINEL at the three prediction horizons. The DEGRADED class (bottom row) shows high recall ($\geq 0.73$) at all horizons. WARNING precision degrades at 15~s, reflecting the difficulty of distinguishing an early-warning state 15~seconds ahead.}}{11}{figure.3}\protected@file@percent }
+\newlabel{fig:confusion_matrices}{{3}{11}{Row-normalised confusion matrices for SENTINEL at the three prediction horizons. The DEGRADED class (bottom row) shows high recall ($\geq 0.73$) at all horizons. WARNING precision degrades at 15~s, reflecting the difficulty of distinguishing an early-warning state 15~seconds ahead}{figure.3}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7}Discussion}{11}{section.7}\protected@file@percent }
+\newlabel{sec:discussion}{{7}{11}{Discussion}{section.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Why SENTINEL Detects More Degradation Events}{11}{subsection.7.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}The Persistence Paradox}{11}{subsection.7.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces In-domain (Beijing) versus cross-city (Tokyo) Macro-F1 for four models. SENTINEL's domain shift is largest individually (0.172 drop) but the soft-voting ensemble recovers to within 0.029 of the RF in-domain performance.}}{12}{figure.4}\protected@file@percent }
+\newlabel{fig:cross_city}{{4}{12}{In-domain (Beijing) versus cross-city (Tokyo) Macro-F1 for four models. SENTINEL's domain shift is largest individually (0.172 drop) but the soft-voting ensemble recovers to within 0.029 of the RF in-domain performance}{figure.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.3}Domain Shift and Ensemble Fusion}{12}{subsection.7.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.4}Limitations}{12}{subsection.7.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {8}Conclusions}{12}{section.8}\protected@file@percent }
+\newlabel{sec:conclusion}{{8}{12}{Conclusions}{section.8}{}}
+\bibdata{refs_a}
+\@writefile{toc}{\contentsline {subparagraph}{Data availability}{13}{section*.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subparagraph}{Code availability}{13}{section*.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subparagraph}{Acknowledgements}{13}{section*.4}\protected@file@percent }
+\gdef \@abspage@last{13}

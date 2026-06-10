@@ -1,0 +1,37 @@
+{
+  "scenario": "Shinjuku",
+  "gnss_source": "trimble",
+  "phase": "2b_sentinel_wired",
+  "timestamp": "2026-06-07T21:28:45.174563",
+  "n_epochs": 20949,
+  "n_gnss_fixes": 18735,
+  "n_degraded_epochs": 2450,
+  "mean_p_sentinel_5s": 0.203,
+  "mean_p_nsat": 0.022,
+  "rmse_overall": {
+    "gnss_raw": 27.761,
+    "aided_ekf_fixed": 19.33,
+    "aided_ekf_nsat": 19.445,
+    "aided_ekf_sent5s": 36.837,
+    "aided_ekf_sent15s": 37.233
+  },
+  "rmse_degraded_segment": {
+    "gnss_raw": 47.402,
+    "aided_ekf_fixed": 24.282,
+    "aided_ekf_nsat": 26.756,
+    "aided_ekf_sent5s": 40.64,
+    "aided_ekf_sent15s": 40.06
+  },
+  "degraded_gain_vs_raw": {
+    "aided_ekf_fixed": 48.8,
+    "aided_ekf_nsat": 43.6,
+    "aided_ekf_sent5s": 14.3,
+    "aided_ekf_sent15s": 15.5
+  },
+  "_methodology": [
+    "Phase 2b: SENTINEL ML replaces the reactive nsat P(DEGRADED) proxy.",
+    "SENTINEL-5s: proactive 5-second lookahead from transformer-LSTM.",
+    "nsat proxy: reactive clip((5-nsat)/3, 0, 1) \u2014 same as Phase 2a.",
+    "Both drive the same 9-state EKF; only the trust signal differs."
+  ]
+}

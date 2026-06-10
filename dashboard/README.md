@@ -23,14 +23,17 @@ Browser (Next.js)  ──WS──►  FastAPI  ──reads──►  results/inf
 ## Run it (two terminals)
 
 **1 — Backend** (needs the repo's Python env with the results folder populated):
+
 ```bash
 cd dashboard/server
 pip install -r requirements.txt          # fastapi, uvicorn, pandas, numpy
 python main.py                            # serves on http://localhost:8000
 ```
+
 Check: `curl http://localhost:8000/api/health` → `{"status":"ok","scenarios":1,...}`
 
 **2 — Frontend**:
+
 ```bash
 cd dashboard/client
 npm install
@@ -45,20 +48,22 @@ chosen rate (epochs/sec slider); the gauge, map, timeline, KPIs and alerts updat
 
 ## API
 
-| Method | Path | Purpose |
-|---|---|---|
-| GET | `/api/health` | liveness + data availability |
-| GET | `/api/scenarios` | list prediction runs in `results/inference/` |
-| GET | `/api/predictions/{id}` | full prediction table for a run |
-| GET | `/api/summary/{id}` | per-run summary JSON |
-| GET | `/api/ekf` | UrbanNav adaptive-EKF results (filter comparison + sweep) |
-| WS  | `/ws` | control (`start_replay`/`stop_replay`/`ping`) + live `epoch` stream |
+| Method | Path                    | Purpose                                                             |
+| ------ | ----------------------- | ------------------------------------------------------------------- |
+| GET    | `/api/health`           | liveness + data availability                                        |
+| GET    | `/api/scenarios`        | list prediction runs in `results/inference/`                        |
+| GET    | `/api/predictions/{id}` | full prediction table for a run                                     |
+| GET    | `/api/summary/{id}`     | per-run summary JSON                                                |
+| GET    | `/api/ekf`              | UrbanNav adaptive-EKF results (filter comparison + sweep)           |
+| WS     | `/ws`                   | control (`start_replay`/`stop_replay`/`ping`) + live `epoch` stream |
 
 ## Adding more scenarios
 
 Run inference on any NMEA file; the dashboard auto-discovers the output:
+
 ```bash
 python -m src.models.inference --nmea "data/raw/scenarios/Degraded data/A/log_0000.nmea" --ekf
+
 # -> results/inference/<stem>_predictions.csv  (appears in the scenario dropdown)
 ```
 

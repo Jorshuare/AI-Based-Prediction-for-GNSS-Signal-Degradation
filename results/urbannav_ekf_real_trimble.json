@@ -3,7 +3,7 @@
   "gnss_source": "trimble",
   "engine": "RTKLIB single-point on rover_trimble.obs (GPS+GLONASS)",
   "data_mode": "FULLY REAL: real GNSS positions + real IMU + real wheel odometry + cm truth",
-  "timestamp": "2026-06-06T04:10:24.162930",
+  "timestamp": "2026-06-07T08:23:43.303681",
   "n_epochs": 20949,
   "n_real_fixes": 18735,
   "n_degraded_epochs": 2450,
@@ -12,30 +12,33 @@
     "gnss_raw": 27.761,
     "cv_kf": 24.065,
     "aided_ekf_fixed": 19.33,
-    "aided_ekf_adaptive": 43.49
+    "aided_ekf_adaptive": 19.445
   },
   "rmse_degraded_segment": {
     "gnss_raw": 47.402,
     "cv_kf": 31.23,
     "aided_ekf_fixed": 24.282,
-    "aided_ekf_adaptive": 77.853
+    "aided_ekf_adaptive": 26.756
   },
   "degraded_gain_vs_raw": {
     "gnss_raw": 0.0,
     "cv_kf": 34.1,
     "aided_ekf_fixed": 48.8,
-    "aided_ekf_adaptive": -64.2
+    "aided_ekf_adaptive": 43.6
   },
   "config": {
     "dt": 0.1,
     "r_base_m": 4.0,
     "r_degraded_m": 40.0,
     "degraded_def": "real GNSS fix with <=5 satellites (poor geometry)",
-    "p_degraded_source": "geometry proxy (satellite count); SENTINEL model used on labelled data"
+    "p_degraded_source": "nsat proxy (P=0 at nsat>=5, P=1 at nsat<=2)",
+    "chi2_gate_dof2_pct": "99.9% (threshold 13.82)"
   },
   "_methodology": [
     "FULLY REAL GNSS via RTKLIB single-point on rover_trimble.obs (GPS+GLONASS). Errors are REAL urban multipath/NLOS, not synthetic.",
     "The EKF predicts at 10 Hz on real IMU + wheel-odometry and updates on real fixes.",
-    "Degradation is defined by REAL satellite geometry (<=5 sats), not injected windows."
+    "Degradation is defined by REAL satellite geometry (<=5 sats), not injected windows.",
+    "P(DEGRADED) source: nsat proxy (P=0 at nsat>=5, P=1 at nsat<=2).",
+    "Chi-squared innovation gate (99.9%, 2-DOF): outlier fixes are soft-rejected even at P=0."
   ]
 }

@@ -1,0 +1,205 @@
+%% Bibliography for Paper A — SENTINEL GPS Solutions
+%% ─────────────────────────────────────────────────────────────────────────────
+%% HOW TO USE THIS FILE
+%% 1.  Download papers using the keywords in papers/search_keywords.md
+%% 2.  Import PDFs into NotebookLM and use prompts from papers/notebooklm_prompts.md
+%%     to extract the citation key, title, journal, year, and key metric
+%% 3.  Add each entry below following the @article / @inproceedings / @book format
+%% 4.  Replace every [AuthorYear_keyword] cite key in the LaTeX with the real key
+%% ─────────────────────────────────────────────────────────────────────────────
+%%
+%% REQUIRED CITATIONS — replace placeholder keys in sentinel_gps_solutions.tex
+%%
+%% Key: [AuthorYear_AV_GNSS_survey]
+%%   Topic: Survey of GNSS in autonomous vehicle navigation / localisation
+%%   Suggested search: "GNSS autonomous vehicle urban localisation survey"
+%
+%% Key: [AuthorYear_UAS_GNSS]
+%%   Topic: GNSS for UAV / UAS navigation
+%%   Suggested search: "GNSS UAV navigation integrity urban"
+%
+%% Key: [AuthorYear_GNSS_handbook]
+%%   Topic: Standard GNSS reference book (Kaplan & Hegarty, or Groves)
+%%   Entry type: @book
+%
+%% Key: [AuthorYear_NLOS_multipath_survey]
+%%   Topic: Survey of NLOS and multipath in urban GNSS
+%%   Suggested search: "GNSS NLOS multipath urban positioning survey"
+%
+%% Key: [AuthorYear_3D_city_model]
+%%   Topic: 3D city model aided GNSS satellite exclusion
+%%   Suggested search: "3D city model GNSS satellite exclusion urban"
+%
+%% Key: [AuthorYear_shadow_matching]
+%%   Topic: Shadow matching for urban GNSS
+%%   Suggested search: "shadow matching GNSS urban positioning"
+%
+%% Key: [AuthorYear_RAIM_classic]
+%%   Topic: RAIM / ARAIM for GNSS integrity
+%%   Suggested search: "receiver autonomous integrity monitoring GNSS"
+%
+%% Key: [AuthorYear_proactive_GNSS]
+%%   Topic: Proactive / anticipatory GNSS degradation mitigation
+%%   Suggested search: "proactive GNSS signal quality prediction"
+%
+%% Key: [AuthorYear_ML_GNSS_review]
+%%   Topic: Machine learning review for GNSS quality / positioning
+%%   Suggested search: "machine learning GNSS signal quality classification review"
+%
+%% Key: [AuthorYear_RNN_GNSS]
+%%   Topic: RNN/LSTM for GNSS signal classification
+%%   Suggested search: "recurrent neural network GNSS signal quality urban"
+%
+%% Key: [AuthorYear_XGB_GNSS]
+%%   Topic: XGBoost / gradient boosting for GNSS quality
+%%   Suggested search: "XGBoost gradient boosting GNSS NLOS detection"
+%
+%% Key: [AuthorYear_RAIM_urban_limit]
+%%   Topic: Limitations of RAIM in urban environments
+%%   Suggested search: "RAIM urban canyon limitation correlated errors"
+%
+%% Key: [AuthorYear_ARAIM]
+%%   Topic: Advanced RAIM multi-constellation
+%%   Suggested search: "Advanced RAIM ARAIM multi-constellation"
+%
+%% Key: [AuthorYear_CNR_monitoring]
+%%   Topic: C/N0 monitoring for GNSS quality
+%%   Suggested search: "carrier to noise ratio GNSS signal quality monitoring"
+%
+%% Key: [AuthorYear_CNR_threshold_NLOS]
+%%   Topic: C/N0 threshold for NLOS detection
+%%   Suggested search: "CNR threshold NLOS detection GNSS"
+%
+%% Key: [AuthorYear_SVM_GNSS]
+%%   Topic: SVM for GNSS NLOS detection
+%%   Suggested search: "support vector machine GNSS NLOS satellite classification"
+%
+%% Key: [AuthorYear_RF_GNSS_NLOS]
+%%   Topic: Random Forest for GNSS NLOS
+%%   Suggested search: "random forest GNSS NLOS positioning urban"
+%
+%% Key: [AuthorYear_XGB_GNSS_integrity]
+%%   Topic: XGBoost for GNSS integrity / quality
+%%   Suggested search: "XGBoost GNSS integrity positioning machine learning"
+%
+%% Key: [AuthorYear_CNN_GNSS_temporal]
+%%   Topic: CNN on GNSS time series / pseudorange residuals
+%%   Suggested search: "convolutional neural network GNSS pseudorange multipath"
+%
+%% Key: [AuthorYear_RNN_GNSS_INS]
+%%   Topic: RNN for GNSS/INS fault detection
+%%   Suggested search: "recurrent neural network GNSS INS fault detection"
+%
+%% Key: [AuthorYear_Vaswani_2017]
+%%   "Attention Is All You Need" — Vaswani et al., NeurIPS 2017
+@inproceedings{Vaswani2017,
+  author    = {Vaswani, Ashish and Shazeer, Noam and Parmar, Niki and
+               Uszkoreit, Jakob and Jones, Llion and Gomez, Aidan N and
+               Kaiser, \L{}ukasz and Polosukhin, Illia},
+  title     = {Attention Is All You Need},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {30},
+  year      = {2017}
+}
+%
+%% Key: [AuthorYear_Transformer_transport]
+%%   Topic: Transformer applied to transportation / time series
+%%   Suggested search: "Transformer self-attention transportation time series classification"
+%
+%% Key: [AuthorYear_Hochreiter_LSTM_1997]
+%%   LSTM original paper — Hochreiter & Schmidhuber, Neural Computation 1997
+@article{Hochreiter1997,
+  author  = {Hochreiter, Sepp and Schmidhuber, J\"{u}rgen},
+  title   = {Long Short-Term Memory},
+  journal = {Neural Computation},
+  year    = {1997},
+  volume  = {9},
+  number  = {8},
+  pages   = {1735--1780}
+}
+%
+%% Key: [AuthorYear_focal_loss_Lin2017]
+%%   Focal Loss — Lin et al., ICCV 2017
+@inproceedings{Lin2017FocalLoss,
+  author    = {Lin, Tsung-Yi and Goyal, Priya and Girshick, Ross and
+               He, Kaiming and Doll{\'a}r, Piotr},
+  title     = {Focal Loss for Dense Object Detection},
+  booktitle = {IEEE International Conference on Computer Vision (ICCV)},
+  year      = {2017}
+}
+%
+%% Key: [AuthorYear_SMOTE]
+%%   SMOTE — Chawla et al., JAIR 2002
+@article{Chawla2002SMOTE,
+  author  = {Chawla, Nitesh V and Bowyer, Kevin W and Hall, Lawrence O and
+             Kegelmeyer, W Philip},
+  title   = {{SMOTE}: Synthetic Minority Over-sampling Technique},
+  journal = {Journal of Artificial Intelligence Research},
+  year    = {2002},
+  volume  = {16},
+  pages   = {321--357}
+}
+%
+%% Key: [AuthorYear_XGBoost_Chen2016]
+%%   XGBoost — Chen & Guestrin, KDD 2016
+@inproceedings{Chen2016XGBoost,
+  author    = {Chen, Tianqi and Guestrin, Carlos},
+  title     = {{XGBoost}: A Scalable Tree Boosting System},
+  booktitle = {ACM International Conference on Knowledge Discovery and Data Mining (KDD)},
+  year      = {2016}
+}
+%
+%% Key: [AuthorYear_Adam_Kingma2015]
+%%   Adam optimiser — Kingma & Ba, ICLR 2015
+@inproceedings{Kingma2015Adam,
+  author    = {Kingma, Diederik P and Ba, Jimmy},
+  title     = {Adam: A Method for Stochastic Optimization},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2015}
+}
+%
+%% Key: [AuthorYear_MCC_Baldi2000]
+%%   MCC for multi-class evaluation
+%%   Suggested search: "Matthews correlation coefficient multi-class classification"
+%
+%% Key: [AuthorYear_UrbanNav_dataset]
+%%   UrbanNav dataset paper — Hsu et al.
+%%   Suggested search: "UrbanNav dataset Hong Kong Tokyo GNSS IMU benchmark"
+%
+%% Key: [AuthorYear_geometric_prediction]
+%%   Topic: Geometric GNSS quality prediction from vehicle heading / building models
+%%   Suggested search: "GNSS signal quality prediction building geometry vehicle heading"
+%
+%% Key: [AuthorYear_Groves_2013]
+%%   Groves, Principles of GNSS/INS/Multisensor Navigation — book
+@book{Groves2013,
+  author    = {Groves, Paul D},
+  title     = {Principles of {GNSS}, Inertial, and Multisensor Integrated
+               Navigation Systems},
+  edition   = {2nd},
+  publisher = {Artech House},
+  year      = {2013}
+}
+%
+%% Key: [AuthorYear_Paper_B_TITS]
+%%   This will be the companion T-ITS paper (Paper B) — add when accepted
+@unpublished{PaperB_TITS,
+  author = {[Author et al.]},
+  title  = {Prediction-Informed Adaptive Extended Kalman Filter for
+            {GNSS}-Degraded Urban Road Vehicle Navigation},
+  note   = {Submitted to IEEE Transactions on Intelligent Transportation
+            Systems, 2026}
+}
+
+%% ─── ADD YOUR 60 DOWNLOADED REFERENCES BELOW THIS LINE ──────────────────────
+%% Template:
+%% @article{AuthorYYYY,
+%%   author  = {Surname, First and Surname2, First2},
+%%   title   = {Title of the Paper},
+%%   journal = {Full Journal Name},
+%%   year    = {YYYY},
+%%   volume  = {X},
+%%   number  = {Y},
+%%   pages   = {A--B},
+%%   doi     = {10.XXXX/XXXXX}
+%% }

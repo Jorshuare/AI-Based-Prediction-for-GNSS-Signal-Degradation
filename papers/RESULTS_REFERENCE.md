@@ -38,9 +38,10 @@
 - Full labelled dataset: **149,662 rows × 41 columns** across 12 source groups, 4 cities.
 - Window: 30-second sliding window, 37 features per timestep → tensor `(N, 30, 37)`.
 - Test set includes `scenario_a_r13` (293 instant-blockage windows) — first dedicated blockage test coverage.
+- **Training cities: Beijing (Beihang) + Hong Kong.** The main train/val/test windows cover Beihang field data (Scenarios A–E) and UrbanNav Hong Kong (Medium, Deep, Harsh, Tunnel). **UrbanNav Tokyo Shinjuku data are excluded from the main train/val/test split** and are used exclusively for the cross-city zero-shot experiment (E6). Michigan (NCLT), Oxford, and drone data are also excluded from training.
 - **Field-collection site = Beihang University campus, Beijing, China** (Beihang is the
-  university; for the cross-city claim the *city* is Beijing, vs Hong Kong and Tokyo). Write
-  "Beihang University, Beijing" in papers so a university-vs-city comparison is not flagged.
+  university; for the cross-city claim the *cities* are Beijing + Hong Kong, vs unseen Tokyo). Write
+  "Beihang University, Beijing" in papers; note HK was also in training when describing the training corpus.
 
 ---
 

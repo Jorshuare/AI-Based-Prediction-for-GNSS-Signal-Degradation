@@ -2,12 +2,14 @@
 import { BEIHANG } from "@/lib/colors";
 import { useElementWidth, InfoDot } from "@/lib/ui";
 import { FiRadio } from "@/lib/icons";
+import { useT } from "@/lib/i18n";
 
 /**
  * Satellite-count strip across the whole drive. Fewer satellites = worse geometry =
  * higher chance of a bad fix. The shaded band below 5 marks the "degraded" regime.
  */
 export default function SatelliteStrip({ nsat, height = 130 }: { nsat: number[]; height?: number }) {
+  const { t } = useT();
   const [ref, W] = useElementWidth<HTMLDivElement>();
   const width = Math.max(W, 280);
   const pad = { l: 30, r: 12, t: 12, b: 20 };
@@ -26,9 +28,9 @@ export default function SatelliteStrip({ nsat, height = 130 }: { nsat: number[];
     <div>
       <div className="mb-3 flex items-center gap-2">
         <FiRadio size={16} color={BEIHANG.secondary} />
-        <h3 className="text-lg font-bold tracking-tight" style={{ color: BEIHANG.primary }}>Satellites in view</h3>
+        <h3 className="text-lg font-bold tracking-tight" style={{ color: BEIHANG.primary }}>{t("sats_in_view")}</h3>
         <InfoDot text="How many satellites the receiver could use at each moment. Below about five, the geometry is poor and the position can jump. The pink band marks those degraded stretches." />
-        <span className="ml-auto text-sm font-bold" style={{ color: BEIHANG.slate }}>avg {avg.toFixed(1)}</span>
+        <span className="ml-auto text-sm font-bold" style={{ color: BEIHANG.slate }}>{t("sat_avg")} {avg.toFixed(1)}</span>
       </div>
       <div ref={ref}>
         <svg viewBox={`0 0 ${width} ${height}`} width="100%" height={height}>

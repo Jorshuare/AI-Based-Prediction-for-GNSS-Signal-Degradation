@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import type { IconType } from "react-icons";
 import { BEIHANG, SIGNAL } from "@/lib/colors";
 import { Tooltip } from "@/lib/ui";
+import { useT } from "@/lib/i18n";
 import { FiActivity, FiTrendingUp, FiAlertOctagon, FiCheckCircle, FiClock, FiBarChart2, FiInfo } from "@/lib/icons";
 import type { Prediction } from "@/lib/types";
 
@@ -35,6 +36,7 @@ function Card({ label, value, accent, Icon, hint, i }: {
 }
 
 export default function MetricsGrid({ data, total }: { data: Prediction[]; total: number }) {
+  const { t } = useT();
   const n = data.length;
   const pdeg = data.map((d) => d.p_degraded_5s);
   const mean = n ? pdeg.reduce((a, b) => a + b, 0) / n : 0;
@@ -44,12 +46,12 @@ export default function MetricsGrid({ data, total }: { data: Prediction[]; total
   const firstDeg = data.findIndex((d) => d.pred_5s === "DEGRADED");
 
   const cards = [
-    { label: "Epochs streamed", value: `${n}/${total}`, accent: BEIHANG.secondary, Icon: FiBarChart2, hint: "Number of GNSS epochs processed so far out of the full run." },
-    { label: "Mean P(degraded)", value: `${(mean * 100).toFixed(1)}%`, accent: BEIHANG.accent, Icon: FiActivity, hint: "Average predicted degradation probability at the +5 s horizon." },
-    { label: "Peak P(degraded)", value: `${(max * 100).toFixed(1)}%`, accent: SIGNAL.DEGRADED, Icon: FiTrendingUp, hint: "Worst-case degradation probability seen in the stream." },
-    { label: "CLEAN epochs", value: `${clean}`, accent: SIGNAL.CLEAN, Icon: FiCheckCircle, hint: "Epochs predicted CLEAN (P(degraded) below 30%)." },
-    { label: "DEGRADED epochs", value: `${degraded}`, accent: SIGNAL.DEGRADED, Icon: FiAlertOctagon, hint: "Epochs predicted DEGRADED (P(degraded) at or above 70%): the safety-critical ones." },
-    { label: "First DEGRADED", value: firstDeg >= 0 ? `#${firstDeg}` : "—", accent: BEIHANG.primary, Icon: FiClock, hint: "Index of the first epoch flagged DEGRADED: the earliest warning." },
+    { label: t("kpi_epochs"), value: `${n}/${total}`, accent: BEIHANG.secondary, Icon: FiBarChart2, hint: "Number of GNSS epochs processed so far out of the full run." },
+    { label: t("kpi_mean"), value: `${(mean * 100).toFixed(1)}%`, accent: BEIHANG.accent, Icon: FiActivity, hint: "Average predicted degradation probability at the +5 s horizon." },
+    { label: t("kpi_peak"), value: `${(max * 100).toFixed(1)}%`, accent: SIGNAL.DEGRADED, Icon: FiTrendingUp, hint: "Worst-case degradation probability seen in the stream." },
+    { label: t("kpi_clean"), value: `${clean}`, accent: SIGNAL.CLEAN, Icon: FiCheckCircle, hint: "Epochs predicted CLEAN (P(degraded) below 30%)." },
+    { label: t("kpi_degraded"), value: `${degraded}`, accent: SIGNAL.DEGRADED, Icon: FiAlertOctagon, hint: "Epochs predicted DEGRADED (P(degraded) at or above 70%): the safety-critical ones." },
+    { label: t("kpi_first"), value: firstDeg >= 0 ? `#${firstDeg}` : "—", accent: BEIHANG.primary, Icon: FiClock, hint: "Index of the first epoch flagged DEGRADED: the earliest warning." },
   ];
 
   return (

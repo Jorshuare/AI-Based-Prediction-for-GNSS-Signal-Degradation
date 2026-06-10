@@ -1,0 +1,85 @@
+This is BibTeX, Version 0.99d
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: sentinel_tits.aux
+Reallocating 'name_of_file' (item size: 1) to 9 items.
+The style file: IEEEtran.bst
+Reallocating 'name_of_file' (item size: 1) to 7 items.
+Reallocating 'singl_function' (item size: 4) to 100 items.
+Reallocating 'singl_function' (item size: 4) to 100 items.
+Reallocating 'singl_function' (item size: 4) to 100 items.
+Reallocating 'wiz_functions' (item size: 4) to 6000 items.
+Reallocating 'singl_function' (item size: 4) to 100 items.
+Database file #1: refs_b.bib
+Warning--I didn't find a database entry for "[AuthorYear_AV_positioning_survey]"
+Warning--I didn't find a database entry for "[AuthorYear_NLOS_survey]"
+Warning--I didn't find a database entry for "[AuthorYear_RAIM_classic]"
+Warning--I didn't find a database entry for "[AuthorYear_cooperative_driving]"
+Warning--I didn't find a database entry for "[AuthorYear_Paper_A_GPS_Solutions]"
+Warning--I didn't find a database entry for "[AuthorYear_Groves_2013]"
+Warning--I didn't find a database entry for "[AuthorYear_Petovello_2015]"
+Warning--I didn't find a database entry for "[AuthorYear_tight_coupling_urban]"
+Warning--I didn't find a database entry for "[AuthorYear_factor_graph_GNSS_IMU]"
+Warning--I didn't find a database entry for "[AuthorYear_Sage_Husa]"
+Warning--I didn't find a database entry for "[AuthorYear_IMM_GNSS]"
+Warning--I didn't find a database entry for "[AuthorYear_chi2_GNSS]"
+Warning--I didn't find a database entry for "[AuthorYear_predictive_adaptive_KF]"
+Warning--I didn't find a database entry for "[AuthorYear_TLIO]"
+Warning--I didn't find a database entry for "[AuthorYear_RIDI]"
+Warning--I didn't find a database entry for "[AuthorYear_ML_GNSS_outlier]"
+Warning--I didn't find a database entry for "[AuthorYear_ML_map_matching]"
+Warning--I didn't find a database entry for "[AuthorYear_RNN_pseudorange]"
+Warning--I didn't find a database entry for "[AuthorYear_UrbanNav_dataset]"
+Warning--I didn't find a database entry for "[AuthorYear_UrbanNav_GNSS]"
+Warning--I didn't find a database entry for "[AuthorYear_UrbanNav_INS]"
+Warning--I didn't find a database entry for "[AuthorYear_UrbanNav_lidar]"
+Warning--I didn't find a database entry for "[AuthorYear_NHC_GNSS]"
+Warning--I didn't find a database entry for "[AuthorYear_V2I_GNSS_map]"
+Warning--I didn't find a database entry for "[AuthorYear_Platt_scaling]"
+Warning--I didn't find a database entry for "[AuthorYear_online_noise_estimation]"
+-- IEEEtran.bst version 1.14 (2015/08/26) by Michael Shell.
+-- http://www.michaelshell.org/tex/ieeetran/bibtex/
+-- See the "IEEEtran_bst_HOWTO.pdf" manual for usage information.
+
+Done.
+You've used 0 entries,
+            4087 wiz_defined-function locations,
+            873 strings with 8701 characters,
+and the built_in function-call counts, 104 in all, are:
+= -- 0
+> -- 0
+< -- 0
++ -- 0
+- -- 0
+* -- 19
+:= -- 27
+add.period$ -- 0
+call.type$ -- 0
+change.case$ -- 0
+chr.to.int$ -- 0
+cite$ -- 0
+duplicate$ -- 0
+empty$ -- 1
+format.name$ -- 0
+if$ -- 3
+int.to.chr$ -- 0
+int.to.str$ -- 0
+missing$ -- 0
+newline$ -- 23
+num.names$ -- 0
+pop$ -- 0
+preamble$ -- 1
+purify$ -- 0
+quote$ -- 2
+skip$ -- 1
+stack$ -- 0
+substring$ -- 0
+swap$ -- 0
+text.length$ -- 0
+text.prefix$ -- 0
+top$ -- 5
+type$ -- 0
+warning$ -- 0
+while$ -- 0
+width$ -- 0
+write$ -- 22
+(There were 26 warnings)

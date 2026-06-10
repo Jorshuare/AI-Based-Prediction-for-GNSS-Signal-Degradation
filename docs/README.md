@@ -10,6 +10,7 @@ focused companions. Older, overlapping write-ups were archived to **`/bnks`** (n
 | **[01_APPLICATION_AND_DASHBOARD.md](01_APPLICATION_AND_DASHBOARD.md)** | The web application: backend + frontend, the scenario/input files (what they are, how we got them, what each contains, with layman examples), every chart explained, and full deployment instructions. |
 | **[02_DATA_AND_MODELING.md](02_DATA_AND_MODELING.md)** | The science: data collection, datasets, the 37 features, the Transformer-LSTM, training, ablations, the ensemble, and **all the results we obtained** — each in plain language with justification. |
 | **[03_RUNBOOK_AND_ARCHITECTURE.md](03_RUNBOOK_AND_ARCHITECTURE.md)** | Operations: every pipeline step with its exact command and options, the dashboard run, the RTKLIB command, and an appendix of **all the formulas**. |
+| **[04_COMMERCIAL_DEPLOYMENT.md](04_COMMERCIAL_DEPLOYMENT.md)** | Taking it to market: deployment options, **free vs paid** packaging, step-by-step setup per tier, configuration, feasibility/costs, and the honest gap list + roadmap. |
 
 ## Focused companions (kept)
 

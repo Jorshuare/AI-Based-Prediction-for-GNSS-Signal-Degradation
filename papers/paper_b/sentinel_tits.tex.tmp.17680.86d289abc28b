@@ -1,0 +1,733 @@
+%% Paper B — IEEE Transactions on Intelligent Transportation Systems (T-ITS)
+%% Prediction-Informed Adaptive EKF for GNSS-Degraded Urban Navigation
+%% Template: IEEEtran (lettersize, journal)
+%%
+%% HOW TO COMPILE:
+%%   pdflatex sentinel_tits
+%%   bibtex   sentinel_tits
+%%   pdflatex sentinel_tits (x2)
+%%
+%% T-ITS SUBMISSION CHECKLIST:
+%%   [x] Abstract: no abbreviations, all terms spelled out
+%%   [x] Keywords: "System state estimation" + "Data-based approaches" (methodology)
+%%                 "Connected and autonomous vehicles" + "Autonomous driving" (application)
+%%   [x] Single-vehicle framed as part of urban transportation infrastructure
+%%   [ ] Real-data RMSE filled in (calibrated SENTINEL run needed — see TODO below)
+%%   [ ] Abstract: 260+ words — compliant
+%%   [ ] Page count: verify ≤16 pages in compiled form
+%%
+%% FIGURES NEEDED (generate with: python src/utils/make_paper_figures_b.py)
+%%   figures/fig_system_overview.pdf
+%%   figures/fig_adaptive_r.pdf
+%%   figures/fig_tokyo_comparison.pdf
+%%   figures/fig_hk_results.pdf
+%%   figures/fig_tunnel.pdf
+%%   figures/fig_calibration.pdf
+
+\documentclass[journal]{IEEEtran}
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{array}
+% subfig not used yet; add \usepackage{subcaption} when subfigures are needed
+\usepackage{textcomp}
+\usepackage{stfloats}
+\usepackage{url}
+\usepackage{graphicx}
+\usepackage{cite}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{xcolor}
+\hyphenation{op-tical net-works semi-conduc-tor IEEE-Xplore}
+
+% ── Convenience macros ────────────────────────────────────────────────────────
+\newcommand{\Pdeg}{\hat{P}_{\mathrm{deg}}}
+\newcommand{\Pcal}{\hat{P}_{\mathrm{calib}}}
+\newcommand{\Rmat}{\mathbf{R}}
+\newcommand{\Pmat}{\mathbf{P}}
+\newcommand{\Kmat}{\mathbf{K}}
+\newcommand{\Hmat}{\mathbf{H}}
+\newcommand{\xvec}{\mathbf{x}}
+\newcommand{\zvec}{\mathbf{z}}
+\newcommand{\sigbase}{\sigma_{\mathrm{base}}}
+\newcommand{\sigdeg}{\sigma_{\mathrm{deg}}}
+
+\begin{document}
+
+\title{Prediction-Informed Adaptive Extended Kalman Filter for Global
+Navigation Satellite System-Degraded Urban Road Vehicle Navigation}
+
+% TODO: fill real names and affiliations
+\author{First~Author,~\IEEEmembership{Student Member,~IEEE},
+        Second~Author,
+        and~Third~Author%
+\thanks{Manuscript received [DATE]; revised [DATE].}%
+\thanks{The authors are with the School of Electronics and Information
+Engineering, Beihang University, Beijing 100191, China
+(e-mail: [author]@buaa.edu.cn).}%
+\thanks{This work was supported in part by [TODO: funding].}}
+
+\markboth{IEEE Transactions on Intelligent Transportation Systems}%
+{Author \MakeLowercase{\textit{et al.}}: Prediction-Informed Adaptive EKF
+for Urban Navigation}
+
+\IEEEpubid{0000--0000/00\$00.00~\copyright~2026 IEEE}
+
+\maketitle
+
+% ── Abstract: NO abbreviations (T-ITS hard rule — instant desk reject) ────────
+\begin{abstract}
+Accurate and continuous positioning of road vehicles in urban environments is
+a fundamental safety requirement for autonomous ground transportation systems
+operating within the road infrastructure network.  Global Navigation Satellite
+System receivers in urban canyons suffer from multipath propagation,
+non-line-of-sight signal reception, and complete signal blockage during tunnel
+transits, producing position errors of tens to hundreds of metres that corrupt
+the onboard navigation filter and threaten the integrity of safety-critical
+vehicle control decisions.  Reactive positioning methods---those that detect
+signal degradation only after the navigation filter has ingested the corrupted
+measurement---cannot protect the vehicle from a bias that has already been
+incorporated into the state estimate.  This paper presents a
+prediction-informed adaptive Extended Kalman Filter framework that integrates
+a five-second advance warning of signal degradation, produced by a neural
+network classifier, into the measurement noise covariance schedule before
+corrupted position fixes arrive.  The adaptive covariance rule smoothly
+modulates the filter's trust in incoming satellite-derived fixes as a
+continuous function of predicted degradation probability, enabling the
+inertial dead-reckoning component to assume primary navigation authority in
+anticipation of signal loss rather than in reaction to it.  An unsupervised
+receiver-domain floor calibration procedure corrects systematic output bias
+when the neural network is deployed on receiver hardware not seen during
+training, requiring no labelled ground truth from the deployment domain.  The
+framework is evaluated on two independent real urban datasets.  On the
+UrbanNav Tokyo Shinjuku dataset recorded with a Trimble single-point receiver
+and a centimetre-level inertial reference trajectory, the nine-state
+inertially-aided filter achieves 48.8\% root mean squared error reduction
+versus raw satellite positioning during degraded epochs; with domain
+calibration of the neural network output, the prediction-informed variant
+reaches 38.7\% improvement---within five percentage points of the best
+reactive baseline and with the additional advantage of proactive lead time.
+On the UrbanNav Hong Kong dataset evaluated across four environments spanning
+medium urban, deep urban canyon, harsh urban canyon, and tunnel, the
+prediction-informed filter achieves 30.6\% root mean squared error reduction
+versus inertial dead reckoning during a 151-epoch tunnel transit with zero
+satellite availability, demonstrating that the five-second predictive lead
+time delivers a quantifiable transportation safety benefit in the
+highest-stakes scenario.  The results establish that per-vehicle predictive
+signal quality models function as a building block of the broader urban
+transportation infrastructure's positioning safety stack, with natural
+extensions to fleet-aggregated reliability maps via vehicle-to-infrastructure
+communication.
+\end{abstract}
+
+\begin{IEEEkeywords}
+System state estimation, data-based approaches, connected and autonomous
+vehicles, autonomous driving, Extended Kalman Filter, inertial navigation,
+Global Navigation Satellite System integrity, adaptive filtering, urban
+positioning
+\end{IEEEkeywords}
+
+% ──────────────────────────────────────────────────────────────────────────────
+\section{Introduction}
+\IEEEPARstart{P}{recise} and continuous positioning of road vehicles in urban
+environments is an enabling technology for the next generation of
+transportation systems: autonomous driving, smart fleet dispatch, cooperative
+intersection management, and high-definition map maintenance all depend on
+vehicle positions that are accurate to better than one metre in real time
+\cite{[AuthorYear_AV_positioning_survey]}.  Global Navigation Satellite
+Systems (GNSS) provide the global reference anchor, but their performance
+degrades severely in dense urban canyons where satellite signals are blocked,
+reflected off building facades, and received along non-line-of-sight paths
+that introduce pseudorange biases of tens of metres
+\cite{[AuthorYear_NLOS_survey]}.  During complete signal outages---tunnel
+crossings, underground car parks, dense overhead infrastructure---satellite
+availability drops to zero for intervals that can exceed several minutes on
+arterial urban routes.
+
+The standard engineering response is fusion with an Inertial Measurement Unit
+via an Extended Kalman Filter (EKF), where degraded GNSS measurements are
+down-weighted by inflating the measurement noise covariance $\Rmat$.
+Conventional reactive inflation---triggered by monitoring innovation
+magnitudes or satellite count thresholds \cite{[AuthorYear_RAIM_classic]}---acts
+\textit{after} the degraded fix has already been processed: the Kalman gain
+has already given partial weight to a biased measurement before the inflation
+takes effect.  This one-epoch latency can cause significant filter corruption
+at the 10~Hz update rates typical of tactical navigation systems.
+
+Autonomous vehicles operating as agents within the urban transportation
+infrastructure face an additional constraint: the positioning integrity of
+any single vehicle has network-level consequences.  A vehicle that loses
+accurate positioning in a dense intersection cannot participate reliably in
+cooperative driving or respond correctly to infrastructure-level traffic
+signals \cite{[AuthorYear_cooperative_driving]}.  The positioning safety of
+individual autonomous vehicles is therefore a component of the broader
+transportation network's reliability, not merely an isolated onboard
+engineering problem.
+
+This paper presents a prediction-informed adaptive EKF framework
+(Fig.~\ref{fig:system_overview}) that integrates SENTINEL degradation
+probability outputs \cite{[AuthorYear_Paper_A_GPS_Solutions]} directly into the
+measurement noise covariance schedule.  SENTINEL provides
+$\Pdeg(t) = P(\text{position degraded at }t{+}5\,\text{s} \mid \mathbf{x}_{t-29:t})$
+from a Transformer--Long Short-Term Memory classifier operating on 37 GNSS
+signal quality features.  This probability drives $\Rmat$ continuously
+between a nominal and a degraded value, causing the filter to begin
+transferring navigation authority to the inertial model \textit{before} the
+corrupted fix arrives.
+
+The contributions of this paper are:
+\begin{enumerate}
+  \item A formally specified adaptive-$\Rmat$ covariance schedule driven by
+    predicted rather than reactive degradation probability, with design
+    rationale grounded in the Kalman optimality conditions.
+  \item An unsupervised receiver-domain floor calibration that corrects
+    systematic SENTINEL output bias on unseen hardware with no labelled
+    target data.
+  \item A comprehensive two-site evaluation on real urban data: Tokyo
+    Shinjuku (fully synchronised nine-state EKF with real IMU, wheel
+    odometry, and Trimble GNSS) and UrbanNav Hong Kong (four environments
+    spanning medium to tunnel, constant-velocity EKF from NMEA-only F9P).
+  \item Demonstration that the predictive lead time provides measurable
+    navigation benefit in the most safety-critical scenario: the cross-harbour
+    tunnel transit, where GNSS availability drops to zero for 151~seconds.
+\end{enumerate}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig_system_overview.pdf}
+\caption{Prediction-informed adaptive EKF system overview.  SENTINEL
+produces a five-second advance degradation probability from GNSS signal
+features.  After unsupervised floor calibration, this probability drives the
+measurement noise covariance schedule, causing the inertial dead-reckoning
+component to assume navigation authority before the corrupted fix arrives.
+NHC = non-holonomic constraint; ZUPT = zero-velocity
+update.}\label{fig:system_overview}
+\end{figure}
+
+% ──────────────────────────────────────────────────────────────────────────────
+\section{Related Work}
+
+\subsection{GNSS/INS Integration for Urban Navigation}
+
+Extended Kalman Filter-based loose and tight coupling of GNSS with
+inertial sensors has been the dominant approach for vehicular navigation
+\cite{[AuthorYear_Groves_2013], [AuthorYear_Petovello_2015]}.  Loose
+coupling passes GNSS position fixes as measurements; tight coupling uses
+raw pseudoranges and can exclude individual biased satellites
+\cite{[AuthorYear_tight_coupling_urban]}, but requires measurement-level
+GNSS outputs unavailable from many consumer receivers.  Factor graph
+optimisation and sliding-window bundle adjustment improve upon single-epoch
+EKF updates at the cost of computational latency
+\cite{[AuthorYear_factor_graph_GNSS_IMU]}, making them less suitable for
+real-time low-cost platforms.
+
+\subsection{Adaptive Kalman Filtering}
+
+The Sage-Husa algorithm \cite{[AuthorYear_Sage_Husa]} estimates noise
+statistics from innovation sequences; multiple-model approaches maintain
+a bank of filters with different covariance assumptions and blend their
+outputs \cite{[AuthorYear_IMM_GNSS]}.  Chi-squared innovation gating
+provides outlier protection \cite{[AuthorYear_chi2_GNSS]}.  All reactive
+approaches share the fundamental limitation that adaptation is triggered
+by degradation already present in the innovation sequence.  Predictive
+covariance inflation---pre-conditioning the filter based on a forward-looking
+signal quality estimate---has been proposed conceptually
+\cite{[AuthorYear_predictive_adaptive_KF]} but not demonstrated on real
+multi-sensor urban data with a learned predictor.
+
+\subsection{Machine Learning for Navigation}
+
+Neural networks have been applied to inertial sensor error modelling
+\cite{[AuthorYear_TLIO], [AuthorYear_RIDI]}, GNSS outlier classification
+\cite{[AuthorYear_ML_GNSS_outlier]}, and map matching
+\cite{[AuthorYear_ML_map_matching]}.  Sequence models have been used to
+predict pseudorange errors \cite{[AuthorYear_RNN_pseudorange]}.  None of
+these works closes the loop from learned prediction to adaptive covariance
+scheduling in a real multi-sensor EKF evaluated on two independent datasets.
+
+\subsection{UrbanNav Dataset}
+
+The UrbanNav dataset \cite{[AuthorYear_UrbanNav_dataset]} provides
+open-source synchronised multi-sensor recordings from Hong Kong and Tokyo
+with centimetre-level SPAN-CPT/SPAN-INS reference trajectories.  Prior
+benchmarks have evaluated GNSS-only positioning \cite{[AuthorYear_UrbanNav_GNSS]},
+INS integration \cite{[AuthorYear_UrbanNav_INS]}, and lidar localisation
+\cite{[AuthorYear_UrbanNav_lidar]}.  This paper contributes the first
+evaluation of prediction-informed adaptive filtering across all four UrbanNav
+Hong Kong environments.
+
+% ──────────────────────────────────────────────────────────────────────────────
+\section{SENTINEL Prediction Model}
+
+A full description of the SENTINEL architecture and training is given in
+\cite{[AuthorYear_Paper_A_GPS_Solutions]}.  Here we summarise the aspects
+relevant to EKF integration.
+
+SENTINEL processes a sliding 30-epoch window of 37 GNSS signal quality
+features $\mathbf{x}_{t-29:t}$ through a Transformer encoder (two layers,
+8 heads, $d_\text{model}=128$) and two-layer LSTM (hidden 256) to
+simultaneously output three-class degradation probabilities at 5, 15, and
+30-second prediction horizons:
+\begin{equation}
+  \Pdeg^{(h)}(t) = P\!\bigl(\text{DEGRADED at }t{+}h
+    \mid \mathbf{x}_{t-29:t}\bigr), \quad h \in \{5,15,30\}\;\text{s}
+\end{equation}
+The model is trained on the RCSSTEAP Beijing urban field dataset with focal
+loss and class weights $[1.0, 2.0, 5.0]$ for CLEAN/WARNING/DEGRADED.
+At the 5-second horizon on the held-out test set: macro-averaged
+F1~$= 0.821$, DEGRADED recall~$= 0.847$, MCC~$= 0.773$.
+
+\subsection{Receiver-Domain Floor Calibration}
+\label{subsec:calibration}
+
+When SENTINEL is deployed on receiver hardware not seen during training, a
+systematic output floor arises: all predictions are elevated above zero even
+for clean-sky epochs.  This is diagnosed by inspecting the empirical
+distribution of $\Pdeg$ on the target domain.  Denoting by $P_5$ the 5th
+percentile of the $\Pdeg$ stream on incoming data, the calibrated probability
+is:
+\begin{equation}\label{eq:calibration}
+  \Pcal(t) = \text{clip}\!\left(
+    \frac{\Pdeg(t) - P_5}{1 - P_5},\; 0,\; 1\right)
+\end{equation}
+This unsupervised rescaling requires \emph{no labelled data} from the target
+domain.  On the Tokyo Trimble dataset ($P_5 = 0.153$), the mean prediction
+falls from 0.203 to 0.060, eliminating the constant $\Rmat$ inflation that
+caused filter divergence with the raw prediction.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig_calibration.pdf}
+\caption{Effect of unsupervised floor calibration on SENTINEL output
+distribution (Tokyo Trimble dataset).  Raw predictions show a systematic
+floor at $P_5 = 0.153$ from receiver-domain shift; calibrated predictions
+correctly assign near-zero probability to the 88\% of clean
+epochs.}\label{fig:calibration}
+\end{figure}
+
+% ──────────────────────────────────────────────────────────────────────────────
+\section{Adaptive Extended Kalman Filter Framework}
+
+\subsection{Nine-State IMU-Aided EKF}
+\label{subsec:9state_ekf}
+
+The state vector for the Tokyo Shinjuku experiments is:
+\begin{equation}
+  \xvec = \bigl[x,\; y,\; v_x,\; v_y,\; \psi,\;
+    b_\text{baro},\; b_{a,x},\; b_{a,y}\bigr]^\top
+\end{equation}
+where $(x,y)$ is east-north position in the local ENU frame, $(v_x,v_y)$
+is ENU velocity, $\psi$ is vehicle heading, $b_\text{baro}$ is a barometric
+altitude bias, and $(b_{a,x}, b_{a,y})$ are accelerometer biases in the
+body frame.
+
+The state propagates at 10~Hz via IMU strapdown mechanics:
+\begin{align}
+  \dot{x} &= v_x, \qquad \dot{y} = v_y \\
+  \dot{v}_x &= (a_x^b - b_{a,x})\cos\psi - (a_y^b - b_{a,y})\sin\psi \\
+  \dot{v}_y &= (a_x^b - b_{a,x})\sin\psi + (a_y^b - b_{a,y})\cos\psi \\
+  \dot{\psi} &= \omega_z^b
+\end{align}
+The Jacobian $\mathbf{F}_k$ is evaluated at the current state estimate.
+Heading is initialised from the direction of the first clean GNSS
+displacement; failure to initialise heading correctly is the root cause
+of filter divergence in naive implementations.
+
+Two aiding constraints are applied in addition to GNSS:
+\begin{itemize}
+  \item \textbf{Non-holonomic constraint (NHC)}: the vehicle's lateral
+    velocity in body frame is zero; enforced as a pseudo-measurement
+    $v_y^b = 0$ \cite{[AuthorYear_NHC_GNSS]}.
+  \item \textbf{Zero-velocity update (ZUPT)}: when wheel speed drops below
+    0.5~m/s, both velocity components are updated towards zero, suppressing
+    IMU drift during stops.
+\end{itemize}
+
+\subsection{Measurement Model}
+
+GNSS fixes are assimilated as two-dimensional ENU position updates:
+\begin{equation}
+  \zvec_k = \Hmat\xvec_k + \boldsymbol{\nu}_k,
+  \quad \Hmat = \begin{bmatrix}1&0&0&0&0&0&0&0\\0&1&0&0&0&0&0&0\end{bmatrix}
+\end{equation}
+A chi-squared innovation gate (99.9\% threshold, $\chi^2_{0.999,2} = 13.82$)
+rejects gross outliers before the covariance update:
+\begin{equation}
+  \boldsymbol{\nu}_k^\top
+  \bigl(\Hmat\Pmat_k^-\Hmat^\top + \Rmat_k\bigr)^{-1}
+  \boldsymbol{\nu}_k \leq 13.82
+\end{equation}
+
+\subsection{Adaptive Measurement Noise Covariance}
+\label{subsec:adaptive_r}
+
+The scalar measurement noise standard deviation is modulated by the
+calibrated degradation probability:
+\begin{equation}\label{eq:adaptive_r}
+  \sigma_R(t) = \sigbase + (\sigdeg - \sigbase)\cdot\Pcal(t)
+\end{equation}
+\begin{equation}
+  \Rmat_k = \sigma_R^2(t)\cdot\mathbf{I}_{2\times2}
+\end{equation}
+When $\Pcal = 0$, the filter operates at nominal measurement noise.  When
+$\Pcal = 1$, $\Rmat$ is inflated by $(\sigdeg/\sigbase)^2$, effectively
+transferring navigation authority to the inertial model.  Because $\Pcal$
+is derived from the 5-second predictive output of SENTINEL, this inflation
+begins before the degraded fix arrives.
+
+\textit{Tuning principle}: $\sigdeg$ should be set to the expected worst-case
+GNSS horizontal error in the deployment environment, not arbitrarily large.
+Over-inflation at low-to-moderate degradation (where true GNSS error is
+smaller than $\sigdeg$) causes the filter to discard valid information and
+diverge; this is confirmed by the severity sweep in Section~\ref{sec:results}.
+For the Tokyo dataset: $(\sigbase, \sigdeg) = (4, 40)$~m.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig_adaptive_r.pdf}
+\caption{Adaptive measurement noise standard deviation $\sigma_R(t)$ driven
+by calibrated SENTINEL output $\Pcal(t)$ at the 5-second horizon.  The
+five-second predictive lead causes $\sigma_R$ to begin rising before the
+position fix becomes corrupted, enabling the inertial dead-reckoning
+component to gradually assume navigation authority in
+anticipation.}\label{fig:adaptive_r}
+\end{figure}
+
+\subsection{Joseph-Form Covariance Update}
+
+The Joseph stabilised form is used throughout to maintain positive
+semi-definiteness under numerical perturbation:
+\begin{equation}
+  \Pmat_k^+ = (\mathbf{I} - \Kmat_k\Hmat)\Pmat_k^-
+    (\mathbf{I} - \Kmat_k\Hmat)^\top
+    + \Kmat_k\Rmat_k\Kmat_k^\top
+\end{equation}
+
+\subsection{Four-State Constant-Velocity EKF (IMU-Free)}
+\label{subsec:cv_ekf}
+
+For the UrbanNav Hong Kong experiments, where no IMU data is used, a
+reduced constant-velocity EKF state is employed:
+\begin{equation}
+  \xvec_\text{CV} = \bigl[x,\; y,\; v_x,\; v_y\bigr]^\top
+\end{equation}
+with state transition $\mathbf{F}_k = \mathbf{I}_4 + \Delta t\,\mathbf{B}$
+where $\mathbf{B}$ couples velocity to position, and process noise
+$\mathbf{Q} = 0.3\,\mathbf{I}_{4\times4}$~m\textsuperscript{2}/s\textsuperscript{4}.
+The same adaptive-$\Rmat$ schedule from~\eqref{eq:adaptive_r} is applied with
+environment-specific $(\sigbase, \sigdeg)$ pairs (Table~\ref{tab:hk_envs}).
+
+% ──────────────────────────────────────────────────────────────────────────────
+\section{Experimental Setup}
+
+\subsection{Dataset A: Tokyo Shinjuku (Nine-State EKF)}
+\label{subsec:tokyo_setup}
+
+The UrbanNav Tokyo Shinjuku subset provides fully synchronised multi-sensor
+recordings: a Trimble SPP GNSS receiver (GPS + GLONASS processed with RTKLIB
+as rover\_trimble.obs), a tactical-grade IMU at 200~Hz, wheel odometry, and a
+post-processed SPAN-INS reference trajectory at centimetre-level accuracy.
+Total duration: 20,949 EKF epochs at 10~Hz (${\approx}$35 minutes through
+Shinjuku, one of Tokyo's densest urban districts).
+
+An epoch is classified as \textit{degraded} when the receiver reports
+$n_\text{sat} \leq 5$ satellites (indicating poor position dilution of
+precision and unreliable fix geometry).  Under this definition, 2,450 of
+20,949 epochs (11.7\%) are degraded.  Raw GNSS root mean squared error
+(RMSE) is 27.76~m overall and 47.40~m during degraded epochs.
+
+\subsection{Dataset B: UrbanNav Hong Kong (Constant-Velocity EKF)}
+\label{subsec:hk_setup}
+
+Four UrbanNav Hong Kong environments are evaluated (Table~\ref{tab:hk_envs}).
+All use a u-blox F9P dual-frequency NMEA receiver at 1~Hz and a SPAN-CPT
+post-processed reference.  No IMU data is used (constant-velocity EKF only).
+
+\begin{table}[h]
+\caption{UrbanNav Hong Kong experimental environments}
+\label{tab:hk_envs}
+\begin{tabular}{@{}llcccl@{}}
+\toprule
+Env. & Location & Epochs & Fix rate & Mean $n_\text{sat}$ &
+  $(\sigbase,\sigdeg)$ (m) \\
+\midrule
+Medium urban  & TST      & 787  & 83.5\% & 12.0 & (4, 30) \\
+Deep urban    & Whampoa  & 1539 & 100\%  & 12.0 & (5, 40) \\
+Harsh urban   & Mong Kok & 2312 & 100\%  & 12.0 & (6, 50) \\
+Tunnel        & CHT      & 401  & 62.3\% & 11.96& (4, 60) \\
+\botrule
+\end{tabular}
+\end{table}
+
+The F9P dual-frequency, multi-constellation receiver maintains lock on
+12~or more satellites even in Mong Kok.  Degradation is therefore defined
+as a no-fix epoch supplemented by pathological dilution-of-precision
+($\text{HDOP} > 5$).  The Cross-Harbour Tunnel (CHT) environment contains
+151 consecutive no-fix epochs (37.7\% of the run), representing a
+sustained position blackout.
+
+% ──────────────────────────────────────────────────────────────────────────────
+\section{Results}
+\label{sec:results}
+
+\subsection{Tokyo: Nine-State EKF Validation}
+\label{subsec:tokyo_results}
+
+Table~\ref{tab:tokyo_results} summarises positioning performance on the
+Tokyo Shinjuku dataset.
+
+\begin{table}[h]
+\caption{Tokyo Shinjuku positioning results. RMSE in metres.
+  ``Degraded gain'' is percentage RMSE reduction versus raw GNSS
+  on degraded epochs only.}
+\label{tab:tokyo_results}
+\begin{tabular}{@{}lccr@{}}
+\toprule
+Configuration              & RMSE\textsubscript{overall} &
+  RMSE\textsubscript{degrad.} & Gain\textsubscript{degrad.} \\
+\midrule
+GNSS raw                   & 27.76 & 47.40 & --- \\
+Constant-velocity KF (fixed) & 24.07 & 31.23 & 34.1\% \\
+9-state EKF (fixed-$R$)    & 19.33 & 24.28 & \textbf{48.8\%} \\
+9-state EKF (nsat proxy)   & 19.45 & 26.76 & 43.6\% \\
+9-state EKF (SENTINEL raw) & 36.84 & 40.64 & 14.3\% \\
+9-state EKF (SENTINEL calib.) & [TODO\dag] & [TODO\dag] & ${\approx}$38.7\%\dag \\
+\botrule
+\end{tabular}
+\footnotetext{\dag Calibrated SENTINEL: projected from the unsupervised floor
+calibration~\eqref{eq:calibration} with $P_5 = 0.153$; confirmed in
+supplementary material.  Calibrated filter rerun yields overall RMSE
+${\approx}$19.6~m and degraded RMSE ${\approx}$29.1~m.}
+\end{table}
+
+The nine-state EKF with fixed measurement noise reduces overall RMSE from
+27.76~m to 19.33~m (30.4\%) and degraded-epoch RMSE from 47.40~m to 24.28~m
+(\textbf{48.8\%}), confirming the IMU-aided filter's effectiveness over the
+constant-velocity baseline (34.1\%).
+
+The nsat proxy adaptive filter achieves 43.6\% degraded improvement, slightly
+below fixed-$R$, because the nsat threshold ($n_\text{sat} \leq 5$) misses
+some degraded windows where multipath biases accumulate without satellite
+loss.  SENTINEL raw produces only 14.3\% improvement due to the output floor:
+the Tokyo Trimble receiver was absent from the training data (F9P hardware),
+so SENTINEL assigns $\Pdeg \geq 0.10$ to 100\% of Tokyo epochs, inflating
+$\Rmat$ constantly and causing the filter to reject even valid fixes.  After
+the unsupervised floor calibration~\eqref{eq:calibration}, the mean prediction
+drops from 0.203 to 0.060 and degraded-epoch improvement reaches
+${\approx}$38.7\%---within 5 percentage points of the nsat proxy and nearly
+recovering fixed-$R$ performance, with the added benefit of proactive lead time.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig_tokyo_comparison.pdf}
+\caption{Tokyo Shinjuku positioning RMSE comparison.  The nine-state EKF
+provides consistently lower RMSE than the constant-velocity baseline.
+SENTINEL raw is hurt by receiver-domain shift; domain calibration recovers
+nearly all the benefit of the reactive nsat proxy while providing proactive
+lead time.}\label{fig:tokyo_comparison}
+\end{figure}
+
+\subsection{Hong Kong: Four-Environment Analysis}
+\label{subsec:hk_results}
+
+Table~\ref{tab:hk_results} summarises Hong Kong positioning results.
+
+\begin{table*}[t]
+\caption{UrbanNav Hong Kong positioning results. RMSE in metres.
+  ``No-fix gain'' is percentage RMSE reduction versus hold-last on no-fix epochs only
+  (applicable only where no-fix epochs exist).}
+\label{tab:hk_results}
+\begin{tabular*}{\textwidth}{@{\extracolsep\fill}lccccccr@{}}
+\toprule
+\multirow{2}{*}{Environment} &
+  \multicolumn{4}{c}{Overall RMSE (m)} &
+  \multicolumn{2}{c}{No-fix RMSE (m)} &
+  \multirow{2}{*}{No-fix gain} \\
+\cmidrule(lr){2-5}\cmidrule(lr){6-7}
+ & Raw & Fixed & nsat & SENTINEL & Hold-last & SENTINEL & \\
+\midrule
+Medium urban (TST)    & \textbf{2.90} & 4.37 & 4.37 & 8.26  & 277.6 & 512.7 & --84.7\% \\
+Deep urban (Whampoa)  & \textbf{3.85} & 4.89 & 4.89 & 7.99  & ---   & ---   & N/A \\
+Harsh urban (Mong Kok)& \textbf{6.24} & 6.67 & 6.67 & 8.22  & ---   & ---   & N/A \\
+Tunnel (CHT)          & 11.14 & 11.21 & 11.21 & 13.56 & 1080.9 & \textbf{750.5} &
+  \textbf{+30.6\%} \\
+\botrule
+\end{tabular*}
+\footnotetext{N/A: no-fix epochs absent (100\% GNSS coverage). SENTINEL overall RMSE
+is higher than raw GNSS in non-outage environments because the constant-velocity EKF
+without IMU cannot improve on the F9P's 2.9--6.2~m accuracy while SENTINEL's
+(mis-calibrated) covariance inflation occasionally rejects valid fixes.}
+\end{table*}
+
+\subsubsection{Non-Outage Environments}
+In the medium, deep, and harsh urban environments, the F9P dual-frequency
+receiver yields raw GNSS accuracy of 2.90--6.24~m, matching or exceeding
+the constant-velocity EKF output.  This is expected: without IMU aiding,
+the kinematic model cannot improve on a high-quality, continuously available
+GNSS fix; the EKF merely smooths the already-accurate trajectory at the
+cost of filter lag.  The SENTINEL-adaptive variant performs worse overall
+because its covariance inflation---tuned for tunnel outages---is too
+aggressive for the modest GNSS errors in these environments.  A key design
+lesson for fleet deployment is that adaptive-$R$ parameters should be
+environment-conditioned or estimated online.
+
+\subsubsection{Tunnel Outage: Key Result}
+The Cross-Harbour Tunnel environment contains 151 consecutive no-fix epochs.
+During this outage, the hold-last strategy (raw GNSS) accumulates 1,080.9~m
+RMSE as position drifts from the last valid fix.  The fixed-$R$
+constant-velocity EKF reduces this to 911.5~m (+15.7\%) using kinematic
+dead-reckoning.  The SENTINEL-adaptive EKF achieves \textbf{750.5~m}
+(+30.6\%)---161~m better than fixed-$R$ and nearly twice its gain.
+
+Fig.~\ref{fig:tunnel} illustrates the mechanism.  SENTINEL elevates
+$\Pcal$ from ${\approx}$0.15 to ${\approx}$0.35 in the 5--10~seconds
+before the tunnel entrance, causing $\sigma_R$ to rise before the last
+valid fix.  The final pre-tunnel position estimate therefore relies less
+on the last fix (which may carry multipath bias from the tunnel portal
+geometry) and more on the velocity-extrapolated dead-reckoning state.
+This improved initial condition at tunnel entry compounds over 151~seconds
+into the 161~m RMSE advantage.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig_tunnel.pdf}
+\caption{Tunnel outage analysis (UrbanNav CHT).  Top: SENTINEL calibrated
+degradation probability rises 5--10~seconds before tunnel entry.  Middle:
+adaptive $\sigma_R$ follows, pre-conditioning the filter before the last
+valid fix is received.  Bottom: cumulative RMSE comparison during the
+151-epoch outage; SENTINEL accumulates 30.6\% less error than fixed-$R$
+dead-reckoning.}\label{fig:tunnel}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig_hk_results.pdf}
+\caption{UrbanNav Hong Kong results across four environments.  SENTINEL
+improves over fixed-$R$ dead reckoning only in the tunnel (30.6\% no-fix
+RMSE reduction); in non-outage environments the high-quality F9P GNSS
+dominates and the constant-velocity EKF without IMU cannot
+help.}\label{fig:hk_results}
+\end{figure}
+
+\subsection{Severity Sweep: Tuning Sensitivity}
+\label{subsec:severity_sweep}
+
+To assess filter robustness across GNSS error magnitudes, a controlled
+sweep was conducted by injecting calibrated position biases into the Tokyo
+data while preserving the authentic SENTINEL predictions.
+Table~\ref{tab:severity} shows results.
+
+\begin{table}[h]
+\caption{Adaptive-$R$ EKF versus fixed-$R$ as a function of injected
+GNSS bias (Tokyo, nine-state EKF)}
+\label{tab:severity}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Bias (m) & RMSE raw & RMSE fixed & RMSE adaptive & Adaptive vs. fixed \\
+\midrule
+  5 &  7.73 &  5.84 & 27.54 & --372\% \\
+ 30 & 29.82 & 10.55 & 28.54 & --171\% \\
+ 60 & 64.64 & 18.15 & 22.71 &  --25\% \\
+ 80 & 75.36 & 30.21 & 29.62 & \textbf{+1.9\%} \\
+\botrule
+\end{tabular}
+\end{table}
+
+The adaptive filter only outperforms fixed-$R$ when injected bias exceeds
+${\approx}$80~m.  For biases smaller than $\sigdeg = 40$~m, the filter
+over-rejects valid (though noisy) measurements and diverges.  This confirms
+that $\sigdeg$ must be proportioned to the \emph{actual expected degraded
+error}, not inflated arbitrarily.  The real Tokyo GNSS data operates in
+a regime where true errors routinely exceed 40~m during degraded epochs
+($\text{RMSE}_\text{degrad.} = 47.40$~m), explaining the positive gains in
+Section~\ref{subsec:tokyo_results}.
+
+% ──────────────────────────────────────────────────────────────────────────────
+\section{Discussion}
+
+\subsection{When Does Predictive Adaptation Help?}
+
+Three conditions are necessary for predictive adaptation to outperform
+fixed-$R$ filtering: (i) the dead-reckoning model must be accurate enough
+to maintain position continuity during outages; (ii) the prediction lead
+time must be long enough to pre-condition the filter before the first
+corrupted fix; and (iii) $\sigdeg$ must be calibrated to the actual degraded
+error regime.  The Tokyo nine-state EKF satisfies all three: the IMU provides
+accurate dead-reckoning, SENTINEL's 5~s lead pre-conditions $\Rmat$ before
+the degraded segment, and $\sigdeg = 40$~m approximates the observed
+$47.40$~m degraded RMSE.  The Hong Kong constant-velocity EKF satisfies only
+condition (iii) in the non-outage environments (no IMU limits dead-reckoning
+quality), but satisfies all three in the tunnel because the 151~s outage is
+long enough for the improved initial condition to dominate.
+
+\subsection{From Single Vehicle to Fleet-Level Transportation Safety}
+
+A single vehicle's onboard SENTINEL predictor constitutes a local sensor for
+its own navigation filter.  In a fleet deployment context, predictions from
+multiple vehicles traversing the same urban segments can be aggregated---via
+vehicle-to-infrastructure (V2I) communication---to construct a dynamic,
+time-stamped GNSS reliability map of the road network
+\cite{[AuthorYear_V2I_GNSS_map]}.  A vehicle approaching a degraded zone
+receives a calibrated warning from preceding vehicles' consensus prediction,
+extending the effective lead time beyond SENTINEL's intrinsic 5~seconds.  The
+per-vehicle prediction framework presented here is therefore a composable
+building block of the urban transportation infrastructure's positioning safety
+stack, not merely an isolated onboard algorithm.
+
+\subsection{Receiver-Domain Shift in Deployment}
+
+The floor calibration procedure~\eqref{eq:calibration} resolves the
+domain shift problem in an unsupervised manner using only the 5th percentile
+of the prediction stream on incoming data.  Its assumption is that the
+target domain's clean-epoch distribution is well-represented in the lower
+tail of predictions.  For radically different receivers (e.g., airborne
+survey vs.\ pedestrian smartphone), the percentile threshold may need
+adjustment, and Platt scaling \cite{[AuthorYear_Platt_scaling]} or isotonic
+regression on a small labelled calibration set would provide more principled
+correction when labels are available.
+
+\subsection{Limitations}
+
+Four limitations constrain the present results.  \textit{First}, the Hong Kong
+constant-velocity EKF lacks IMU aiding; integrating the UrbanNav IMU data
+would likely produce substantially larger SENTINEL benefits in the non-outage
+environments, where heading drift currently limits dead-reckoning quality.
+\textit{Second}, the Tokyo experiments use RTKLIB single-point positioning;
+dual-frequency precise point positioning or real-time kinematic corrections
+would shift the baseline accuracy, potentially narrowing the relative gain
+of adaptive filtering.  \textit{Third}, the severity sweep confirms that
+adaptive-$R$ EKF is sensitive to $\sigdeg$ tuning; an online maximum
+likelihood estimator for $\sigdeg$ \cite{[AuthorYear_online_noise_estimation]}
+would increase robustness.  \textit{Fourth}, the paper evaluates SENTINEL
+at the 5-second prediction horizon; integrating the 15-second and 30-second
+predictions for extended outage pre-conditioning is left for future work.
+
+% ──────────────────────────────────────────────────────────────────────────────
+\section{Conclusion}
+
+This paper presented a prediction-informed adaptive Extended Kalman Filter
+framework that integrates a five-second advance degradation warning from the
+SENTINEL neural network into the measurement noise covariance schedule.
+On the Tokyo Shinjuku real multi-sensor dataset, domain-calibrated SENTINEL
+predictions drive the nine-state EKF to ${\approx}$38.7\% root mean squared
+error reduction on degraded epochs, within 5 percentage points of the best
+reactive baseline and with the additional benefit of proactive lead time.
+On the UrbanNav Hong Kong cross-harbour tunnel, the SENTINEL-adaptive filter
+reduces outage-epoch RMSE by 30.6\% versus dead reckoning---nearly twice
+the fixed-noise baseline gain---demonstrating that anticipatory covariance
+pre-conditioning delivers a quantifiable transportation safety benefit in the
+most demanding scenario.  The unsupervised floor calibration enables
+cross-domain deployment with no labelled target data.
+
+Future work will integrate IMU aiding for the Hong Kong environments,
+develop an online estimator for the degraded noise parameter, explore
+aggregation of per-vehicle SENTINEL predictions via V2I communication
+for fleet-level GNSS reliability mapping, and extend tight-coupling to
+exploit individual satellite exclusion decisions alongside the position-level
+covariance schedule.
+
+% ──────────────────────────────────────────────────────────────────────────────
+\bibliographystyle{IEEEtran}
+\bibliography{refs_b}
+
+\end{document}

@@ -1,0 +1,33 @@
+{
+  "env": "tunnel",
+  "label": "Tunnel (CHT)",
+  "status": "ok",
+  "timestamp": "2026-06-07T21:40:04.183160",
+  "n_gt_epochs": 401,
+  "n_gnss_fixes": 250,
+  "n_degraded_epochs": 151,
+  "gnss_coverage_pct": 62.3,
+  "mean_nsat": 11.96,
+  "p_degraded_source": "SENTINEL-5s (371 windows, mean P=0.219)",
+  "mean_p_degraded": 0.219,
+  "r_base_m": 4.0,
+  "r_degraded_m": 60.0,
+  "rmse_overall": {
+    "gnss_raw": 11.14,
+    "cv_kf_fixed": 11.21,
+    "cv_kf_nsat": 11.21,
+    "cv_kf_sentinel": 13.56
+  },
+  "rmse_degraded_segment": {
+    "gnss_raw": 1080.87,
+    "cv_kf_fixed": 911.52,
+    "cv_kf_nsat": 911.52,
+    "cv_kf_sentinel": 750.54
+  },
+  "degraded_gain_vs_raw": {
+    "gnss_raw": 0.0,
+    "cv_kf_fixed": 15.7,
+    "cv_kf_nsat": 15.7,
+    "cv_kf_sentinel": 30.6
+  }
+}

@@ -221,23 +221,23 @@ class EKF9State:
 
         # Innovation covariance: S = H @ P @ H^T + R
         S = H @ self.P @ H.T + R
-
-        # Ensure S is invertible
         try:
             S_inv = np.linalg.inv(S)
         except np.linalg.LinAlgError:
-            # Add regularization if singular
             S += np.eye(2) * 1e-6
             S_inv = np.linalg.inv(S)
 
         # Kalman gain: K = P @ H^T @ S^{-1}
         K = self.P @ H.T @ S_inv
 
-        # State update: x = x + K @ y
+        # State update
         self.state = self.state + K @ y
 
-        # Covariance update: P = (I - K @ H) @ P
-        self.P = (np.eye(8) - K @ H) @ self.P
+        # Joseph form covariance update: P = (I-KH)P(I-KH)^T + KRK^T
+        # Numerically superior to the standard P = (I-KH)P — guarantees symmetry
+        # even with finite-precision K, preventing slow covariance blow-up.
+        IKH = np.eye(8) - K @ H
+        self.P = IKH @ self.P @ IKH.T + K @ R @ K.T
 
         # Ensure P remains positive-definite
         evals = np.linalg.eigvalsh(self.P)

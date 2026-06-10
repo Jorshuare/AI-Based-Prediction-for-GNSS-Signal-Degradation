@@ -14,7 +14,7 @@ Predict GNSS signal degradation 5, 15, and 30 seconds ahead so autonomous vehicl
 - **Temporal patterns:** GNSS quality depends on history (satellite visibility, signal fading trends)
 - **Multi-horizon prediction:** same model must predict 5s, 15s, AND 30s ahead (different timescales)
 - **Class imbalance:** DEGRADED is rare (~10% of data) but safety-critical
-- **Generalization:** trained in Beijing, must work in unseen Tokyo
+- **Generalization:** trained in Beijing and Hong Kong, must work in unseen Tokyo
 
 ### **Key insight:**
 This is **not** a standard classification problem. It's a **multi-horizon, sequence-to-label problem** where temporal context matters.

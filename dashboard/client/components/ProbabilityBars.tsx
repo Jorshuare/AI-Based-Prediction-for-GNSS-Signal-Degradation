@@ -1,14 +1,16 @@
 "use client";
 import { motion } from "framer-motion";
 import { BEIHANG, SIGNAL } from "@/lib/colors";
+import { useT } from "@/lib/i18n";
 import type { HorizonProbs } from "@/lib/types";
 
 /** Larger, animated CLEAN/WARNING/DEGRADED probability bars. */
 export default function ProbabilityBars({ probs }: { probs: HorizonProbs }) {
+  const { t } = useT();
   const rows = [
-    { label: "CLEAN", v: probs.clean, c: SIGNAL.CLEAN },
-    { label: "WARNING", v: probs.warning, c: SIGNAL.WARNING },
-    { label: "DEGRADED", v: probs.degraded, c: SIGNAL.DEGRADED },
+    { label: t("clean"), v: probs.clean, c: SIGNAL.CLEAN },
+    { label: t("warning"), v: probs.warning, c: SIGNAL.WARNING },
+    { label: t("degraded"), v: probs.degraded, c: SIGNAL.DEGRADED },
   ];
   return (
     <div className="flex w-full flex-col gap-5">

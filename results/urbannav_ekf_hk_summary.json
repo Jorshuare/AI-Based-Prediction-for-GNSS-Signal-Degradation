@@ -1,0 +1,137 @@
+{
+  "timestamp": "2026-06-07T21:40:04.186649",
+  "environments": [
+    {
+      "env": "medium",
+      "label": "Medium Urban (TST)",
+      "status": "ok",
+      "timestamp": "2026-06-07T21:39:31.736105",
+      "n_gt_epochs": 787,
+      "n_gnss_fixes": 657,
+      "n_degraded_epochs": 130,
+      "gnss_coverage_pct": 83.5,
+      "mean_nsat": 12.0,
+      "p_degraded_source": "SENTINEL-5s (627 windows, mean P=0.240)",
+      "mean_p_degraded": 0.24,
+      "r_base_m": 4.0,
+      "r_degraded_m": 30.0,
+      "rmse_overall": {
+        "gnss_raw": 2.9,
+        "cv_kf_fixed": 4.37,
+        "cv_kf_nsat": 4.37,
+        "cv_kf_sentinel": 8.26
+      },
+      "rmse_degraded_segment": {
+        "gnss_raw": 277.62,
+        "cv_kf_fixed": 368.01,
+        "cv_kf_nsat": 368.01,
+        "cv_kf_sentinel": 512.68
+      },
+      "degraded_gain_vs_raw": {
+        "gnss_raw": 0.0,
+        "cv_kf_fixed": -32.6,
+        "cv_kf_nsat": -32.6,
+        "cv_kf_sentinel": -84.7
+      }
+    },
+    {
+      "env": "deep",
+      "label": "Deep Urban (Whampoa)",
+      "status": "ok",
+      "timestamp": "2026-06-07T21:39:42.761950",
+      "n_gt_epochs": 1539,
+      "n_gnss_fixes": 1539,
+      "n_degraded_epochs": 0,
+      "gnss_coverage_pct": 100.0,
+      "mean_nsat": 12.0,
+      "p_degraded_source": "SENTINEL-5s (1509 windows, mean P=0.233)",
+      "mean_p_degraded": 0.233,
+      "r_base_m": 5.0,
+      "r_degraded_m": 40.0,
+      "rmse_overall": {
+        "gnss_raw": 3.85,
+        "cv_kf_fixed": 4.89,
+        "cv_kf_nsat": 4.89,
+        "cv_kf_sentinel": 7.99
+      },
+      "rmse_degraded_segment": {
+        "gnss_raw": null,
+        "cv_kf_fixed": null,
+        "cv_kf_nsat": null,
+        "cv_kf_sentinel": null
+      },
+      "degraded_gain_vs_raw": {
+        "gnss_raw": null,
+        "cv_kf_fixed": null,
+        "cv_kf_nsat": null,
+        "cv_kf_sentinel": null
+      }
+    },
+    {
+      "env": "harsh",
+      "label": "Harsh Urban (Mong Kok)",
+      "status": "ok",
+      "timestamp": "2026-06-07T21:40:01.754389",
+      "n_gt_epochs": 2312,
+      "n_gnss_fixes": 2312,
+      "n_degraded_epochs": 0,
+      "gnss_coverage_pct": 100.0,
+      "mean_nsat": 12.0,
+      "p_degraded_source": "SENTINEL-5s (3337 windows, mean P=0.251)",
+      "mean_p_degraded": 0.251,
+      "r_base_m": 6.0,
+      "r_degraded_m": 50.0,
+      "rmse_overall": {
+        "gnss_raw": 6.24,
+        "cv_kf_fixed": 6.67,
+        "cv_kf_nsat": 6.67,
+        "cv_kf_sentinel": 8.22
+      },
+      "rmse_degraded_segment": {
+        "gnss_raw": null,
+        "cv_kf_fixed": null,
+        "cv_kf_nsat": null,
+        "cv_kf_sentinel": null
+      },
+      "degraded_gain_vs_raw": {
+        "gnss_raw": null,
+        "cv_kf_fixed": null,
+        "cv_kf_nsat": null,
+        "cv_kf_sentinel": null
+      }
+    },
+    {
+      "env": "tunnel",
+      "label": "Tunnel (CHT)",
+      "status": "ok",
+      "timestamp": "2026-06-07T21:40:04.183160",
+      "n_gt_epochs": 401,
+      "n_gnss_fixes": 250,
+      "n_degraded_epochs": 151,
+      "gnss_coverage_pct": 62.3,
+      "mean_nsat": 11.96,
+      "p_degraded_source": "SENTINEL-5s (371 windows, mean P=0.219)",
+      "mean_p_degraded": 0.219,
+      "r_base_m": 4.0,
+      "r_degraded_m": 60.0,
+      "rmse_overall": {
+        "gnss_raw": 11.14,
+        "cv_kf_fixed": 11.21,
+        "cv_kf_nsat": 11.21,
+        "cv_kf_sentinel": 13.56
+      },
+      "rmse_degraded_segment": {
+        "gnss_raw": 1080.87,
+        "cv_kf_fixed": 911.52,
+        "cv_kf_nsat": 911.52,
+        "cv_kf_sentinel": 750.54
+      },
+      "degraded_gain_vs_raw": {
+        "gnss_raw": 0.0,
+        "cv_kf_fixed": 15.7,
+        "cv_kf_nsat": 15.7,
+        "cv_kf_sentinel": 30.6
+      }
+    }
+  ]
+}

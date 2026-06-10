@@ -1,0 +1,33 @@
+{
+  "env": "harsh",
+  "label": "Harsh Urban (Mong Kok)",
+  "status": "ok",
+  "timestamp": "2026-06-07T21:40:01.754389",
+  "n_gt_epochs": 2312,
+  "n_gnss_fixes": 2312,
+  "n_degraded_epochs": 0,
+  "gnss_coverage_pct": 100.0,
+  "mean_nsat": 12.0,
+  "p_degraded_source": "SENTINEL-5s (3337 windows, mean P=0.251)",
+  "mean_p_degraded": 0.251,
+  "r_base_m": 6.0,
+  "r_degraded_m": 50.0,
+  "rmse_overall": {
+    "gnss_raw": 6.24,
+    "cv_kf_fixed": 6.67,
+    "cv_kf_nsat": 6.67,
+    "cv_kf_sentinel": 8.22
+  },
+  "rmse_degraded_segment": {
+    "gnss_raw": null,
+    "cv_kf_fixed": null,
+    "cv_kf_nsat": null,
+    "cv_kf_sentinel": null
+  },
+  "degraded_gain_vs_raw": {
+    "gnss_raw": null,
+    "cv_kf_fixed": null,
+    "cv_kf_nsat": null,
+    "cv_kf_sentinel": null
+  }
+}

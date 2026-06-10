@@ -1,7 +1,8 @@
 "use client";
 import { motion } from "framer-motion";
 import { BEIHANG, riskColor, classify } from "@/lib/colors";
-import { AnimatedNumber } from "@/lib/ui";
+import { AnimatedNumber, InfoDot } from "@/lib/ui";
+import { useT } from "@/lib/i18n";
 
 /** Circular risk gauge — properly centred, animated arc, large legible type. */
 export default function SignalGauge({ pDegraded, confidence, size = 240 }: {
@@ -9,6 +10,7 @@ export default function SignalGauge({ pDegraded, confidence, size = 240 }: {
   confidence?: number;
   size?: number;
 }) {
+  const { t } = useT();
   const stroke = 20;
   const r = (size - stroke) / 2;
   const c = size / 2;
@@ -35,7 +37,7 @@ export default function SignalGauge({ pDegraded, confidence, size = 240 }: {
             <AnimatedNumber value={pct * 100} decimals={0} suffix="%" />
           </span>
           <span className="text-xs font-bold tracking-wide" style={{ color: BEIHANG.slate }}>
-            P(DEGRADED)
+            {t("p_degraded")}
           </span>
         </div>
       </div>
@@ -47,11 +49,12 @@ export default function SignalGauge({ pDegraded, confidence, size = 240 }: {
         className="mt-4 rounded-full px-5 py-1.5 text-sm font-extrabold tracking-wide text-white shadow-md"
         style={{ background: color }}
       >
-        {cls}
+        {t(cls.toLowerCase())}
       </motion.span>
       {confidence !== undefined && (
-        <span className="mt-1.5 text-xs font-medium" style={{ color: BEIHANG.slate }}>
-          confidence {(confidence * 100).toFixed(0)}%
+        <span className="mt-1.5 flex items-center gap-1.5 text-xs font-medium" style={{ color: BEIHANG.slate }}>
+          {t("confidence")} {(confidence * 100).toFixed(0)}%
+          <InfoDot text={t("confidence_help")} />
         </span>
       )}
     </div>

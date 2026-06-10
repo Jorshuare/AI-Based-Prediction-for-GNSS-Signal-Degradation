@@ -1,0 +1,33 @@
+{
+  "env": "medium",
+  "label": "Medium Urban (TST)",
+  "status": "ok",
+  "timestamp": "2026-06-07T21:39:31.736105",
+  "n_gt_epochs": 787,
+  "n_gnss_fixes": 657,
+  "n_degraded_epochs": 130,
+  "gnss_coverage_pct": 83.5,
+  "mean_nsat": 12.0,
+  "p_degraded_source": "SENTINEL-5s (627 windows, mean P=0.240)",
+  "mean_p_degraded": 0.24,
+  "r_base_m": 4.0,
+  "r_degraded_m": 30.0,
+  "rmse_overall": {
+    "gnss_raw": 2.9,
+    "cv_kf_fixed": 4.37,
+    "cv_kf_nsat": 4.37,
+    "cv_kf_sentinel": 8.26
+  },
+  "rmse_degraded_segment": {
+    "gnss_raw": 277.62,
+    "cv_kf_fixed": 368.01,
+    "cv_kf_nsat": 368.01,
+    "cv_kf_sentinel": 512.68
+  },
+  "degraded_gain_vs_raw": {
+    "gnss_raw": 0.0,
+    "cv_kf_fixed": -32.6,
+    "cv_kf_nsat": -32.6,
+    "cv_kf_sentinel": -84.7
+  }
+}
