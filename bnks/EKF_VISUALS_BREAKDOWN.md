@@ -548,3 +548,249 @@ docs/screenshots/
 
 To take these, run the dashboard (`npm run dev` + `uvicorn main:app`) and replay the
 Tokyo Shinjuku or Beihang Scenario E pre-computed data through the WebSocket stream.
+
+---
+
+---
+
+# SENSOR FUSION PAGE — Full Explainer
+## "What does everything on the Sensor Fusion tab mean?"
+
+> Use this section to answer any question about the Sensor Fusion dashboard tab —
+> from a layperson asking "what is RTKLIB?" to a professor asking "why is adaptive-R worse?"
+
+---
+
+## What is the Sensor Fusion page showing?
+
+The Sensor Fusion tab answers one specific question:
+
+> **"When the car loses GNSS signal, how well does each positioning filter hold position?"**
+
+It shows a real driving run in **Tokyo Shinjuku** where the car drove through streets with tall buildings that blocked satellite signals. It compares four strategies for staying positioned during those blocked segments:
+
+1. Do nothing — just use the raw GNSS (worst)
+2. Use a simple Kalman filter
+3. Use a full 9-state EKF (Extended Kalman Filter)
+4. Use a full 9-state EKF + wheel odometry + motion constraints (best)
+
+The SENTINEL model feeds its P(DEGRADED) prediction into each filter to optionally make them distrust GNSS before it fails.
+
+---
+
+## GNSS Source Picker — "Trimble" vs "u-blox"
+
+### What does "Trimble · RTKLIB SPP · GPS+GLONASS dual-freq" mean?
+
+**Trimble** is the brand of professional-grade GNSS receiver used to collect the raw signal data during the Tokyo Shinjuku drive.
+- The Trimble receiver logged raw GNSS observations in **RINEX format** (`.obs` files)
+- **RTKLIB** is open-source positioning software that reads the Trimble RINEX file and computes positions using **SPP (Single Point Positioning)** — see below
+- Trimble's receiver tracked **GPS + GLONASS** on two frequencies (L1+L2), so RTKLIB had more satellites and better geometry to work with
+- In short: Trimble collected the raw signals → RTKLIB processed them into positions → our EKF filtered those positions
+
+**Dashboard label:** `Trimble · RTKLIB SPP · GPS+GLONASS dual-freq`  
+**What it is:** Professional survey-grade receiver (~$5,000–15,000). RTKLIB is the de facto standard open-source tool for GNSS processing — used in research, PPP services, and academic benchmarks worldwide.
+
+---
+
+### What does "u-blox F9P · georinex SPP · GPS L1 only" mean?
+
+**u-blox F9P** is a different GNSS chip — cheaper (~$200) but still dual-frequency capable. It was driven simultaneously on the same route as the Trimble.
+
+The key difference in how the u-blox data was processed:
+- **georinex** — a lightweight Python RINEX reader library — was used instead of RTKLIB
+- The u-blox RINEX file was processed in **GPS-only, L1 single-frequency** mode
+- GPS L1 single-frequency = only one signal per satellite, only GPS constellation — fewer measurements, weaker geometry than Trimble's GPS+GLONASS dual-freq
+
+**Why does this matter?**
+- Both receivers physically collected signals on two frequencies and multiple constellations
+- The *processing choice* determines what gets used: RTKLIB is a full-featured positioning engine that exploits all available signals; georinex is a simpler reader that we used in basic L1-only mode
+- The result is that the u-blox track has more position noise — not because the u-blox hardware is worse, but because we used a simpler processing pipeline on it
+
+**SPP = Single Point Positioning (applies to BOTH sources):**
+- The most basic positioning method — uses only pseudorange measurements, one receiver, no base station
+- No differential corrections, no carrier phase processing
+- Typical accuracy: **2–5 m in open sky, 10–50 m in urban canyons**
+- This is what car navigation, smartphones, and low-cost trackers use
+- Our EKF is designed to handle this level of accuracy (not RTK-corrected positions)
+
+**Dashboard label:** `u-blox F9P · georinex SPP · GPS L1 only`  
+**Bottom line:** Same route, worse processing pipeline → noisier input → harder test for the EKF. Showing the EKF helps even here proves the approach is robust.
+
+---
+
+### Why two sources?
+
+| Property | Trimble | u-blox F9P |
+|----------|---------|-----------|
+| Hardware cost | ~$10,000 | ~$200 |
+| Hardware frequency | Dual (L1+L2) | Dual (L1+L2) |
+| Constellations used | GPS + GLONASS | GPS only |
+| Processing tool | **RTKLIB** (full engine) | **georinex** (basic reader) |
+| Processing mode | SPP dual-freq | SPP L1-only |
+| Noise level | Lower (more signals) | Higher (fewer signals) |
+| Dashboard label | `Trimble · RTKLIB SPP · GPS+GLONASS dual-freq` | `u-blox F9P · georinex SPP · GPS L1 only` |
+| Our use | Primary EKF study | Robustness check (harder input) |
+
+**Key point:** The *hardware* difference is smaller than the *processing* difference. The u-blox track is noisier primarily because we processed it in GPS L1-only SPP mode, not because the receiver is worse. The Trimble track benefits from RTKLIB's more sophisticated estimator and dual-constellation geometry.
+
+---
+
+## Ground Truth — "SPAN-INS"
+
+**SPAN-INS** is the NovAtel SPAN Inertial Navigation System.
+- It combines a tactical-grade IMU (Inertial Measurement Unit) with RTK-corrected GNSS
+- Accuracy: **1–3 cm position, 0.01° heading**
+- This is the "truth" track shown as a thick green line on the trajectory map
+- Every RMSE (Root Mean Square Error) number in this dashboard is computed against SPAN-INS
+
+**Why not just use RTK?** SPAN-INS gives accurate position even during the brief satellite blockages, because its IMU continues dead-reckoning at 100 Hz even when GNSS drops out. Pure RTK would also lose position in the blockage zones.
+
+The SPAN-INS data is used **only for evaluation** — our EKF does not use it during operation. This ensures the results are honest.
+
+---
+
+## Trajectory Map
+
+The map shows the actual driving route projected into a local East-North coordinate frame (ENU — East, North, Up). The origin (0,0) is the first valid GNSS fix.
+
+| Track | Colour | Meaning |
+|-------|--------|---------|
+| Ground truth | Thick green | SPAN-INS reference (always correct) |
+| Raw GNSS | Red dashed | What the SPP solution gives you — scattered during blockage |
+| Aided EKF (fixed-R) | Teal/cyan solid | Our recommended filter — stays close to truth |
+| Aided EKF (adaptive-R) | Yellow dashed | SENTINEL-driven adaptive trust — slightly worse with aiding |
+
+**Toggle buttons** under the map let you turn each track on/off to compare directly.
+
+The path is displayed in **metres** relative to the starting point. The rotation (if any) is automatic — the code aligns the longest axis of the route to fill the horizontal space.
+
+---
+
+## Accuracy Panel — "Accuracy during GPS blackout"
+
+This panel shows RMSE (Root Mean Square Error) measured **only during the blackout segments** — the moments when GNSS signal was blocked.
+
+| Filter label | What it is |
+|-------------|-----------|
+| **Raw GNSS** | No filtering — raw SPP position output |
+| **Simple KF** | Constant-velocity Kalman filter (CV-KF). Predicts position using velocity only. |
+| **Aided EKF (fixed-R)** | Full 9-state EKF + wheel odometry + NHC + ZUPT, fixed measurement noise |
+| **Aided EKF (adaptive-R)** | Same as above, but R(t) inflates with P(DEGRADED) from SENTINEL |
+
+**Why does adaptive-R do worse here?** Inflating R tells the filter to distrust GNSS more — but with wheel odometry already providing dead-reckoning, the filter needs GNSS primarily for heading correction. When R is inflated, heading drifts slightly, and the odometry-based dead-reckoning accumulates angular error. The fixed-R filter uses GNSS heading updates more aggressively, which keeps the track straight.
+
+**RMSE formula:**  
+`RMSE = sqrt( (1/N) Σ [(x_filter - x_truth)² + (y_filter - y_truth)²] )`  
+where N = number of epochs inside blockage windows.
+
+---
+
+## EKF Analytics Panel (inside the main dashboard, not Fusion tab)
+
+### Bar chart — "Blocked-segment RMSE by filter"
+
+Shows the same information as above but with all 6 filter variants, including the unaided EKF variants.
+
+| Bar | What it means |
+|-----|--------------|
+| GNSS Raw | Baseline — no filtering at all |
+| CV Kalman (fixed-R) | Simple velocity extrapolation during blockage |
+| EKF 9-state (fixed-R) | IMU integration without wheel odometry |
+| EKF 9-state (adapt-R) | IMU + SENTINEL, but no wheel constraint |
+| Aided EKF (fixed-R) ★ | **Winner** — full aiding suite, fixed R |
+| Aided EKF (adapt-R) | Full aiding suite + adaptive R — slightly worse |
+
+The `★` marks the recommended configuration.
+
+### Severity sweep chart — "When does adaptive-R help?"
+
+This chart answers the question: "if the GNSS multipath error is very bad, does adaptive-R eventually become better?"
+
+- **X-axis:** How severe the GNSS error is during blockage (metres of injected multipath bias)
+- **Y-axis:** RMSE during blockage (metres)
+- **Three lines:** Raw GNSS (red), Fixed-R (dark blue), Adaptive-R (gold)
+
+**Reading the chart:**
+- At low severity (5–30 m bias): Fixed-R EKF dominates. The filter's odometry holds position well, and GNSS helps with heading.
+- At very high severity (60–80 m): Adaptive-R starts to catch up because at that level of corruption it's correct to distrust GNSS completely.
+- The crossover (~80 m) is beyond typical urban canyon conditions — even harsh Mong Kok GNSS errors rarely exceed 60 m.
+
+**The practical conclusion (on slide 27 of the presentation):**
+> On a full AV sensor suite (IMU + wheel encoder), use SENTINEL's P(DEGRADED) as a **mode-switch trigger** — not as direct R-inflation. On a GNSS-only platform (no IMU, no encoder), adaptive-R wins clearly above 20 m multipath.
+
+---
+
+## Satellite Strip
+
+Shows the number of visible GPS satellites at each epoch across the full drive.
+
+- **Green bars:** Good satellite count (≥7 satellites = reliable 3D fix)
+- **Amber bars:** Marginal (4–6 satellites = degraded DOP)
+- **Red/short bars:** Blockage (< 4 satellites = no reliable fix)
+
+The drop-off zones in the strip correspond exactly to where the trajectory map shows the raw GNSS track diverging from ground truth.
+
+---
+
+## Frequently Asked Questions — Sensor Fusion
+
+**Q: Why is the RMSE measured only during blockage, not the full drive?**  
+A: In open sky, all filters perform similarly — GNSS SPP gives 2–3 m accuracy and every filter tracks it closely. The interesting difference only appears when GNSS is blocked. Reporting full-drive RMSE would dilute the signal and hide the benefit.
+
+**Q: What is "wheel odometry + NHC + ZUPT"?**  
+A: These are three motion constraints that allow the EKF to keep positioning even when GNSS drops:
+- **Wheel odometry:** Forward velocity from wheel rotation speed sensor. Gives accurate speed along the driving direction.
+- **NHC (Non-Holonomic Constraint):** A land vehicle cannot slide sideways — lateral velocity must be ~0. This eliminates one degree of freedom and dramatically reduces position drift.
+- **ZUPT (Zero-velocity Update):** When the vehicle is stopped (speed ≈ 0), use this to reset IMU bias drift. Very effective at traffic lights.
+
+**Q: Why does the Aided EKF (fixed-R) use 6.4 m blockage RMSE but the EKF without aiding uses 12.1 m?**  
+A: The difference is entirely the aiding constraints. Without wheel odometry, the filter relies on the IMU gyroscope + accelerometer alone, which drifts. With wheel speed + NHC, the filter knows exactly how fast the car is moving and that it isn't sliding — this collapses the uncertainty by ~50%.
+
+**Q: If fixed-R is better, why did we build adaptive-R at all?**  
+A: Adaptive-R is the right architecture for GNSS-only platforms (drones, ships, cheap IoT trackers, phones) that have no wheel encoder. For those, there is no dead-reckoning backup — so the filter's only choice is whether to use corrupted GNSS (low R) or to wait for a valid fix (high R). SENTINEL's P(DEGRADED) makes that choice predictively rather than reactively.
+
+**Q: What is "semi-synthetic" validation?**  
+A: The trajectory is 100% real (SPAN-INS driven, real streets). The GNSS positions are synthesised by taking the real Trimble SPP output and adding physically-motivated multipath bias + noise only inside discrete blockage windows that match real building geometry. This gives a controlled ground truth while keeping the motion and sensor dynamics authentic.
+
+**Q: What does the slide say about the EKF results?**  
+A:
+- Synthetic blockage test: **−33.8%** improvement (54.4 m → 36.0 m)
+- Semi-synthetic Tokyo: **+82%** improvement (36.3 m → 6.4 m)
+- Fully real Tokyo: **+48.8%** improvement (47.4 m → 24.3 m)
+
+The fully real run uses real RTKLIB SPP positions as GNSS input (no synthetic bias injection) and evaluates against SPAN-INS. The improvement comes from the EKF's motion model filling the gap when satellites drop, not from SENTINEL specifically — SENTINEL's role is to pre-warn the filter, not to replace it.
+
+**Q: What does "engine" mean in the banner?**  
+A: The `engine` field shows which positioning processing pipeline generated the GNSS positions: `RTKLIB SPP` means the positions were computed using RTKLIB (open-source) in Single Point Positioning mode from the raw RINEX observations.
+
+**Q: Why is the path shown in metres and not on a real map (e.g. Google Maps)?**  
+A: For privacy, accuracy, and offline capability. The dashboard converts lat/lon to a local East-North (ENU) coordinate frame centred on the start point. This also avoids any external map API dependency — the dashboard runs fully offline.
+
+---
+
+## Glossary
+
+| Term | Definition |
+|------|-----------|
+| **GNSS** | Global Navigation Satellite System — umbrella term for GPS (USA), GLONASS (Russia), BeiDou (China), Galileo (EU) |
+| **GPS** | The US constellation specifically. Colloquially used to mean GNSS |
+| **SPP** | Single Point Positioning — simplest GNSS solution, 2–5 m accuracy, no base station |
+| **RTK** | Real-Time Kinematic — cm-level GNSS using carrier phase + base station |
+| **RTKLIB** | Open-source toolkit for GNSS processing. We use it in SPP mode to get positions from RINEX files |
+| **RINEX** | Receiver Independent Exchange Format — standard file format for raw GNSS measurements |
+| **Trimble** | Professional GNSS receiver brand (here: Trimble R10 or equivalent survey receiver) |
+| **u-blox F9P** | Dual-frequency GNSS receiver module. Popular in drones and research (~$200) |
+| **SPAN-INS** | NovAtel Synchronized Position Attitude Navigation — tactical IMU + RTK fusion, cm-level ground truth |
+| **EKF** | Extended Kalman Filter — recursive Bayesian estimator for non-linear systems |
+| **NHC** | Non-Holonomic Constraint — land vehicles cannot slide laterally; used as a virtual measurement |
+| **ZUPT** | Zero-velocity Update — IMU bias reset applied when vehicle speed ≈ 0 |
+| **IMU** | Inertial Measurement Unit — accelerometers + gyroscopes, measures motion at 100 Hz |
+| **RMSE** | Root Mean Square Error — standard accuracy metric, here in metres vs SPAN-INS truth |
+| **Multipath** | GNSS signal reflections off buildings that corrupt the pseudorange measurement |
+| **DOP** | Dilution of Precision — how satellite geometry amplifies positioning error |
+| **Blockage** | Period when GNSS satellites are physically blocked (building overhang, tunnel, canyon) |
+| **P(DEGRADED)** | SENTINEL's output probability that GNSS quality will degrade in the next 5/15/30 s |
+| **Adaptive-R** | EKF variant where measurement noise R grows with P(DEGRADED), reducing GNSS trust pre-emptively |
+| **Fixed-R** | EKF variant where measurement noise R is constant — always trusts GNSS equally |
+| **Aiding** | Supplementary sensors (wheel encoder, IMU) that let the filter continue when GNSS drops |

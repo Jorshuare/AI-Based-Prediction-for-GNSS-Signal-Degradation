@@ -1,4 +1,5 @@
 # NotebookLM Extraction Prompts
+
 ## How to use: Upload up to 50 PDFs into a NotebookLM notebook, then paste each prompt below
 
 ---
@@ -15,9 +16,11 @@
 ---
 
 ## BATCH 1 — CITATION KEY & METADATA
-*Use this first to build your reference list*
+
+_Use this first to build your reference list_
 
 **Prompt 1.1 — Basic metadata extraction:**
+
 ```
 For each paper in this notebook, extract in a numbered table:
 (1) First author surname + year (e.g., Smith2021)
@@ -29,20 +32,14 @@ For each paper in this notebook, extract in a numbered table:
 Format: | Key | Title | Venue | Year | DOI |
 ```
 
-**Prompt 1.2 — BibTeX generation:**
-```
-For each paper, generate a valid BibTeX entry in @article or @inproceedings format.
-Include: author, title, journal/booktitle, year, volume, number, pages, doi.
-Wrap each entry in a code block.
-Output one entry per paper in order.
-```
-
 ---
 
 ## BATCH 2 — PAPER A SPECIFIC EXTRACTIONS
-*Run these in the Paper A references notebook*
+
+_Run these in the Paper A references notebook_
 
 **Prompt 2.1 — GNSS degradation methods summary:**
+
 ```
 For each paper that describes a method to detect or classify GNSS signal degradation or NLOS:
 (1) What input features does the method use?
@@ -55,6 +52,7 @@ Table format: | Author | Method | Features | Dataset | Best metric | Value |
 ```
 
 **Prompt 2.2 — Baseline comparison numbers:**
+
 ```
 For each paper that compares multiple machine learning models on GNSS data:
 (1) Which models were compared?
@@ -67,6 +65,7 @@ I need this to position SENTINEL's 0.847 DEGRADED recall vs. RF 0.727 / XGB 0.72
 ```
 
 **Prompt 2.3 — Transformer architecture in navigation:**
+
 ```
 For each paper using Transformer or self-attention for navigation / positioning / GNSS:
 (1) What is the input sequence length and feature dimension?
@@ -79,6 +78,7 @@ I need comparisons for our architecture: 30-step, 37-feature, 2 Transformer laye
 ```
 
 **Prompt 2.4 — Cross-city / domain generalisation:**
+
 ```
 For each paper that evaluates a trained model on a dataset from a different city or receiver:
 (1) What was the training domain (city, receiver)?
@@ -91,6 +91,7 @@ I need to contextualise our Tokyo cross-city drop (0.821 → 0.649) and ensemble
 ```
 
 **Prompt 2.5 — SMOTE and class imbalance handling:**
+
 ```
 For each paper that uses SMOTE or other oversampling/undersampling for GNSS or navigation data:
 (1) What was the imbalance ratio (minority class %)?
@@ -103,6 +104,7 @@ I need papers that confirm or contradict this finding.
 ```
 
 **Prompt 2.6 — Persistence baseline:**
+
 ```
 For each paper that uses a "persistence" or "naive" baseline (predict current state as future state):
 (1) What is the prediction horizon?
@@ -117,9 +119,11 @@ I need citations that explain why persistence is not a valid comparison despite 
 ---
 
 ## BATCH 3 — PAPER B SPECIFIC EXTRACTIONS
-*Run these in the Paper B references notebook*
+
+_Run these in the Paper B references notebook_
 
 **Prompt 3.1 — EKF GNSS/INS results comparison:**
+
 ```
 For each paper that reports GNSS/INS EKF results on urban data:
 (1) What EKF variant (9-state, 15-state, loose/tight coupling)?
@@ -132,6 +136,7 @@ I need to compare our 9-state EKF: 48.8% reduction during degraded epochs (Tokyo
 ```
 
 **Prompt 3.2 — Adaptive Kalman filter performance:**
+
 ```
 For each paper that proposes an adaptive Kalman filter for GNSS/INS:
 (1) What adaptation mechanism was used (Sage-Husa, IMM, innovation-based, ML-based)?
@@ -144,6 +149,7 @@ I need papers that show adaptive filtering performance range for urban GNSS.
 ```
 
 **Prompt 3.3 — Tunnel / GNSS outage navigation:**
+
 ```
 For each paper reporting vehicle navigation through a tunnel or GNSS outage:
 (1) How long was the GNSS outage (seconds / metres)?
@@ -156,6 +162,7 @@ I need context for how typical tunnel results look in the literature.
 ```
 
 **Prompt 3.4 — Non-holonomic constraint and ZUPT:**
+
 ```
 For each paper implementing Non-Holonomic Constraint (NHC) or Zero Velocity Update (ZUPT)
 in a vehicle navigation filter:
@@ -166,6 +173,7 @@ in a vehicle navigation filter:
 ```
 
 **Prompt 3.5 — V2I / cooperative GNSS reliability:**
+
 ```
 For each paper on V2I or cooperative vehicle positioning that involves GNSS quality:
 (1) What information is exchanged between vehicles or with infrastructure?
@@ -178,6 +186,7 @@ GNSS reliability maps via V2I.
 ```
 
 **Prompt 3.6 — Receiver domain shift and calibration:**
+
 ```
 For each paper that describes receiver-specific or hardware-specific characteristics
 affecting machine learning models applied to GNSS signals:
@@ -192,9 +201,11 @@ Our calibration: unsupervised P5-floor subtraction, recovers from 14.3% to ~38.7
 ---
 
 ## BATCH 4 — QUALITY & RELEVANCE CHECKS
-*Run on both notebooks to verify papers are suitable*
+
+_Run on both notebooks to verify papers are suitable_
 
 **Prompt 4.1 — Identify strongest cite-worthiness:**
+
 ```
 Review all papers in this notebook and rank the top 10 most relevant to cite in a paper about:
 - GNSS signal degradation prediction using Transformer-LSTM neural networks
@@ -206,6 +217,7 @@ For each of the top 10: explain in one sentence WHY it should be cited and WHERE
 ```
 
 **Prompt 4.2 — Find contradicting or challenging results:**
+
 ```
 Which papers in this notebook report results that CONTRADICT or CHALLENGE these claims:
 (a) Deep learning outperforms Random Forest on GNSS quality tasks
@@ -216,6 +228,7 @@ For each challenging paper: what did they find, and how should I address it in t
 ```
 
 **Prompt 4.3 — Key statistics to fill into the paper:**
+
 ```
 For each paper, extract any specific numerical results that could fill these placeholders
 in my LaTeX draft:
@@ -234,6 +247,7 @@ Return: | Paper | Metric | Value | Which placeholder to fill |
 ```
 
 **Prompt 4.4 — Introduction gap analysis:**
+
 ```
 Based on all papers in this notebook, identify what problem or gap in the literature
 is NOT addressed by any existing work, such that our SENTINEL contribution is novel.
@@ -255,8 +269,9 @@ For each gap: "Gap X: [description]. Current best: [paper+result]. Our contribut
 After reading your papers, search NotebookLM for these specific facts to fill into the LaTeX:
 
 **For Paper A Introduction:**
+
 ```
-What is the typical horizontal position error (metres) caused by NLOS signals 
+What is the typical horizontal position error (metres) caused by NLOS signals
 in dense urban canyons, according to papers in this notebook?
 Give: mean error, max error, and which paper reported it.
 ```
@@ -267,6 +282,7 @@ Give the number and source paper.
 ```
 
 **For Paper A Related Work:**
+
 ```
 What is the best NLOS detection recall or F1 reported by any non-deep-learning method
 (SVM, RF, threshold) in papers in this notebook?
@@ -274,17 +290,19 @@ We need to justify why our 0.847 DEGRADED recall is state-of-the-art.
 ```
 
 **For Paper B Introduction:**
+
 ```
 What is the typical GNSS outage duration in urban tunnels on road networks?
 How many seconds / metres does a typical cross-harbour or road tunnel cause?
 ```
 
 ```
-What position accuracy requirement (in metres) is specified for autonomous vehicle 
+What position accuracy requirement (in metres) is specified for autonomous vehicle
 safety-critical operations according to standards papers in this notebook?
 ```
 
 **For Paper B Discussion (V2I section):**
+
 ```
 What is the communication latency of C-V2X / DSRC / 5G that would be relevant
 to transmitting GNSS quality predictions between vehicles?

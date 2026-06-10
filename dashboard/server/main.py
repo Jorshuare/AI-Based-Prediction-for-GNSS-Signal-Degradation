@@ -102,8 +102,8 @@ def load_ekf() -> dict:
 
 
 FUSION_SOURCES = {
-    "trimble": "UrbanNav Tokyo · Trimble (RTKLIB)",
-    "ublox": "UrbanNav Tokyo · u-blox (SPP)",
+    "trimble": "Trimble · RTKLIB SPP · GPS+GLONASS dual-freq",
+    "ublox":   "u-blox F9P · georinex SPP · GPS L1 only",
 }
 
 

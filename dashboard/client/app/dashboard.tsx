@@ -23,7 +23,8 @@ import FusionView from "@/components/FusionView";
 import PlainStatus from "@/components/PlainStatus";
 import LeadTimeCard from "@/components/LeadTimeCard";
 
-const MAX_POINTS = 400;
+const MAX_POINTS = 1200;   // rolling window for timeline/metrics
+const MAP_H = 420;         // shared height for trajectory + timeline
 
 export default function Dashboard() {
   return (
@@ -46,6 +47,8 @@ function DashboardInner() {
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(15);
   const [stream, setStream] = useState<Prediction[]>([]);
+  const [fullPath, setFullPath] = useState<Prediction[]>([]);
+  const [currentIdx, setCurrentIdx] = useState(0);
   const [total, setTotal] = useState(0);
   const [activeEp, setActiveEp] = useState<AlertEpisode | null>(null);
   const [history, setHistory] = useState<AlertEpisode[]>([]);
@@ -68,6 +71,14 @@ function DashboardInner() {
       if (s.length) setScenario(s[0].id);
     }).catch(() => {});
   }, []);
+
+  // Pre-load the complete path whenever the scenario changes so TrajectoryMap
+  // can show the full route immediately, not just the 1200-point rolling buffer.
+  useEffect(() => {
+    if (!scenario) return;
+    setFullPath([]);
+    api.predictions(scenario).then(setFullPath).catch(() => {});
+  }, [scenario]);
 
   const onEpoch = useCallback((p: Prediction) => {
     if (p.pred_30s === "DEGRADED") setWarnEpoch((w) => (w == null ? p.window : w));
@@ -104,10 +115,11 @@ function DashboardInner() {
     ws.onmessage = (ev) => {
       const msg: WsMessage = JSON.parse(ev.data);
       if (msg.type === "replay_start") {
-        setStream([]); setTotal(msg.total); setPlaying(true);
+        setStream([]); setTotal(msg.total); setCurrentIdx(0); setPlaying(true);
         setActiveEp(null); setHistory([]); epRef.current = null;
         setWarnEpoch(null); setOnsetEpoch(null);
       } else if (msg.type === "epoch") {
+        setCurrentIdx(msg.index);
         setStream((prev) => [...prev.slice(-(MAX_POINTS - 1)), msg.data]); onEpoch(msg.data);
       } else if (msg.type === "replay_end" || msg.type === "replay_stopped") setPlaying(false);
     };
@@ -147,7 +159,7 @@ function DashboardInner() {
 
               {current && <PlainStatus pDeg={pDeg} horizon={horizon} />}
 
-              {!minimal && <MetricsGrid data={stream} total={total} />}
+              {!minimal && <MetricsGrid data={stream} total={total} currentIdx={currentIdx} />}
 
               <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
                 <Card delay={0.05}>
@@ -165,13 +177,17 @@ function DashboardInner() {
                 <>
                   <Card><LeadTimeCard warnEpoch={warnEpoch} onsetEpoch={onsetEpoch} /></Card>
                   <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-                    <ChartCard title={t("trajectory")} hint="The route driven so far. Each dot is coloured by how risky the GPS signal was at that spot.">
-                      <TrajectoryMap data={stream} />
+                    <ChartCard title={t("trajectory")} hint="Full route coloured by predicted risk. The pulsing dot is the current replay position. Green = safe, amber = warning, red = degraded.">
+                      <TrajectoryMap
+                        path={fullPath}
+                        liveHead={stream.length ? stream[stream.length - 1] : null}
+                        height={MAP_H}
+                      />
                     </ChartCard>
                     <ChartCard title={t("timeline")}
                       hint="History of the degradation probability for all three look-ahead times. Hover anywhere to read the exact values. The dashed lines are the warning thresholds."
                       csvRows={stream as unknown as Record<string, unknown>[]} csvName="sentinel_predictions.csv">
-                      <TimeSeriesChart data={stream} />
+                      <TimeSeriesChart data={stream} height={MAP_H} />
                     </ChartCard>
                   </div>
                 </>
