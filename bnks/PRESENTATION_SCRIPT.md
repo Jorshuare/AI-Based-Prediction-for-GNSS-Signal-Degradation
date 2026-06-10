@@ -120,9 +120,35 @@
 
 ---
 
-## **Section 3: Method (Slides 8–11)**
+## **Section 3: Method (Slides 8–12)**
 
-### **Slide 8: The SENTINEL-GNSS Architecture**
+### **Slide 8: Complete System Pipeline** ← NEW SLIDE
+
+**Title:** "Complete System Pipeline — SENTINEL-GNSS"
+
+**Content:** Full-width annotated pipeline diagram showing five stages:
+`SENSORS → FEATURE ENGINEERING → SENTINEL MODEL → ADAPTIVE EKF → OUTPUTS & DASHBOARD`
+
+**Say:**
+> "Before we dive into each component, let me show you the whole system in one picture.
+>
+> On the left, we have three sensors. The **GNSS receiver** gives us raw position observations — C/N₀ ratios, DOP values, satellite counts — at 1 Hz. The **IMU** at 100 Hz gives us acceleration and heading. **Wheel encoders** give us odometry.
+>
+> These raw signals go into **feature engineering**: 37 handcrafted features extracted per 1-second epoch, arranged into a 30×37 sliding window tensor. Critically, we exclude latitude and longitude — we deliberately blocked the model from learning 'this city looks like Beijing' — it has to learn signal physics, not geography.
+>
+> That tensor goes into **SENTINEL**, our ML model — a Transformer-BiLSTM hybrid. One forward pass produces three calibrated probability outputs: P(DEGRADED) at +5 s, +15 s, and +30 s.
+>
+> Those probabilities feed directly into the **Adaptive EKF**. When P(DEGRADED) is high, the EKF increases R — it distrusts the GNSS measurement and falls back on IMU and odometry. When P is low, it trusts GNSS fully.
+>
+> The filter outputs a smoothed 9-state position estimate, which goes to the **dashboard** for real-time monitoring, and to an **alert engine** that gives the route planner early warning — up to 30 seconds ahead.
+>
+> Notice the ground-truth path at the bottom — the dashed purple line — that's only used for validation, never during inference. The system runs entirely from live sensor data."
+
+**Justification:** The audience will see EKF, dashboard, model, and data slides coming up. This overview anchors everything — when they see a detail slide, they know exactly where it fits in the flow.
+
+---
+
+### **Slide 9: The SENTINEL-GNSS Architecture**
 **Say:**
 > "The model is a Transformer-LSTM hybrid. Here's why:
 >
@@ -528,6 +554,83 @@ Node 4 LEFT — "UPDATE":
 Centre text: "1 Hz update loop"
 Node colours: PREDICT = blue, SENTINEL = orange, ADAPTIVE R = red, UPDATE = green.
 Rounded rectangle nodes, connecting arrows with labels.
+```
+
+### **Prompt 4 — Complete System Pipeline Diagram**
+
+> **Use this in:** ChatGPT (GPT-4o image generation), Canva AI, or give it to a designer.  
+> **Target size:** 1920×864 px (16:9, landscape, fills one slide)
+
+```
+Create a clean, professional infographic showing the full data pipeline for an AI-based
+GNSS degradation prediction system for autonomous vehicles. The diagram flows left-to-right
+in 5 colour-coded stages across a white background.
+
+STAGE 1 — SENSORS (left, dark navy border #003366):
+  Three stacked boxes:
+  • "GNSS RECEIVER" (navy fill #E3F2FD): u-blox / Trimble / Septentrio F9P,
+    outputs: NMEA · RINEX · C/N₀ · DOP · sat count @ 1 Hz
+  • "IMU (100 Hz)" (amber fill #FFF8E1): accelerometer + gyroscope, 3-axis heading + motion
+  • "WHEEL ENCODER" (green fill #E8F5E9): vehicle speed, non-holonomic constraint (NHC)
+  Small dashed purple box below: "SPAN-INS Ground Truth — validation only (never in training)"
+
+STAGE 2 — FEATURE ENGINEERING (navy/grey border #5A6A86):
+  One tall box (grey fill #F5F7FF) with two sub-boxes:
+  • "37 FEATURES · 7 GROUPS": C/N₀ max/mean/std/trend · DOP: gdop/pdop/hdop · Satellites:
+    count/drop-rate · Receiver: fix quality · Atmospheric: iono/tropo · Temporal Δ: pdop_delta
+  • "SLIDING WINDOW" (blue fill #E3F2FD): 30 epochs × 37 features = 30×37 input tensor.
+    Labels: +5 s / +15 s / +30 s
+  Red italic note below box: "✗  lat/lon excluded — prevents geographic overfitting"
+
+STAGE 3 — SENTINEL MODEL (blue border #003893, light blue tint background):
+  Title bar: "SENTINEL ML MODEL — 1.46 M parameters"
+  Three stacked boxes inside:
+  • "Transformer Encoder" (blue fill): 2 layers · 8 heads · d_model=128 · d_ff=512
+    Sub-text: Self-attention captures long-range signal patterns
+  • "Bidirectional LSTM" (amber fill): 2 layers · hidden=256.
+    Sub-text: Causal trend — is signal getting worse?
+  • Three side-by-side smaller boxes labelled "+5 s" (green), "+15 s" (amber), "+30 s" (red),
+    each showing: P(CLEAN) / P(WARNING) / P(DEGRADED)
+  Bottom box: "Temperature Scaling T=0.4023": ECE: 0.114 → 0.068 (−40%)
+  Small italic: "Focal loss γ=1.0 · class weights [1, 2, 5]"
+
+STAGE 4 — ADAPTIVE EKF (green border #1B873A, light green tint background):
+  Title bar: "9-STATE ADAPTIVE EKF"
+  Four stacked boxes:
+  • "ADAPTIVE R(t)" (red fill #FDECEA): R(t) = σ²_base + (σ²_deg − σ²_base) × P̂_calib
+    P̂=0 → R=9 m² (trust) | P̂=1 → R=10,000 m² (ignore)
+  • "PREDICT STEP" (amber fill): x̂⁻_t = F x̂_{t-1} · IMU + Odometry + NHC + ZUPT
+  • "UPDATE STEP" (green fill): Kₜ = P⁻Hᵀ(HP⁻Hᵀ+Rₜ)⁻¹ · fuse GNSS with adaptive trust
+  • "STATE OUTPUT" (blue fill): [x, y, vx, vy, heading, ax, ay, ωz, baro]
+
+STAGE 5 — OUTPUTS & DASHBOARD (right, multi-coloured):
+  Three boxes top to bottom:
+  • "FILTERED POSITION" (green fill): Blocked RMSE 47.4 m → 24.3 m (+48.8% Tokyo data)
+  • "ALERT ENGINE" (red fill): CRITICAL P(DEG)>0.8 @+5s | WARNING P(DEG)>0.6 @+15s
+  • "AV ROUTE PLANNER" (amber fill): +5s tighten IMU fusion · +15s pre-engage dead-reckon
+    +30s re-route
+  Tall box at bottom: "DASHBOARD (FastAPI + Next.js)" with 6 bullet points in matching colours:
+    ● Signal Gauge (green) · ● Probability Bars (blue) · ● Trajectory Map (purple)
+    ● P(DEGRADED) Timeline (blue) · ● EKF Analytics (amber) · ● Alert Centre (red)
+
+ARROWS:
+  - Thick blue arrow: GNSS → Feature Engineering → SENTINEL
+  - Thick red arrow: SENTINEL P(DEGRADED) → Adaptive R(t)
+  - Amber arrow: IMU → Predict Step (bypasses SENTINEL, curves under the diagram)
+  - Green arrow: Wheel Encoder → Predict Step
+  - Blue arrow (GNSS position measurement zₜ): curves from GNSS box to Update Step
+  - Green arrow: State Output → Filtered Position + Dashboard
+  - Orange dotted arrow: SENTINEL P(CLEAN/WARN/DEG) → Alert Engine
+  - Purple dashed arrow: SPAN-INS ground truth → right edge (labelled "validation only")
+
+BOTTOM BANNER (navy #003366):
+  White text: "Zero-shot cross-city: trained on Beijing (Beihang A–E) + HK UrbanNav
+              — tested on Tokyo Shinjuku (never seen during training)"
+  Star symbol ★ in amber before the text.
+
+TYPOGRAPHY: Clean sans-serif (Inter, Helvetica, or similar).
+COLOR PALETTE: navy #003366, blue #003893, cyan #4FC3F7, green #1B873A, red #C62828,
+amber #F57F17, purple #6A1B9A, light fills as specified.
 ```
 
 ---
