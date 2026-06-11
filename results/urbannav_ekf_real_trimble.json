@@ -3,7 +3,7 @@
   "gnss_source": "trimble",
   "engine": "RTKLIB single-point on rover_trimble.obs (GPS+GLONASS)",
   "data_mode": "FULLY REAL: real GNSS positions + real IMU + real wheel odometry + cm truth",
-  "timestamp": "2026-06-07T08:23:43.303681",
+  "timestamp": "2026-06-11T16:03:36.151603",
   "n_epochs": 20949,
   "n_real_fixes": 18735,
   "n_degraded_epochs": 2450,
@@ -12,19 +12,25 @@
     "gnss_raw": 27.761,
     "cv_kf": 24.065,
     "aided_ekf_fixed": 19.33,
-    "aided_ekf_adaptive": 19.445
+    "aided_ekf_adaptive": 19.445,
+    "aided_ekf_huber": 20.695,
+    "aided_pf_student_t": 27.078
   },
   "rmse_degraded_segment": {
     "gnss_raw": 47.402,
     "cv_kf": 31.23,
     "aided_ekf_fixed": 24.282,
-    "aided_ekf_adaptive": 26.756
+    "aided_ekf_adaptive": 26.756,
+    "aided_ekf_huber": 30.108,
+    "aided_pf_student_t": 31.659
   },
   "degraded_gain_vs_raw": {
     "gnss_raw": 0.0,
     "cv_kf": 34.1,
     "aided_ekf_fixed": 48.8,
-    "aided_ekf_adaptive": 43.6
+    "aided_ekf_adaptive": 43.6,
+    "aided_ekf_huber": 36.5,
+    "aided_pf_student_t": 33.2
   },
   "config": {
     "dt": 0.1,
@@ -32,7 +38,13 @@
     "r_degraded_m": 40.0,
     "degraded_def": "real GNSS fix with <=5 satellites (poor geometry)",
     "p_degraded_source": "nsat proxy (P=0 at nsat>=5, P=1 at nsat<=2)",
-    "chi2_gate_dof2_pct": "99.9% (threshold 13.82)"
+    "chi2_gate_dof2_pct": "99.9% (threshold 13.82)",
+    "huber_c": 5.0,
+    "huber_adaptive": false,
+    "pf_n_particles": 500,
+    "pf_obs_nu": 3.0,
+    "pf_r_base_m": 15.0,
+    "pf_r_degraded_m": 60.0
   },
   "_methodology": [
     "FULLY REAL GNSS via RTKLIB single-point on rover_trimble.obs (GPS+GLONASS). Errors are REAL urban multipath/NLOS, not synthetic.",

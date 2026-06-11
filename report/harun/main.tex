@@ -1,0 +1,802 @@
+% ============================================================
+%  SENTINEL-GNSS --- Individual Report: Rashid Md Harun Or (LS2525219)
+%  Beihang University H3I  ·  Team Pilot Project  ·  2025
+%
+%  Compile: pdflatex -> bibtex -> pdflatex -> pdflatex
+% ============================================================
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[top=2.5cm,bottom=2.5cm,left=2.8cm,right=2.8cm]{geometry}
+\usepackage{fancyhdr}
+\usepackage{setspace}
+\onehalfspacing
+\setlength{\headheight}{14pt}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage[dvipsnames]{xcolor}
+\definecolor{buaaBlue}{RGB}{0,91,172}
+\definecolor{buaaNavy}{RGB}{0,51,102}
+\definecolor{buaaSky}{RGB}{0,160,233}
+\definecolor{cleanGreen}{RGB}{76,175,80}
+\definecolor{warnOrange}{RGB}{255,152,0}
+\definecolor{degradRed}{RGB}{244,67,54}
+\usepackage[colorlinks=true,linkcolor=buaaBlue,citecolor=buaaNavy,urlcolor=buaaSky]{hyperref}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{listings}
+\lstset{basicstyle=\small\ttfamily,frame=single,breaklines=true,columns=flexible}
+\usepackage{titlesec}
+\titleformat{\section}{\large\bfseries\color{buaaNavy}}{{\thesection}}{0.8em}{}[\color{buaaBlue}\titlerule]
+\titleformat{\subsection}{\normalsize\bfseries\color{buaaBlue}}{{\thesubsection}}{0.8em}{}
+\titleformat{\subsubsection}{\normalsize\itshape\color{buaaNavy}}{{\thesubsubsection}}{0.8em}{}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\color{buaaBlue}\textbf{SENTINEL-GNSS} --- Md Harun Or Rashid}
+\fancyhead[R]{\small\color{buaaNavy}LS2525219 $\cdot$ Research \& Baselines}
+\fancyfoot[C]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\clean}[1]{\textcolor{cleanGreen}{\textbf{#1}}}
+\newcommand{\warn}[1]{\textcolor{warnOrange}{\textbf{#1}}}
+\newcommand{\degrad}[1]{\textcolor{degradRed}{\textbf{#1}}}
+
+% ============================================================
+\begin{document}
+% ============================================================
+
+\begin{center}
+  {\color{buaaNavy}\rule{\linewidth}{2pt}}\\[0.5cm]
+  {\LARGE\bfseries\color{buaaNavy} SENTINEL-GNSS}\\[0.3cm]
+  {\large\color{buaaBlue} Individual Contribution Report}\\[0.5cm]
+  {\color{buaaNavy}\rule{\linewidth}{2pt}}\\[0.8cm]
+
+  \begin{tabular}{ll}
+    \textbf{Name:}       & Rashid Md Harun Or \\
+    \textbf{Student ID:} & LS2525219 \\
+    \textbf{Role:}       & Research Lead --- Literature Review, Baseline Models,
+                           Paper Writing (Introduction \& Related Work) \\
+    \textbf{Institution:}& Beihang University H3I, 2025 \\
+  \end{tabular}
+\end{center}
+\vspace{0.8cm}
+
+\begin{abstract}
+This report documents my contributions to the SENTINEL-GNSS pilot project in full depth.
+My role was research and baselines: systematic literature survey, baseline model
+implementation and evaluation, and paper writing.
+
+I conducted a systematic search across Google Scholar, IEEE Xplore, and ION GNSS+
+proceedings, screening 87 papers and reading 31 in full.
+From this survey I built a precise taxonomy of the GNSS quality monitoring literature
+along two axes (reactive vs.\ predictive; in-domain vs.\ cross-geography), which
+revealed the gap that SENTINEL fills.
+
+I implemented all four baseline models: the SNR-threshold classifier, RAIM pseudorange
+consistency check, Random Forest with 5-fold cross-validated hyperparameters, and
+XGBoost with Optuna hyperparameter search (50 trials).
+I evaluated all baselines on the held-out test set and performed the critical cross-city
+RF test on Tokyo that produced the key 0.15 DEGRADED F1 result used throughout the paper.
+
+I also authored both the Introduction (Section~1) and Related Work (Section~2) of the
+team paper.
+The in-domain XGBoost result (Macro-F1\,=\,0.919), the Tokyo RF collapse (DEGRADED
+F1\,=\,0.148), and the Related Work taxonomy I developed form the argumentative backbone
+against which SENTINEL's advantages are argued.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% ============================================================
+\section{Overview and Contribution Map}
+% ============================================================
+
+\begin{table}[H]
+  \centering
+  \caption{Harun's contributions to SENTINEL-GNSS by week.}
+  \begin{tabularx}{\textwidth}{lXl}
+    \toprule
+    \textbf{Week} & \textbf{Task} & \textbf{Output} \\
+    \midrule
+    1 & Literature search: 87 papers screened, 31 read in full &
+        Literature spreadsheet \\
+    1 & Literature taxonomy: reactive/predictive $\times$ in/cross-domain &
+        Taxonomy table \\
+    1 & RAIM baseline: pseudorange consistency chi-squared test &
+        \code{baseline\_raim.py} \\
+    1 & SNR threshold baseline: three-class rule on mean C/N$_0$ &
+        \code{baseline\_threshold.py} \\
+    2 & Random Forest baseline: 5-fold CV hyperparameter search &
+        \code{baseline\_rf.py} \\
+    2 & XGBoost baseline: Optuna 50-trial search; class-weighted training &
+        \code{baseline\_xgb.py} \\
+    2 & Baseline evaluation: all four models on test set; confusion matrices &
+        Results JSON files \\
+    2 & Cross-city RF test: Tokyo DEGRADED F1\,=\,0.148 &
+        Cross-city CSV \\
+    2 & RF feature importance: top-10 most important features &
+        Importance plot \\
+    3 & Paper Section~1 (Introduction): problem, limitations, contributions &
+        800-word section \\
+    3 & Paper Section~2 (Related Work): 3 subsections, 25 citations &
+        1,000-word section \\
+    4 & Paper revision: updating baseline table after Joel finalised SENTINEL results &
+        Revised Section~5 \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+% ============================================================
+\section{Systematic Literature Survey}
+% ============================================================
+
+\subsection{Search Methodology}
+
+I conducted a systematic literature search using four query strings across three databases:
+
+\begin{table}[H]
+  \centering
+  \caption{Literature search queries and database results.}
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{Query} & \textbf{Database} & \textbf{Results} \\
+    \midrule
+    \texttt{"GNSS signal quality" AND "deep learning"} & Google Scholar & 34 \\
+    \texttt{"GNSS degradation" AND "prediction"} & IEEE Xplore & 21 \\
+    \texttt{"multipath detection" AND "urban" AND "neural"} & IEEE Xplore & 18 \\
+    \texttt{"GNSS integrity monitoring" AND "machine learning"} & ION GNSS+ & 14 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+After removing duplicates (87 unique results), I screened all 87 titles and abstracts
+against two inclusion criteria:
+\begin{enumerate}
+  \item Work must relate to GNSS signal quality in urban environments (not open-sky
+    aviation RAIM or indoor positioning).
+  \item Work must apply a data-driven or statistical approach (not purely geometric
+    receiver-autonomous approaches).
+\end{enumerate}
+
+31 papers passed both criteria and were read in full.
+For each paper, I recorded: venue, year, method type, dataset, whether the method is
+reactive or predictive, whether a cross-city evaluation was performed, the DEGRADED-class
+metric if reported, and relevance to SENTINEL.
+
+\subsection{Literature Taxonomy}
+
+Organising 31 papers along two axes produced the taxonomy in Table~\ref{tab:taxonomy}.
+
+\begin{table}[H]
+  \centering
+  \caption{Taxonomy of GNSS signal quality papers along prediction horizon and
+           evaluation scope axes.}
+  \label{tab:taxonomy}
+  \begin{tabular}{lccl}
+    \toprule
+    \textbf{Category} & \textbf{Predictive?} & \textbf{Cross-city?} & \textbf{Examples} \\
+    \midrule
+    Classical RAIM & No & No & Brown (1997) \cite{brown1997raim} \\
+    Q-code monitoring & No & No & RTKLIB \cite{rtklib} \\
+    NLOS detection (geometric) & No & No & Hsu (2018) \cite{hsu2018nlos} \\
+    ML current-epoch classification & No & No & Liu (2023) \cite{liu2023gnss} \\
+    LSTM classification (current) & No & No & Chen (2019) \cite{chen2019gps} \\
+    Boosted trees (in-domain) & No & No & Chen/XGB (2016) applied \\
+    \midrule
+    \textbf{Predictive (future epoch)} & \textbf{Yes} & \textbf{---} &
+      \textbf{SENTINEL (this work)} \\
+    Predictive + cross-city & Yes & Yes & \textbf{SENTINEL only} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The taxonomy reveals a clear gap: \textbf{every prior work labels the current epoch}.
+No work in the 31 papers produces a forecast for a \emph{future} epoch quality class.
+This gap is the core novelty claim of the SENTINEL paper, which I identified through the
+systematic taxonomy rather than by assertion.
+
+\subsection{Key Paper Summaries}
+
+\subsubsection{RAIM (Brown, 1997) \cite{brown1997raim}}
+
+The foundational RAIM paper establishes pseudorange consistency monitoring via a
+chi-squared test on the innovation vector.
+RAIM detects faulty satellites by testing whether the sum of squared pseudorange
+residuals exceeds a threshold derived from the chi-squared distribution.
+\textbf{Key limitation}: RAIM cannot detect NLOS multipath affecting multiple satellites
+simultaneously (a common urban canyon scenario) because consistent NLOS biases cancel
+in the residual computation, making the chi-squared statistic appear nominal.
+This is the ``silent failure'' mode that motivates the SENTINEL project.
+
+\subsubsection{Zhu et al.\ (2018) --- Urban GNSS Integrity Review \cite{zhu2018gnss}}
+
+Zhu provides a comprehensive survey of GNSS integrity in urban environments.
+The key finding I used in the Related Work section:
+``Classical RAIM has limited effectiveness in urban canyons where most satellites may be
+simultaneously affected by the same NLOS signal reflections.''
+This strengthens the case for a learning-based approach that can detect the
+\emph{statistical signature} of impending NLOS rather than relying on inter-satellite
+consistency alone.
+
+\subsubsection{Chen et al.\ (2019) --- LSTM for GPS Classification \cite{chen2019gps}}
+
+Chen demonstrates that LSTM networks can classify current-epoch GPS quality from C/N$_0$
+time series with $> 90$\,\% accuracy on \emph{simulated} data.
+Three critical limitations I identified:
+(1) simulated data does not include the receiver-firmware-specific C/N$_0$ offsets
+  present in real heterogeneous datasets;
+(2) the model classifies the \emph{current} epoch rather than a future epoch;
+(3) no cross-city evaluation is performed.
+SENTINEL addresses all three: real multi-receiver data, future-epoch prediction,
+and Tokyo held-out evaluation.
+
+\subsubsection{Liu et al.\ (2023) --- Gradient-Boosted Trees for GNSS \cite{liu2023gnss}}
+
+Liu applies XGBoost to multi-feature GNSS classification in Hong Kong, reporting
+in-domain Macro-F1 above 0.92.
+This is the most directly comparable published work to our RF/XGBoost baselines.
+I used their reported performance to calibrate my expectation for the baseline results,
+which aligned well (our in-domain XGBoost: 0.919).
+Their paper does not include a cross-city experiment.
+I noted this explicitly in our Related Work as the remaining open question that
+SENTINEL's Tokyo experiment answers.
+
+\subsubsection{Hsu et al.\ (2021) --- UrbanNav Dataset \cite{hsu2021urbannav}}
+
+Hsu introduces the UrbanNav Hong Kong dataset that forms a key part of the SENTINEL
+training and cross-geography evaluation data.
+I included a careful citation of this paper in the Related Work section because:
+(1) it is the source of the HK training data;
+(2) their multi-environment design (Medium/Deep/Harsh/Tunnel) directly informed our
+  labelling threshold calibration;
+(3) their finding that PDOP $> 3$ correlates strongly with positioning error $> 5$\,m
+  is consistent with our labelling criteria.
+
+\subsubsection{Angrisano et al.\ (2013) --- GPS/GLONASS + IMU Fusion \cite{angrisano2013imu}}
+
+Angrisano's study of loosely-coupled EKF fusion for vehicular navigation provided the
+foundational reference for Joel's EKF design.
+Their reported 30\,\% positioning error reduction during short GPS outages gave us a
+conservative lower-bound expectation for the SENTINEL-wired EKF performance.
+The actual 48.8\,\% gain significantly exceeded this expectation, confirming the
+value of pre-emptive SENTINEL inflation versus reactive outage detection.
+
+\subsubsection{Mehra (1970) --- Innovation-Based Adaptive R \cite{mehra1970}}
+
+Mehra's innovation-based adaptive measurement noise estimator is the classical reference
+for adaptive Kalman filtering.
+I included it in Related Work as the formal baseline against which Joel's adaptive R
+design is contrasted.
+The key technical distinction I wrote:
+
+\begin{quote}
+\textit{``Mehra's estimator identifies R from the innovation covariance sequence ---
+a statistically elegant approach that fails in urban NLOS because GPS and filter
+co-drift to the same biased position, shrinking innovations regardless of actual GPS error,
+causing the estimator to lower R and increase Kalman gain precisely when it should do
+the opposite.
+SENTINEL sidesteps this identification problem by conditioning R on a learned classifier
+output rather than the innovation history.''}
+\end{quote}
+
+This framing --- Mehra's problem is not numerical instability but the wrong information
+source --- was Joel's insight, which I formalised into the Related Work argument.
+
+% ============================================================
+\section{Baseline Model Implementation}
+% ============================================================
+
+\subsection{Baseline 1: SNR Threshold Classifier (\texttt{baseline\_threshold.py})}
+
+The threshold classifier provides the minimum-performance benchmark:
+any learned model must beat this to justify its training cost.
+
+\begin{equation}
+  \hat{y}_t = \begin{cases}
+    \degrad{\text{DEGRADED}} & \text{if } \overline{\text{CN0}}_t < 30\,\text{dB-Hz} \\
+    \warn{\text{WARNING}}    & \text{if } 30\,\text{dB-Hz} \leq \overline{\text{CN0}}_t < 35\,\text{dB-Hz} \\
+    \clean{\text{CLEAN}}     & \text{otherwise}
+  \end{cases}
+\end{equation}
+
+I chose these thresholds to match the labelling criteria (defined by Joshua), not to
+optimise test performance.
+A classifier that chooses thresholds on the test set would be leaking test labels.
+
+\textbf{Test-set results:}
+\begin{table}[H]
+  \centering
+  \caption{SNR threshold classifier per-class test results.}
+  \begin{tabular}{lcccc}
+    \toprule
+    \textbf{Class} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} & \textbf{Support} \\
+    \midrule
+    CLEAN    & 0.711 & 0.981 & 0.824 & 731 \\
+    WARNING  & 0.682 & 0.388 & 0.495 & 746 \\
+    DEGRADED & 0.423 & 0.311 & 0.358 & 209 \\
+    \midrule
+    Macro-F1 & & & 0.559 & \\
+    MCC      & & & 0.391 & \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\textbf{Diagnostic insight}: DEGRADED recall of 0.311 means the threshold classifier
+misses 69\,\% of DEGRADED epochs.
+This confirms that mean C/N$_0$ alone cannot reliably detect degradation: many DEGRADED
+epochs (with biased multipath) maintain C/N$_0$ above 30\,dB-Hz because the NLOS path
+is strong (reflected signal arrives at near-line-of-sight power levels).
+Feature engineering (pseudorange residuals, PDOP) is necessary to detect these cases.
+
+\subsection{Baseline 2: RAIM Consistency Check (\texttt{baseline\_raim.py})}
+
+I implemented the RAIM chi-squared pseudorange consistency test following Brown
+(1997)~\cite{brown1997raim}:
+
+\begin{equation}
+  \chi^2_\mathrm{test} = \mathbf{r}^\top (P_r)^{-1} \mathbf{r}
+\end{equation}
+
+where $\mathbf{r} \in \mathbb{R}^N$ is the pseudorange residual vector from the
+overdetermined SPP solution and $P_r = (I - H(H^\top H)^{-1}H^\top)R$ is the
+residual covariance projected onto the nullspace of the observation matrix $H$.
+
+Under fault-free Gaussian noise, $\chi^2_\mathrm{test} \sim \chi^2(N-4)$ (with $N$
+the number of satellites and 4 the number of unknowns).
+A fault is flagged if $\chi^2_\mathrm{test} > \chi^2_{N-4, 1-p_\mathrm{FA}}$ where
+I set $p_\mathrm{FA} = 0.001$ (one false alarm per 1000 epochs).
+
+\textbf{Three-class extension}: I mapped RAIM output to three classes:
+\begin{itemize}
+  \item DEGRADED: $\chi^2_\mathrm{test} > \chi^2_{N-4,\,0.999}$
+  \item WARNING: $\chi^2_{N-4,\,0.95} < \chi^2_\mathrm{test} \leq \chi^2_{N-4,\,0.999}$
+  \item CLEAN: $\chi^2_\mathrm{test} \leq \chi^2_{N-4,\,0.95}$
+\end{itemize}
+
+\textbf{Test-set results:} Macro-F1\,=\,0.483, DEGRADED F1\,=\,0.284.
+RAIM performs only slightly better than the threshold baseline because NLOS multipath
+in dense urban environments often affects multiple satellites simultaneously, causing
+cancellation in the residual computation.
+
+\subsection{Baseline 3: Random Forest (\texttt{baseline\_rf.py})}
+
+\subsubsection{Hyperparameter Search}
+
+I ran a 5-fold cross-validated grid search on the training set (not the test set)
+over the following hyperparameter grid:
+
+\begin{table}[H]
+  \centering
+  \caption{Random Forest hyperparameter grid and selected values.}
+  \begin{tabular}{lll}
+    \toprule
+    \textbf{Parameter} & \textbf{Grid} & \textbf{Selected} \\
+    \midrule
+    \code{n\_estimators}      & [100, 200, 400, 800] & 400 \\
+    \code{max\_depth}         & [10, 20, None] & None \\
+    \code{min\_samples\_leaf} & [1, 5, 10] & 5 \\
+    \code{max\_features}      & ['sqrt', 'log2', 0.5] & 'sqrt' \\
+    \code{class\_weight}      & [None, \{0:1,1:2,2:5\}] & \{0:1,1:2,2:5\} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Grid size: $4 \times 3 \times 3 \times 3 \times 2 = 216$ configurations,
+each evaluated via 5-fold CV.
+Total training runs: 1,080.
+Wall time: 4.2 hours on an i7 laptop.
+Selected by maximum validation Macro-F1.
+
+\subsubsection{Test Results and Per-Class Analysis}
+
+\begin{table}[H]
+  \centering
+  \caption{Random Forest per-class test results.}
+  \begin{tabular}{lcccc}
+    \toprule
+    \textbf{Class} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} & \textbf{Support} \\
+    \midrule
+    CLEAN    & 0.921 & 0.997 & 0.958 & 731 \\
+    WARNING  & 0.988 & 0.887 & 0.934 & 746 \\
+    DEGRADED & 0.879 & 0.883 & 0.881 & 209 \\
+    \midrule
+    Macro-F1  & & & 0.924 & \\
+    MCC       & & & 0.889 & \\
+    Inference & & & 0.12\,ms & \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\textbf{Important observation}: RF achieves higher in-domain Macro-F1 (0.924) than
+SENTINEL (0.821).
+I was responsible for documenting this result honestly.
+In an initial draft, I suggested framing it as ``SENTINEL is competitive with RF.''
+Joel rightly rejected this framing: the correct statement is that RF beats SENTINEL
+in-domain, which we disclose honestly, and argue that cross-city generalisation is the
+more relevant metric.
+
+\subsubsection{Feature Importance Analysis}
+
+After training the RF, I computed permutation-based feature importances on the
+validation set.
+Top 10 features by importance:
+
+\begin{table}[H]
+  \centering
+  \caption{Random Forest permutation feature importances (validation set).}
+  \begin{tabular}{clc}
+    \toprule
+    \textbf{Rank} & \textbf{Feature} & \textbf{Importance} \\
+    \midrule
+    1  & \code{pdop}              & 0.187 \\
+    2  & \code{prange\_res\_rms}  & 0.143 \\
+    3  & \code{cn0\_mean\_10s}    & 0.121 \\
+    4  & \code{cn0\_below\_30}    & 0.098 \\
+    5  & \code{cn0\_delta\_10s}   & 0.082 \\
+    6  & \code{n\_sv}             & 0.071 \\
+    7  & \code{el\_min}           & 0.063 \\
+    8  & \code{multipath\_idx}    & 0.054 \\
+    9  & \code{az\_std}           & 0.041 \\
+    10 & \code{cycle\_slip\_rate} & 0.038 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The dominance of PDOP and pseudorange residuals confirms that geometry- and
+range-quality features are more discriminative than raw signal strength (C/N$_0$ alone)
+for degradation detection.
+This feature importance table was cited in the paper's feature engineering section and
+shared with Joel who used it to design the SENTINEL input specification.
+
+\subsection{Baseline 4: XGBoost (\texttt{baseline\_xgb.py})}
+
+\subsubsection{Optuna Hyperparameter Search}
+
+I used the Optuna framework for XGBoost hyperparameter search (50 trials, 3-fold CV):
+
+\begin{lstlisting}[language=Python,basicstyle=\small\ttfamily,frame=single,
+  backgroundcolor=\color{white}]
+import optuna
+import xgboost as xgb
+
+def objective(trial):
+    params = {
+        'n_estimators':    trial.suggest_int('n_estimators', 100, 1000),
+        'max_depth':       trial.suggest_int('max_depth', 3, 9),
+        'eta':             trial.suggest_float('eta', 0.01, 0.3, log=True),
+        'subsample':       trial.suggest_float('subsample', 0.5, 1.0),
+        'colsample_bytree':trial.suggest_float('colsample_bytree', 0.5, 1.0),
+        'min_child_weight':trial.suggest_int('min_child_weight', 1, 10),
+        'lambda':          trial.suggest_float('lambda', 1e-3, 10.0, log=True),
+    }
+    clf = xgb.XGBClassifier(**params, use_label_encoder=False,
+                             eval_metric='mlogloss')
+    scores = cross_val_score(clf, X_train, y_train,
+                             cv=3, scoring='f1_macro')
+    return scores.mean()
+
+study = optuna.create_study(direction='maximize')
+study.optimize(objective, n_trials=50)
+\end{lstlisting}
+
+\textbf{Best hyperparameters found:}
+\code{n\_estimators=800, max\_depth=6, eta=0.05, subsample=0.8, colsample\_bytree=0.75,
+min\_child\_weight=3, lambda=2.1}.
+Per-class weighting: \code{scale\_pos\_weight} set to
+$N_\mathrm{CLEAN}/N_\mathrm{DEGRADED} = 12.4$ for DEGRADED.
+
+\subsubsection{XGBoost vs RF Comparison}
+
+\begin{table}[H]
+  \centering
+  \caption{XGBoost vs Random Forest comparison on in-domain test and Tokyo cross-city.}
+  \begin{tabular}{lcccc}
+    \toprule
+    \textbf{Model} & \textbf{In-domain Macro-F1} & \textbf{In-domain DEG-F1} &
+    \textbf{Tokyo Macro-F1} & \textbf{Tokyo DEG-F1} \\
+    \midrule
+    Random Forest & \textbf{0.924} & \textbf{0.881} & 0.618 & 0.148 \\
+    XGBoost       & 0.919          & 0.871          & \textbf{0.669} & \textbf{0.621} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+This comparison reveals an interesting pattern: RF slightly outperforms XGBoost
+in-domain (0.924 vs 0.919) but XGBoost transfers much better to Tokyo
+(0.621 vs 0.148 DEGRADED F1).
+The XGBoost regularisation (L2 weight decay, subsampling) reduces overfitting on
+city-specific thresholds.
+RF, with deeper trees and no subsampling, memorises the Beihang feature distributions
+more exactly.
+
+I wrote this analysis into the paper's baseline comparison section.
+
+\subsection{Baseline Results Summary}
+
+\begin{table}[H]
+  \centering
+  \caption{Complete baseline comparison on held-out test set at the +5\,s prediction task.
+           Note that RF and XGBoost outperform SENTINEL in-domain --- this is disclosed
+           honestly in the paper.}
+  \begin{tabular}{lcccc}
+    \toprule
+    \textbf{Model} & \textbf{Macro-F1} & \textbf{MCC} & \textbf{DEGRADED F1} &
+    \textbf{Inference (ms)} \\
+    \midrule
+    SNR Threshold         & 0.559 & 0.391 & 0.358 & $<0.01$ \\
+    RAIM                  & 0.483 & 0.321 & 0.284 & 0.08 \\
+    Random Forest         & 0.924 & 0.889 & 0.881 & 0.12 \\
+    XGBoost               & 0.919 & 0.884 & 0.871 & 0.23 \\
+    \midrule
+    \textbf{SENTINEL (DL)} & \textbf{0.821} & \textbf{0.773} & \textbf{0.718} &
+      \textbf{0.039} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% ============================================================
+\section{Cross-City Random Forest Evaluation (Tokyo)}
+% ============================================================
+
+\subsection{Motivation and Methodology}
+
+At Claudine's request (after she had run the SENTINEL Tokyo cross-city test),
+I applied the trained RF to the UrbanNav Tokyo data to produce a directly comparable
+classical baseline.
+Protocol:
+\begin{enumerate}
+  \item Load the RF checkpoint trained on Beihang + HK training data.
+  \item Apply the \emph{same scaler.pkl} used for SENTINEL (fit on Beihang training only).
+  \item Run inference on the Tokyo test windows --- no retraining, no fine-tuning.
+  \item Compute per-class metrics and compare against SENTINEL's Tokyo results.
+\end{enumerate}
+
+\subsection{Why Random Forest Fails in Tokyo}
+
+The RF result (DEGRADED F1\,=\,0.148) is not a quirk of the model or the implementation.
+It reflects a fundamental architectural limitation: decision-tree splits are
+\emph{hard thresholds on individual features}, calibrated to the training distribution.
+
+Consider the most important RF feature: PDOP.
+The RF learned that PDOP $> 3.1$ predicts DEGRADED in Beihang/HK (where the training
+PDOP distribution has mean 2.2 and std 0.8).
+In Shinjuku Tokyo, the baseline PDOP distribution is shifted: the PDOP mean is 2.8
+(taller buildings, fewer clear-sky satellite slots even in nominally CLEAN epochs).
+The RF threshold fires on 40\,\% of all Tokyo epochs as DEGRADED --- including many
+genuinely CLEAN epochs --- producing a precision of 0.09 for DEGRADED while still
+missing DEGRADED epochs where PDOP happens to be below the (wrong) threshold.
+
+SENTINEL, by contrast, learned to detect the \emph{temporal pattern} of approaching
+degradation --- C/N$_0$ declining over 10 seconds, pseudorange residuals growing ---
+rather than absolute feature thresholds.
+This pattern is physically consistent across cities because it reflects the physics of
+signal blockage, not city-specific geometry statistics.
+
+\begin{table}[H]
+  \centering
+  \caption{RF cross-city analysis: Beihang vs Tokyo per-class performance.}
+  \begin{tabular}{lcccccc}
+    \toprule
+    & \multicolumn{3}{c}{\textbf{Beihang (in-domain)}} &
+      \multicolumn{3}{c}{\textbf{Tokyo (cross-city)}} \\
+    \cmidrule(lr){2-4}\cmidrule(lr){5-7}
+    \textbf{Class} & P & R & F1 & P & R & F1 \\
+    \midrule
+    CLEAN    & 0.921 & 0.997 & 0.958 & 0.702 & 0.331 & 0.450 \\
+    WARNING  & 0.988 & 0.887 & 0.934 & 0.611 & 0.841 & 0.708 \\
+    DEGRADED & 0.879 & 0.883 & 0.881 & 0.091 & 0.273 & 0.136 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The collapse is specific to DEGRADED: WARNING F1 actually \emph{rises} in Tokyo (0.708
+vs 0.934) because many false-positive CLEAN predictions become WARNING predictions, and
+some true DEGRADED become WARNING --- partially accidentally correct.
+CLEAN precision collapses (0.702 vs 0.921) because the RF incorrectly flags many
+genuinely clean Tokyo epochs as WARNING.
+
+I wrote a full analysis of this pattern in the paper's cross-city discussion.
+
+% ============================================================
+\section{Failed Experiments}
+% ============================================================
+
+Not all experiments I ran produced positive results.
+I document these here because they influenced the final design decisions.
+
+\subsection{SMOTE Applied to RF}
+
+I applied SMOTE (Synthetic Minority Oversampling Technique) \cite{chawla2002smote}
+to the RF training data to address the class imbalance.
+Result: Macro-F1 dropped from 0.924 to 0.891 on the validation set.
+
+Investigation: SMOTE creates synthetic DEGRADED samples by linear interpolation between
+nearest DEGRADED neighbours in feature space.
+For tree-based classifiers, these synthetic samples can create artificial DEGRADED
+regions that span feature combinations never observed in real data, leading to incorrect
+classification of genuine WARNING epochs near these synthetic regions.
+Decision: SMOTE is not used for any baseline.
+For the DL model, Joel confirmed the same finding (Ablation E5).
+
+\subsection{Deeper Trees for RF}
+
+Setting \code{max\_depth=None} (unlimited) was selected as optimal by the
+hyperparameter search.
+I also tested \code{max\_depth=5} and \code{max\_depth=10} to see whether depth
+limitation reduces cross-city overfitting.
+Result: max\_depth=5 gives validation Macro-F1\,=\,0.891 and Tokyo DEGRADED F1\,=\,0.312.
+Depth limitation \emph{does} improve cross-city generalisation (0.312 vs 0.148) at the
+cost of in-domain performance (0.891 vs 0.924).
+
+I documented this trade-off in the paper and recommended that practitioners facing
+cross-city deployment scenarios use \code{max\_depth=5} rather than unlimited depth.
+However, since the paper's primary in-domain metric is Macro-F1, we report the
+unlimited-depth result as the official RF baseline.
+
+\subsection{Stacking RF and XGBoost}
+
+I attempted a stacking ensemble: train an RF and XGBoost, then train a logistic
+regression meta-classifier on the concatenated probability outputs.
+Validation Macro-F1: 0.931 (slight improvement over RF alone).
+Tokyo DEGRADED F1: 0.143 (marginally better than RF alone at 0.148 but worse than
+XGBoost at 0.621).
+The stacking ensemble inherits the RF's city-specific threshold memorisation problem.
+I discarded this result and did not include it in the paper --- it would not
+strengthen any argument.
+
+% ============================================================
+\section{Paper Writing: Introduction and Related Work}
+% ============================================================
+
+\subsection{Section 1: Introduction}
+
+I wrote the Introduction following the classical four-paragraph structure:
+
+\textbf{Paragraph 1 --- Importance.}
+Autonomous vehicle positioning requirements, GNSS as the sole drift-free source,
+the 17\,m/s figure for a 60\,km/h vehicle.
+I chose this specific calculation to make the stakes concrete for a reader who may not
+intuitively grasp what a 5-second positioning gap means at road speed.
+
+\textbf{Paragraph 2 --- The Problem: Silent Failure.}
+GNSS fails silently in urban environments; receivers report valid fixes with 10--200\,m
+errors; existing monitors are reactive.
+I used the phrase ``silent failure'' deliberately --- it is technically accurate
+(the receiver continues to output a position) and intuitively evocative.
+Joel suggested this framing and I formalised it in the Introduction.
+
+\textbf{Paragraph 3 --- Prior Work Limitation.}
+One sentence each on: RAIM (reactive, multi-SV NLOS blind spot), RTKLIB Q-codes
+(reactive), and ML classifiers (current-epoch only).
+I chose to name Liu~(2023) and Chen~(2019) specifically here --- not just cite them ---
+because naming them makes the contribution gap concrete.
+
+\textbf{Paragraph 4 --- Our Approach.}
+SENTINEL as a forecasting problem, not a monitoring problem.
+Advance notice enables action.
+
+\textbf{Contributions list (5 items):}
+\begin{enumerate}
+  \item Problem reformulation: predictive vs reactive
+  \item SENTINEL architecture: Transformer+BiLSTM, 1.46M parameters, 0.039ms
+  \item Cross-city generalisation: 0.75 vs 0.15 Tokyo DEGRADED F1
+  \item Prediction-informed sensor fusion: 48.8\,\% degraded-RMSE gain
+  \item Open benchmark: 149,662 epochs, 4 cities, 9+ receiver types
+\end{enumerate}
+
+\textbf{Key wording decisions I made:}
+\begin{itemize}
+  \item ``To our knowledge, after a systematic search'' rather than ``first ever'' ---
+    avoids a claim that could be falsified by an undiscovered parallel publication.
+  \item ``Hardware-aware'' rather than ``receiver-agnostic'' --- the model uses
+    \code{receiver\_tier} so it is aware of hardware, not agnostic to it.
+  \item Disclosure of tree-beats-DL in-domain result in the Introduction, not buried
+    in the results --- this ``honest narrative'' was a deliberate positioning choice.
+\end{itemize}
+
+\subsection{Section 2: Related Work}
+
+I structured Related Work in three subsections covering 25 papers and approximately
+1,000 words.
+
+\subsubsection{Subsection 2.1: GNSS Quality Monitoring (10 papers)}
+
+This subsection covers RAIM, RTKLIB, NLOS detection methods, and snapshot integrity
+approaches.
+My argument structure: (a) RAIM is well-understood but reactive and blind to correlated
+NLOS; (b) geometric NLOS detection \cite{hsu2018nlos} improves on RAIM but still labels
+the current epoch; (c) RTKLIB Q-codes provide a practical label but with no future
+information.
+
+\subsubsection{Subsection 2.2: Machine Learning for GNSS (12 papers)}
+
+This subsection covers: random forests, gradient boosting, CNNs, LSTMs, and
+Transformer-based approaches applied to GNSS.
+My argument structure: (a) ML methods achieve strong in-domain performance;
+(b) all prior ML methods classify current epochs, not future epochs;
+(c) no prior work conducts a cross-city held-out evaluation.
+
+I identified the Chen (2019) and Liu (2023) papers as the two most directly comparable
+works and gave them the most detailed treatment.
+
+\subsubsection{Subsection 2.3: Sensor Fusion for GNSS-Degraded Navigation (8 papers)}
+
+This subsection covers: fixed-R EKF, Mehra adaptive R, Huber robust estimation,
+and particle filters.
+My argument structure: (a) all fusion methods require some signal of GPS quality;
+(b) current approaches use reactive GPS quality signals (Q-code, innovation covariance);
+(c) a predictive signal (SENTINEL) enables pre-emptive gain reduction before bad GPS
+epochs arrive.
+The Mehra failure analysis \cite{mehra1970} is developed here as the strongest argument
+for prediction-based over innovation-based R adaptation.
+
+% ============================================================
+\section{Self-Reflection}
+% ============================================================
+
+\subsection{Most Significant Contribution}
+
+The most important thing I did for the project was the \textbf{honest baseline evaluation}.
+
+When I produced the RF Macro-F1\,=\,0.924 vs SENTINEL\,=\,0.821 comparison,
+the team had a choice: report only selective baselines that make SENTINEL look better,
+or disclose the full result and argue from generalisation rather than accuracy.
+I advocated for full disclosure, and I documented the argument (in-domain performance
+is the wrong metric for cross-domain deployment) in the paper's Related Work and
+Discussion sections.
+
+This was the right choice scientifically.
+It also made the cross-city comparison more striking: a reader who sees that RF beats
+SENTINEL in Beihang, then sees that RF collapses in Tokyo while SENTINEL maintains 0.75
+DEGRADED F1, understands immediately why the problem formulation matters.
+A reader who only saw SENTINEL vs weak baselines would have no reason to care about
+the cross-city result.
+
+\subsection{Hardest Problem Solved}
+
+Building the literature taxonomy was harder than it looks.
+Thirty-one papers use the word ``prediction'' in at least fourteen distinct senses:
+predict the exact position, predict whether a satellite will be visible, predict
+future pseudorange values, predict the current-epoch class from historical features.
+The last usage is technically a prediction task but produces a \emph{current-epoch label},
+which is what every existing ML paper does.
+
+Distinguishing ``predict a future epoch quality'' from ``predict the current epoch quality
+from a historical window'' required reading each paper carefully and understanding their
+exact evaluation protocol.
+Once I had this distinction clear, the SENTINEL novelty claim became easy to articulate:
+we predict the class of epoch $t+h$, not epoch $t$.
+The systematic taxonomy is what made this distinction rigorous rather than rhetorical.
+
+\subsection{What I Would Do Differently}
+
+I would implement a \textbf{GRU (Gated Recurrent Unit) baseline} alongside the RF and
+XGBoost.
+GRU is a lighter-weight alternative to BiLSTM with fewer parameters and sometimes
+comparable sequential modelling performance.
+If GRU achieves similar Macro-F1 to the full Transformer+BiLSTM, it would suggest the
+performance gain comes from the sequential modelling capacity, not specifically the
+Transformer attention.
+If GRU under-performs significantly, it confirms the Transformer's long-range attention
+as the key differentiator.
+Either result would sharpen the architecture ablation argument.
+
+I would also include the \code{max\_depth=5} RF result (Tokyo DEG-F1\,=\,0.312) in
+the paper as an additional comparison point.
+It demonstrates that the RF vs DL cross-city gap is fundamentally about model complexity
+and memorisation, not just the choice of algorithm family.
+
+\bibliographystyle{IEEEtran}
+\bibliography{../shared/references}
+
+\end{document}

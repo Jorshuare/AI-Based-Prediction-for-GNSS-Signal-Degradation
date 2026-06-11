@@ -3,7 +3,7 @@
   "gnss_source": "ublox",
   "engine": "georinex GPS-only L1 SPP on rover_ublox.obs",
   "data_mode": "FULLY REAL: real GNSS positions + real IMU + real wheel odometry + cm truth",
-  "timestamp": "2026-06-07T08:23:54.455863",
+  "timestamp": "2026-06-11T16:04:04.111287",
   "n_epochs": 20949,
   "n_real_fixes": 20729,
   "n_degraded_epochs": 6237,
@@ -12,19 +12,25 @@
     "gnss_raw": 54.284,
     "cv_kf": 42.242,
     "aided_ekf_fixed": 48.056,
-    "aided_ekf_adaptive": 52.548
+    "aided_ekf_adaptive": 52.548,
+    "aided_ekf_huber": 46.559,
+    "aided_pf_student_t": 57.855
   },
   "rmse_degraded_segment": {
     "gnss_raw": 78.372,
     "cv_kf": 48.11,
     "aided_ekf_fixed": 61.798,
-    "aided_ekf_adaptive": 68.033
+    "aided_ekf_adaptive": 68.033,
+    "aided_ekf_huber": 58.62,
+    "aided_pf_student_t": 62.796
   },
   "degraded_gain_vs_raw": {
     "gnss_raw": 0.0,
     "cv_kf": 38.6,
     "aided_ekf_fixed": 21.1,
-    "aided_ekf_adaptive": 13.2
+    "aided_ekf_adaptive": 13.2,
+    "aided_ekf_huber": 25.2,
+    "aided_pf_student_t": 19.9
   },
   "config": {
     "dt": 0.1,
@@ -32,7 +38,13 @@
     "r_degraded_m": 40.0,
     "degraded_def": "real GNSS fix with <=5 satellites (poor geometry)",
     "p_degraded_source": "nsat proxy (P=0 at nsat>=5, P=1 at nsat<=2)",
-    "chi2_gate_dof2_pct": "99.9% (threshold 13.82)"
+    "chi2_gate_dof2_pct": "99.9% (threshold 13.82)",
+    "huber_c": 30.0,
+    "huber_adaptive": false,
+    "pf_n_particles": 500,
+    "pf_obs_nu": 3.0,
+    "pf_r_base_m": 50.0,
+    "pf_r_degraded_m": 150.0
   },
   "_methodology": [
     "FULLY REAL GNSS via georinex GPS-only L1 SPP on rover_ublox.obs. Errors are REAL urban multipath/NLOS, not synthetic.",

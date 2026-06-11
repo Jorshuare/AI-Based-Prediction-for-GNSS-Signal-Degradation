@@ -134,7 +134,7 @@ def load_fusion(source: str = "trimble") -> dict:
 
     summary = json.loads(summ.read_text())
     origin = FUSION_ORIGINS.get(source, (35.687165, 139.692026))
-    return {
+    payload: dict = {
         "summary": summary,
         "origin_lat": origin[0],
         "origin_lon": origin[1],
@@ -146,6 +146,12 @@ def load_fusion(source: str = "trimble") -> dict:
         "nsat": [int(s) for s in z["nsat"][sl]],
         "p_degraded": [round(float(p), 3) for p in z["p_degraded"][sl]],
     }
+    # Include robust methods when present (added in Phase 2b/2c)
+    if "aided_huber" in z:
+        payload["aided_huber"] = xy(z["aided_huber"])
+    if "aided_pf" in z:
+        payload["aided_pf"] = xy(z["aided_pf"])
+    return payload
 
 
 # --------------------------------------------------------------------------- #

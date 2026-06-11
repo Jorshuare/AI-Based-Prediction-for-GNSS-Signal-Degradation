@@ -808,6 +808,129 @@ def fig_ekf_realdata():
     save(fig, "fig18_ekf_realdata")
 
 
+def fig_robust_comparison():
+    """figC4 — Huber EKF + PF Student-t vs baselines on three real-data scenarios.
+
+    Three-panel grouped bar chart (one panel per scenario): Trimble Shinjuku,
+    u-blox Shinjuku, Odaiba.  Each panel shows degraded-window RMSE for all six
+    methods.  This is the primary figure demonstrating the robust-method analysis
+    added in response to reviewer comments about EKF noise-assumption violations.
+    """
+    files = {
+        "Trimble\nShinjuku": RES / "urbannav_ekf_real_trimble.json",
+        "u-blox\nShinjuku":  RES / "urbannav_ekf_real_ublox.json",
+        "u-blox\nOdaiba":    RES / "urbannav_ekf_real_odaiba_ublox.json",
+    }
+    datasets = {k: load_json(v) for k, v in files.items()}
+    if any(d is None for d in datasets.values()):
+        print("  [skip] figC4 — missing real-data JSON(s)")
+        return
+
+    method_keys  = ["gnss_raw", "cv_kf", "aided_ekf_fixed",
+                    "aided_ekf_adaptive", "aided_ekf_huber", "aided_pf_student_t"]
+    method_names = ["GNSS raw", "CV KF", "EKF fixed-R",
+                    "EKF adaptive\n(SENTINEL)", "EKF Huber\n(robust)",
+                    "PF Student-t\n(robust)"]
+    colors_deg   = [C_NEU, C_BASE, C_WARN, C_OURS, civ(0.35), civ(0.62)]
+    colors_ov    = [civ(0.82), civ(0.70), civ(0.52), civ(0.18), civ(0.35), civ(0.62)]
+
+    fig, axs = plt.subplots(1, 3, figsize=(16, 5.5), sharey=False)
+
+    for ax, (title, data) in zip(axs, datasets.items()):
+        deg  = data["rmse_degraded_segment"]
+        ov   = data["rmse_overall"]
+        x    = np.arange(len(method_keys))
+        w    = 0.38
+
+        bars_deg = [deg[k] for k in method_keys]
+        bars_ov  = [ov[k]  for k in method_keys]
+
+        ax.bar(x - w / 2, bars_ov, w, color=colors_ov, label="Overall",
+               edgecolor="white", linewidth=0.6, alpha=0.75)
+        rects = ax.bar(x + w / 2, bars_deg, w, color=colors_deg,
+                       label="During blockage", edgecolor="white", linewidth=0.6)
+
+        # Annotate degraded bars only (primary metric)
+        for xi, v, clr in zip(x + w / 2, bars_deg, colors_deg):
+            ax.text(xi, v + 0.8, f"{v:.1f}", ha="center",
+                    fontsize=10, fontweight="bold", color=C_MARK)
+
+        ax.set_xticks(x)
+        ax.set_xticklabels(method_names, fontsize=9, fontweight="bold", rotation=30, ha="right")
+        ax.set_ylabel("Position RMSE (m)")
+        ax.set_title(title, fontsize=13, fontweight="bold", pad=6)
+
+        # Mark best performer (lowest degraded RMSE) with a star
+        best_idx = int(np.argmin(bars_deg))
+        ax.annotate("★", xy=(x[best_idx] + w / 2, bars_deg[best_idx]),
+                    xytext=(0, 6), textcoords="offset points",
+                    ha="center", fontsize=13, color=C_MARK, fontweight="bold")
+
+        blegend(ax, loc="upper right")
+        style(ax)
+
+    fig.tight_layout(pad=2.0)
+    for ax, letter in zip(axs, "abc"):
+        panel(ax, letter)
+    save(fig, "figC4_robust_comparison")
+
+
+def fig_robust_trajectories():
+    """figC5 — EKF/PF trajectory overlays on two scenarios.
+
+    Two-panel map: (a) Trimble Shinjuku — EKF fixed-R, EKF Huber, PF Student-t,
+                   (b) Odaiba — same methods + PF Student-t stands out.
+    Tracks are loaded from *_tracks.npz files saved by the runner.
+    """
+    panels = [
+        ("Shinjuku (Trimble)", RES / "urbannav_ekf_real_trimble_tracks.npz"),
+        ("Odaiba (u-blox)",    RES / "urbannav_ekf_real_odaiba_ublox_tracks.npz"),
+    ]
+    for _, p in panels:
+        if not p.exists():
+            print(f"  [skip] figC5 — missing {p.name}")
+            return
+
+    fig, axs = plt.subplots(1, 2, figsize=(14, 6))
+
+    for ax, (title, npz_path) in zip(axs, panels):
+        d = np.load(npz_path)
+        truth     = d["truth"]
+        gnss      = d["gnss"]
+        mask      = d["gnss_mask"]
+        fixed     = d["aided_fixed"]
+        huber     = d["aided_huber"]
+        pf        = d["aided_pf"]
+        is_deg    = d["is_degraded"]
+
+        ax.plot(truth[:, 0],  truth[:, 1],  color=PALETTE["black"], lw=2.4,
+                label="Ground truth", zorder=5)
+        ax.scatter(gnss[mask, 0], gnss[mask, 1], s=4, color=C_NEU,
+                   alpha=0.35, label="GNSS raw", zorder=2)
+        ax.plot(fixed[:, 0],  fixed[:, 1],  color=C_WARN, lw=1.6, ls="--",
+                label="EKF fixed-R", zorder=3)
+        ax.plot(huber[:, 0],  huber[:, 1],  color=civ(0.35), lw=1.8, ls="-.",
+                label="EKF Huber", zorder=4)
+        ax.plot(pf[:, 0],     pf[:, 1],     color=civ(0.62), lw=2.0,
+                label="PF Student-t", zorder=4)
+
+        # Shade degraded epochs on trajectory (use scatter with red marker)
+        if is_deg.any():
+            ax.scatter(truth[is_deg, 0], truth[is_deg, 1], s=6,
+                       color=C_DEG, alpha=0.6, zorder=3, label="Degraded")
+
+        ax.set_xlabel("East (m)")
+        ax.set_ylabel("North (m)")
+        ax.set_title(title, fontsize=13, fontweight="bold", pad=6)
+        blegend(ax, loc="best", fontsize=10)
+        style(ax)
+
+    for ax, letter in zip(axs, "ab"):
+        panel(ax, letter)
+    fig.tight_layout(pad=2.0)
+    save(fig, "figC5_robust_trajectories")
+
+
 def main():
     src = _full_from_json()
     print(f"SENTINEL-GNSS paper figures -> {OUT}")
@@ -817,7 +940,8 @@ def main():
             fig_crosscity_gap, fig_ekf_rmse, fig_ekf_trajectory, fig_deg_progress, fig_dataset,
             fig_splits, fig_latency, fig_reactive_vs_proactive, fig_architecture, fig_pipeline,
             fig_ensemble, fig_persistence, fig_ekf_realdata,
-            fig_main_results, fig_crosscity_panel, fig_ekf_panel]
+            fig_main_results, fig_crosscity_panel, fig_ekf_panel,
+            fig_robust_comparison, fig_robust_trajectories]
     for fn in figs:
         try:
             fn()
