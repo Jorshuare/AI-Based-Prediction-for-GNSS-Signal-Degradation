@@ -193,7 +193,7 @@ def spp_epoch(prns, pranges, nav_by_sv, tow, rx0, elev_mask_deg=10.0):
 
 
 def run_spp(scenario_dir=DATA, obs_name="rover_ublox.obs", nav_name="base.nav",
-            max_epochs=None):
+            max_epochs=None, out_stem="urbannav_spp"):
     """Process a RINEX pair -> SPP ECEF track. Returns dict of arrays."""
     import georinex as gr
 
@@ -272,8 +272,9 @@ def run_spp(scenario_dir=DATA, obs_name="rover_ublox.obs", nav_name="base.nav",
     out_nsat = np.array(out_nsat)
     print(f"[SPP] solved {len(out_tow)}/{len(times)} epochs, mean sats={out_nsat.mean():.1f}")
 
-    np.savez(RESULTS / "urbannav_spp.npz", tow=out_tow, ecef=out_ecef, nsat=out_nsat)
-    print(f"[SPP] saved -> {RESULTS/'urbannav_spp.npz'}")
+    out_path = RESULTS / f"{out_stem}.npz"
+    np.savez(out_path, tow=out_tow, ecef=out_ecef, nsat=out_nsat)
+    print(f"[SPP] saved -> {out_path}")
     return {"tow": out_tow, "ecef": out_ecef, "nsat": out_nsat}
 
 
@@ -283,4 +284,12 @@ def _np_dt(np_datetime64) -> datetime:
 
 
 if __name__ == "__main__":
-    run_spp()
+    import argparse, sys
+    sys.path.insert(0, str(ROOT))
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--scenario", default="Shinjuku", help="Shinjuku or Odaiba")
+    args = ap.parse_args()
+    sc = args.scenario.capitalize()
+    sc_dir = ROOT / "data" / "raw" / "public" / "urbannav" / "Tokyo" / sc
+    stem = "urbannav_spp" if sc == "Shinjuku" else f"urbannav_spp_{sc.lower()}"
+    run_spp(scenario_dir=sc_dir, out_stem=stem)

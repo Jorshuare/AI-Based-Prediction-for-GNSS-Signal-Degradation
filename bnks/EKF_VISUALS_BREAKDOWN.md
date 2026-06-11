@@ -1,4 +1,5 @@
 # EKF Section — Visuals, Charts & Dashboard Screenshots
+
 ## Complete breakdown of every image to add, where it goes, and how to generate it
 
 > **Presentation file:** `docs/SENTINEL_GNSS_Presentation_V6.pptx`  
@@ -9,34 +10,39 @@
 
 ## OVERVIEW — What each EKF slide currently has vs needs
 
-| Slide | Title | Has now | Needs |
-|-------|-------|---------|-------|
-| 23 | 5 · EKF divider | Section title only | Nothing (divider is fine) |
-| 24 | Standard vs Adaptive EKF | Text bullets + placeholder image | Replace placeholder with the predict/update loop diagram |
-| 25 | Adaptive-R Formula | Formula text + annotations | Add annotated equation image + R(t) timeline plot |
-| 26 | EKF Results — 3 Tiers | Stats + table | Add trajectory+bar combined figure (already generated) |
-| 27 | Severity Sweep | Text bullets only — **no chart at all** | Add severity sweep line chart (already generated) |
-| 28 | Dashboard Overview | Panel list (text) | Add full dashboard screenshot + individual panel screenshots |
-| 29 | Live Demo | Demo step table | Add annotated demo screenshots |
+| Slide | Title                    | Has now                                 | Needs                                                        |
+| ----- | ------------------------ | --------------------------------------- | ------------------------------------------------------------ |
+| 23    | 5 · EKF divider          | Section title only                      | Nothing (divider is fine)                                    |
+| 24    | Standard vs Adaptive EKF | Text bullets + placeholder image        | Replace placeholder with the predict/update loop diagram     |
+| 25    | Adaptive-R Formula       | Formula text + annotations              | Add annotated equation image + R(t) timeline plot            |
+| 26    | EKF Results — 3 Tiers    | Stats + table                           | Add trajectory+bar combined figure (already generated)       |
+| 27    | Severity Sweep           | Text bullets only — **no chart at all** | Add severity sweep line chart (already generated)            |
+| 28    | Dashboard Overview       | Panel list (text)                       | Add full dashboard screenshot + individual panel screenshots |
+| 29    | Live Demo                | Demo step table                         | Add annotated demo screenshots                               |
 
 ---
 
 ## SLIDE 24 — "Standard Kalman Filter vs Our Adaptive EKF"
 
 ### What to add
+
 **Image:** `results/paper_figures/fig_ekf_mechanism_concept.png`  
 **Placement:** Bottom-centre, spanning ~70% of slide width, below the two text columns.
 
 ### Why this image
+
 The slide already has the two-column comparison text (fixed-R bullets vs adaptive bullets). The mechanism concept diagram shows the predict→update cycle and where P(DEGRADED) plugs in — it answers the natural question "but HOW does P(DEGRADED) affect the filter?" without needing another slide.
 
 ### Current state of the image
+
 The existing `fig_ekf_mechanism_concept.png` is **functional but basic** — plain grey boxes, no colour, no SENTINEL branding. It works for a paper but looks weak on a slide.
 
 ### Option A — Use existing (quick)
+
 Insert `fig_ekf_mechanism_concept.png` as-is, cropped to remove the excess whitespace on the right side.
 
 ### Option B — Generate a polished version (recommended)
+
 Use the prompt below to create a replacement in ChatGPT / Canva:
 
 ```
@@ -81,9 +87,11 @@ Color palette: navy #003366, blue #003893, amber #F57F17, red #C62828, green #1B
 ### What to add
 
 #### Image 1 — Annotated equation diagram (generate externally)
+
 **Placement:** Left half of slide (replace the current placeholder image).
 
 **Prompt (ChatGPT / Canva AI / Figma):**
+
 ```
 Create a slide-ready annotated equation diagram on a white background.
 
@@ -129,11 +137,13 @@ Font: Inter or Helvetica. Background: white. Width: 900 px × 650 px.
 ```
 
 #### Image 2 — R(t) timeline vs P(DEGRADED) (already generated)
+
 **File:** `results/paper_figures/fig18_ekf_realdata.png`  
 **Use:** Panel **(b)** only — the right-side P(DEGRADED) timeline.  
 **Placement:** Right half of slide, showing how R inflates as P(DEGRADED) rises to 1.0.
 
 **How to crop panel (b) only:**
+
 ```python
 from PIL import Image
 img = Image.open("results/paper_figures/fig18_ekf_realdata.png")
@@ -149,22 +159,26 @@ right_panel.save("results/paper_figures/fig18b_pdeg_timeline.png")
 ## SLIDE 26 — "EKF Results — Three Tiers of Validation"
 
 ### What to add
+
 **File:** `results/paper_figures/figC3_ekf.png`  
 **This is the best single image for this slide** — it combines both panels:
+
 - Panel (a): Trajectory map — ground truth (black) vs raw GNSS (grey dots) vs Fixed-R EKF (dashed) vs Adaptive EKF (blue)
 - Panel (b): Bar chart — Overall and Blockage RMSE for GNSS / Fixed / Adaptive
 
 **Placement:** Right two-thirds of the slide, with the existing stats (−33.8% / +82% / +48.8%) and the table on the left third.
 
 ### Alternative — two separate figures
+
 If the combined figure is too small, use them individually:
 
-| Figure | Content | Placement |
-|--------|---------|-----------|
-| `fig08_ekf_trajectory.png` | Trajectory map (Synthetic data, blockage zone highlighted) | Left half |
-| `fig07_ekf_rmse.png` | Bar chart: GNSS 54.4m → Fixed 45.6m → Adaptive 36.0m (blockage RMSE) | Right half |
+| Figure                     | Content                                                              | Placement  |
+| -------------------------- | -------------------------------------------------------------------- | ---------- |
+| `fig08_ekf_trajectory.png` | Trajectory map (Synthetic data, blockage zone highlighted)           | Left half  |
+| `fig07_ekf_rmse.png`       | Bar chart: GNSS 54.4m → Fixed 45.6m → Adaptive 36.0m (blockage RMSE) | Right half |
 
 ### What the figures show
+
 - `fig08_ekf_trajectory.png` — synthetic blockage test: raw GNSS scatters wildly in yellow zone; adaptive EKF (blue) stays close to ground truth
 - `fig07_ekf_rmse.png` — blockage RMSE drops from 54.4 m (GNSS-only) → 45.6 m (Fixed-R) → 36.0 m (Adaptive-R) = **−33.8%**
 - `figC3_ekf.png` — same data, both panels combined (conference-ready)
@@ -181,20 +195,37 @@ If the combined figure is too small, use them individually:
 **Placement:** Right half of slide (the left half keeps the two-column bullet text).
 
 ### What the chart shows
+
 - X-axis: Multipath bias during blockage (m), range 5–80 m
 - Y-axis: Blocked-segment RMSE (m)
 - Three lines:
   - Grey dashed: Raw GNSS (rises steeply from 8 m to 75 m)
   - Dark blue: Aided EKF Fixed-R (stays low, 6–30 m)
-  - Gold: Aided EKF Adaptive-R (similar to fixed, slightly higher at crossover ~30 m)
+  - Gold: Aided EKF Adaptive-R (flat ~25–29 m across all biases; crossover with fixed-R at ~80 m)
 - Key annotation: "with wheel-odometry + NHC + ZUPT aiding, keeping GNSS (fixed-R) stays best: inflating R discards heading aiding"
 
+### Actual crossover data (from urbannav_ekf.json — source of truth)
+
+| Bias (m) | Raw GNSS | Fixed-R | Adaptive-R | Winner |
+|---|---|---|---|---|
+| 5 m | 7.7 m | **5.8 m** | 27.5 m | Fixed by large margin |
+| 30 m | 29.8 m | **10.6 m** | 28.5 m | Fixed |
+| 60 m | 64.6 m | **18.2 m** | 22.7 m | Fixed (narrowing) |
+| **80 m** | 75.4 m | 30.2 m | **29.6 m** | **Adaptive wins (+1.9%)** |
+
 ### Why this is important for the presentation
+
 The chart directly proves the "practical rule" statement already on the slide: adaptive-R is best for **GNSS-only platforms** in deep canyons; for full AV sensor suite (IMU + odometry), SENTINEL's role is the **mode-switch trigger**, not R-inflation.
 
 ### Suggested annotation to add in PowerPoint
-Draw a red callout arrow pointing to where the adaptive-R line exceeds the fixed-R line (~30 m crossover) with text:  
-**"Adaptive-R wins when multipath bias > ~30 m (deep urban canyon / tunnel)"**
+
+Draw a red callout arrow pointing to where the adaptive-R line exceeds the fixed-R line (~80 m crossover) with text:  
+**"Adaptive-R wins when multipath bias > ~80 m — or on GNSS-only platforms (no wheel encoder)"**
+
+> Note: `fig07_ekf_rmse.png` and `figC3_ekf.png` are from the OLD 2D toy simulation
+> (ekf_demo.json, simple adaptive_ekf.py). Their numbers (54.4→45.6→36.0 m) represent
+> a prototype EKF without aiding or 9-state design. For the paper, use `fig21_urbannav_filter_comparison.png`
+> (6-method bar chart from the current 9-state aided EKF) and `fig22_urbannav_severity_sweep.png`.
 
 ---
 
@@ -202,23 +233,25 @@ Draw a red callout arrow pointing to where the adaptive-R line exceeds the fixed
 
 ### Dashboard component map
 
-| Panel # | Component file | What it shows |
-|---------|---------------|---------------|
-| 01 | `SignalGauge.tsx` | P(DEGRADED) at +5s / +15s / +30s — dial gauge, green/amber/red |
-| 02 | `ProbabilityBars.tsx` | CLEAN / WARNING / DEGRADED bars per horizon |
-| 03 | `TrajectoryMap.tsx` | Vehicle path on map, coloured by risk level |
-| 04 | `TimeSeriesChart.tsx` | P(DEGRADED) streaming timeline, 3 horizons |
-| 05 | `EkfPanel.tsx` | Blocked RMSE comparison by filter type |
-| 06 | `AlarmCenter.tsx` | CRITICAL / WARNING alert feed with timestamps |
+| Panel # | Component file        | What it shows                                                  |
+| ------- | --------------------- | -------------------------------------------------------------- |
+| 01      | `SignalGauge.tsx`     | P(DEGRADED) at +5s / +15s / +30s — dial gauge, green/amber/red |
+| 02      | `ProbabilityBars.tsx` | CLEAN / WARNING / DEGRADED bars per horizon                    |
+| 03      | `TrajectoryMap.tsx`   | Vehicle path on map, coloured by risk level                    |
+| 04      | `TimeSeriesChart.tsx` | P(DEGRADED) streaming timeline, 3 horizons                     |
+| 05      | `EkfPanel.tsx`        | Blocked RMSE comparison by filter type                         |
+| 06      | `AlarmCenter.tsx`     | CRITICAL / WARNING alert feed with timestamps                  |
 
 ### Screenshots you need to take
 
 **Step 1 — Start the dashboard:**
+
 ```bash
 cd dashboard/client
 npm install        # first time only
 npm run dev        # starts at http://localhost:3000
 ```
+
 Then open `http://localhost:3000` in a browser (Chrome preferred for clean screenshots).
 
 **Step 2 — Load a real data scenario:**
@@ -235,6 +268,7 @@ uvicorn main:app --reload   # or: python -m uvicorn main:app --reload
 ---
 
 ### Screenshot A — Full dashboard overview
+
 **What:** Entire browser window showing all 6 panels in the grid layout  
 **When to take:** When P(DEGRADED) is in a DEGRADED period (red state — most visually impactful)  
 **Resolution:** 1920×1080 minimum  
@@ -250,6 +284,7 @@ This shows all 6 panels active simultaneously.
 ---
 
 ### Screenshot B — Signal Gauge panel (close-up)
+
 **What:** Just the SignalGauge component zoomed in — the three dial/arc indicators  
 **When to take:** P(DEGRADED @+5s) > 0.8 (CRITICAL — full red)  
 **Insert on:** Slide 28 — Panel 01 thumbnail, or Slide 29 Demo step 1  
@@ -263,6 +298,7 @@ Also take one in green state (P < 0.3):
 ---
 
 ### Screenshot C — Trajectory Map panel (close-up)
+
 **What:** The TrajectoryMap component showing the vehicle path coloured by risk  
 **When to take:** After a full run so the path has both green (clean) and red (degraded) segments  
 **Insert on:** Slide 28 Panel 03 thumbnail, or Slide 29 Demo step 3  
@@ -278,6 +314,7 @@ The ideal screenshot shows:
 ---
 
 ### Screenshot D — P(DEGRADED) Timeline panel
+
 **What:** TimeSeriesChart showing all three horizon lines (+5s green, +15s amber, +30s blue) with threshold dashed lines  
 **When to take:** During or just after a DEGRADED event — so the spike is visible  
 **Insert on:** Slide 28 Panel 04 thumbnail, or Slide 29 Demo step 2  
@@ -291,6 +328,7 @@ Ideal: The chart shows the P(DEGRADED @+5s) spike to 1.0 while
 ---
 
 ### Screenshot E — Alert Centre panel
+
 **What:** AlarmCenter showing CRITICAL and WARNING alerts with timestamps  
 **When to take:** During/after a degradation event  
 **Insert on:** Slide 29 Demo — "this is what the AV route planner receives"  
@@ -299,6 +337,7 @@ Ideal: The chart shows the P(DEGRADED @+5s) spike to 1.0 while
 ---
 
 ### Screenshot F — EKF Analytics panel
+
 **What:** EkfPanel showing the RMSE bar comparison (Fixed-R vs Adaptive-R)  
 **Insert on:** Slide 29 Demo step 5  
 **Filename:** `docs/screenshots/panel_05_ekf_analytics.png`
@@ -334,33 +373,38 @@ Ideal: The chart shows the P(DEGRADED @+5s) spike to 1.0 while
 
 Use a **3-panel strip** at the bottom of the slide showing the demo progression:
 
-| Position | Screenshot | Caption |
-|----------|-----------|---------|
-| Left | `panel_01_signal_gauge_clean.png` → `panel_01_signal_gauge_critical.png` (side-by-side) | "Step 1: Signal transitions CLEAN → CRITICAL (5 s warning)" |
-| Centre | `panel_04_pdeg_timeline_spike.png` | "Step 2: P(DEGRADED) spikes — +5s / +15s / +30s all rise" |
-| Right | `panel_06_alert_centre_active.png` | "Step 3: CRITICAL alert fires — AV route planner notified" |
+| Position | Screenshot                                                                              | Caption                                                     |
+| -------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Left     | `panel_01_signal_gauge_clean.png` → `panel_01_signal_gauge_critical.png` (side-by-side) | "Step 1: Signal transitions CLEAN → CRITICAL (5 s warning)" |
+| Centre   | `panel_04_pdeg_timeline_spike.png`                                                      | "Step 2: P(DEGRADED) spikes — +5s / +15s / +30s all rise"   |
+| Right    | `panel_06_alert_centre_active.png`                                                      | "Step 3: CRITICAL alert fires — AV route planner notified"  |
 
 ### Demo script (updated with visual cues)
 
 **Step 1 — Show CLEAN state (0:00–0:30)**
+
 > "Dashboard is live. All gauges green. P(DEGRADED) flat near zero across all three horizons."  
-> *Point to Screenshot: `panel_01_signal_gauge_clean.png`*
+> _Point to Screenshot: `panel_01_signal_gauge_clean.png`_
 
 **Step 2 — Trigger degradation sequence (0:30–1:30)**
+
 > "Watch the +5s gauge. SENTINEL is reading the GNSS features — satellite count dropping, C/N₀ degrading. P(DEGRADED @+5s) climbing..."  
-> *Point to Screenshot: `panel_04_pdeg_timeline_spike.png`*
+> _Point to Screenshot: `panel_04_pdeg_timeline_spike.png`_
 
 **Step 3 — CRITICAL alert fires (1:30–2:00)**
+
 > "Alert fired — CRITICAL at 5 seconds out. The EKF has already started inflating R. The vehicle hasn't lost positioning yet, but the filter is already preparing the handoff to dead-reckoning."  
-> *Point to Screenshot: `panel_06_alert_centre_active.png`*
+> _Point to Screenshot: `panel_06_alert_centre_active.png`_
 
 **Step 4 — Show trajectory map (2:00–2:30)**
+
 > "Look at the trajectory map — the path turns red right where we predicted. Ground truth is within 24 metres. Without adaptive-R it would be 47 metres."  
-> *Point to Screenshot: `panel_03_trajectory_risk_coloured.png`*
+> _Point to Screenshot: `panel_03_trajectory_risk_coloured.png`_
 
 **Step 5 — EKF analytics (2:30–3:00)**
+
 > "Panel 5 shows the filter comparison live. Adaptive EKF consistently outperforms Fixed-R in the blocked segment. That's the SENTINEL loop closed — prediction into action."  
-> *Point to Screenshot: `panel_05_ekf_analytics.png`*
+> _Point to Screenshot: `panel_05_ekf_analytics.png`_
 
 ---
 
@@ -511,7 +555,7 @@ ARROWS (connecting the columns):
 ──────────────────────────────────────────────────────────────────────────────
 BOTTOM BANNER (navy #003366, full width, 35 px):
 Star symbol ★ in amber, then white bold text:
-"Zero-shot cross-city generalisation — trained on Beijing (Beihang A–E) + HK UrbanNav  
+"Zero-shot cross-city generalisation — trained on Hangzhou (Beihang A–E) + HK UrbanNav
  |  tested on Tokyo Shinjuku (zero Tokyo data in training)"
 
 Typography: Inter, Helvetica, or any clean sans-serif. Avoid decorative fonts.
@@ -521,15 +565,15 @@ Typography: Inter, Helvetica, or any clean sans-serif. Avoid decorative fonts.
 
 ## QUICK REFERENCE — Which existing figures to use on which slide
 
-| Slide | File to insert | Location on slide |
-|-------|---------------|-------------------|
-| 24 | `results/paper_figures/fig_ekf_mechanism_concept.png` | Bottom-centre (below text columns) OR replace with new generated version |
-| 25 | External: annotated equation image (Prompt above) | Left half (replace placeholder) |
-| 25 | `results/paper_figures/fig18_ekf_realdata.png` (panel b only) | Right half |
-| 26 | `results/paper_figures/figC3_ekf.png` | Bottom two-thirds (keeps headline stats above) |
-| 27 | `results/paper_figures/fig22_urbannav_severity_sweep.png` | Right half (left half keeps bullet text) |
-| 28 | `docs/screenshots/dashboard_full_overview.png` | Centre-left (~60% width) |
-| 29 | 3-panel strip: gauge + timeline + alerts | Bottom strip |
+| Slide | File to insert                                                | Location on slide                                                        |
+| ----- | ------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| 24    | `results/paper_figures/fig_ekf_mechanism_concept.png`         | Bottom-centre (below text columns) OR replace with new generated version |
+| 25    | External: annotated equation image (Prompt above)             | Left half (replace placeholder)                                          |
+| 25    | `results/paper_figures/fig18_ekf_realdata.png` (panel b only) | Right half                                                               |
+| 26    | `results/paper_figures/figC3_ekf.png`                         | Bottom two-thirds (keeps headline stats above)                           |
+| 27    | `results/paper_figures/fig22_urbannav_severity_sweep.png`     | Right half (left half keeps bullet text)                                 |
+| 28    | `docs/screenshots/dashboard_full_overview.png`                | Centre-left (~60% width)                                                 |
+| 29    | 3-panel strip: gauge + timeline + alerts                      | Bottom strip                                                             |
 
 ---
 
@@ -554,6 +598,7 @@ Tokyo Shinjuku or Beihang Scenario E pre-computed data through the WebSocket str
 ---
 
 # SENSOR FUSION PAGE — Full Explainer
+
 ## "What does everything on the Sensor Fusion tab mean?"
 
 > Use this section to answer any question about the Sensor Fusion dashboard tab —
@@ -583,6 +628,7 @@ The SENTINEL model feeds its P(DEGRADED) prediction into each filter to optional
 ### What does "Trimble · RTKLIB SPP · GPS+GLONASS dual-freq" mean?
 
 **Trimble** is the brand of professional-grade GNSS receiver used to collect the raw signal data during the Tokyo Shinjuku drive.
+
 - The Trimble receiver logged raw GNSS observations in **RINEX format** (`.obs` files)
 - **RTKLIB** is open-source positioning software that reads the Trimble RINEX file and computes positions using **SPP (Single Point Positioning)** — see below
 - Trimble's receiver tracked **GPS + GLONASS** on two frequencies (L1+L2), so RTKLIB had more satellites and better geometry to work with
@@ -598,16 +644,19 @@ The SENTINEL model feeds its P(DEGRADED) prediction into each filter to optional
 **u-blox F9P** is a different GNSS chip — cheaper (~$200) but still dual-frequency capable. It was driven simultaneously on the same route as the Trimble.
 
 The key difference in how the u-blox data was processed:
+
 - **georinex** — a lightweight Python RINEX reader library — was used instead of RTKLIB
 - The u-blox RINEX file was processed in **GPS-only, L1 single-frequency** mode
 - GPS L1 single-frequency = only one signal per satellite, only GPS constellation — fewer measurements, weaker geometry than Trimble's GPS+GLONASS dual-freq
 
 **Why does this matter?**
+
 - Both receivers physically collected signals on two frequencies and multiple constellations
-- The *processing choice* determines what gets used: RTKLIB is a full-featured positioning engine that exploits all available signals; georinex is a simpler reader that we used in basic L1-only mode
+- The _processing choice_ determines what gets used: RTKLIB is a full-featured positioning engine that exploits all available signals; georinex is a simpler reader that we used in basic L1-only mode
 - The result is that the u-blox track has more position noise — not because the u-blox hardware is worse, but because we used a simpler processing pipeline on it
 
 **SPP = Single Point Positioning (applies to BOTH sources):**
+
 - The most basic positioning method — uses only pseudorange measurements, one receiver, no base station
 - No differential corrections, no carrier phase processing
 - Typical accuracy: **2–5 m in open sky, 10–50 m in urban canyons**
@@ -621,24 +670,25 @@ The key difference in how the u-blox data was processed:
 
 ### Why two sources?
 
-| Property | Trimble | u-blox F9P |
-|----------|---------|-----------|
-| Hardware cost | ~$10,000 | ~$200 |
-| Hardware frequency | Dual (L1+L2) | Dual (L1+L2) |
-| Constellations used | GPS + GLONASS | GPS only |
-| Processing tool | **RTKLIB** (full engine) | **georinex** (basic reader) |
-| Processing mode | SPP dual-freq | SPP L1-only |
-| Noise level | Lower (more signals) | Higher (fewer signals) |
-| Dashboard label | `Trimble · RTKLIB SPP · GPS+GLONASS dual-freq` | `u-blox F9P · georinex SPP · GPS L1 only` |
-| Our use | Primary EKF study | Robustness check (harder input) |
+| Property            | Trimble                                        | u-blox F9P                                |
+| ------------------- | ---------------------------------------------- | ----------------------------------------- |
+| Hardware cost       | ~$10,000                                       | ~$200                                     |
+| Hardware frequency  | Dual (L1+L2)                                   | Dual (L1+L2)                              |
+| Constellations used | GPS + GLONASS                                  | GPS only                                  |
+| Processing tool     | **RTKLIB** (full engine)                       | **georinex** (basic reader)               |
+| Processing mode     | SPP dual-freq                                  | SPP L1-only                               |
+| Noise level         | Lower (more signals)                           | Higher (fewer signals)                    |
+| Dashboard label     | `Trimble · RTKLIB SPP · GPS+GLONASS dual-freq` | `u-blox F9P · georinex SPP · GPS L1 only` |
+| Our use             | Primary EKF study                              | Robustness check (harder input)           |
 
-**Key point:** The *hardware* difference is smaller than the *processing* difference. The u-blox track is noisier primarily because we processed it in GPS L1-only SPP mode, not because the receiver is worse. The Trimble track benefits from RTKLIB's more sophisticated estimator and dual-constellation geometry.
+**Key point:** The _hardware_ difference is smaller than the _processing_ difference. The u-blox track is noisier primarily because we processed it in GPS L1-only SPP mode, not because the receiver is worse. The Trimble track benefits from RTKLIB's more sophisticated estimator and dual-constellation geometry.
 
 ---
 
 ## Ground Truth — "SPAN-INS"
 
 **SPAN-INS** is the NovAtel SPAN Inertial Navigation System.
+
 - It combines a tactical-grade IMU (Inertial Measurement Unit) with RTK-corrected GNSS
 - Accuracy: **1–3 cm position, 0.01° heading**
 - This is the "truth" track shown as a thick green line on the trajectory map
@@ -654,12 +704,12 @@ The SPAN-INS data is used **only for evaluation** — our EKF does not use it du
 
 The map shows the actual driving route projected into a local East-North coordinate frame (ENU — East, North, Up). The origin (0,0) is the first valid GNSS fix.
 
-| Track | Colour | Meaning |
-|-------|--------|---------|
-| Ground truth | Thick green | SPAN-INS reference (always correct) |
-| Raw GNSS | Red dashed | What the SPP solution gives you — scattered during blockage |
-| Aided EKF (fixed-R) | Teal/cyan solid | Our recommended filter — stays close to truth |
-| Aided EKF (adaptive-R) | Yellow dashed | SENTINEL-driven adaptive trust — slightly worse with aiding |
+| Track                  | Colour          | Meaning                                                     |
+| ---------------------- | --------------- | ----------------------------------------------------------- |
+| Ground truth           | Thick green     | SPAN-INS reference (always correct)                         |
+| Raw GNSS               | Red dashed      | What the SPP solution gives you — scattered during blockage |
+| Aided EKF (fixed-R)    | Teal/cyan solid | Our recommended filter — stays close to truth               |
+| Aided EKF (adaptive-R) | Yellow dashed   | SENTINEL-driven adaptive trust — slightly worse with aiding |
 
 **Toggle buttons** under the map let you turn each track on/off to compare directly.
 
@@ -671,12 +721,12 @@ The path is displayed in **metres** relative to the starting point. The rotation
 
 This panel shows RMSE (Root Mean Square Error) measured **only during the blackout segments** — the moments when GNSS signal was blocked.
 
-| Filter label | What it is |
-|-------------|-----------|
-| **Raw GNSS** | No filtering — raw SPP position output |
-| **Simple KF** | Constant-velocity Kalman filter (CV-KF). Predicts position using velocity only. |
-| **Aided EKF (fixed-R)** | Full 9-state EKF + wheel odometry + NHC + ZUPT, fixed measurement noise |
-| **Aided EKF (adaptive-R)** | Same as above, but R(t) inflates with P(DEGRADED) from SENTINEL |
+| Filter label               | What it is                                                                      |
+| -------------------------- | ------------------------------------------------------------------------------- |
+| **Raw GNSS**               | No filtering — raw SPP position output                                          |
+| **Simple KF**              | Constant-velocity Kalman filter (CV-KF). Predicts position using velocity only. |
+| **Aided EKF (fixed-R)**    | Full 9-state EKF + wheel odometry + NHC + ZUPT, fixed measurement noise         |
+| **Aided EKF (adaptive-R)** | Same as above, but R(t) inflates with P(DEGRADED) from SENTINEL                 |
 
 **Why does adaptive-R do worse here?** Inflating R tells the filter to distrust GNSS more — but with wheel odometry already providing dead-reckoning, the filter needs GNSS primarily for heading correction. When R is inflated, heading drifts slightly, and the odometry-based dead-reckoning accumulates angular error. The fixed-R filter uses GNSS heading updates more aggressively, which keeps the track straight.
 
@@ -692,14 +742,14 @@ where N = number of epochs inside blockage windows.
 
 Shows the same information as above but with all 6 filter variants, including the unaided EKF variants.
 
-| Bar | What it means |
-|-----|--------------|
-| GNSS Raw | Baseline — no filtering at all |
-| CV Kalman (fixed-R) | Simple velocity extrapolation during blockage |
-| EKF 9-state (fixed-R) | IMU integration without wheel odometry |
-| EKF 9-state (adapt-R) | IMU + SENTINEL, but no wheel constraint |
-| Aided EKF (fixed-R) ★ | **Winner** — full aiding suite, fixed R |
-| Aided EKF (adapt-R) | Full aiding suite + adaptive R — slightly worse |
+| Bar                   | What it means                                   |
+| --------------------- | ----------------------------------------------- |
+| GNSS Raw              | Baseline — no filtering at all                  |
+| CV Kalman (fixed-R)   | Simple velocity extrapolation during blockage   |
+| EKF 9-state (fixed-R) | IMU integration without wheel odometry          |
+| EKF 9-state (adapt-R) | IMU + SENTINEL, but no wheel constraint         |
+| Aided EKF (fixed-R) ★ | **Winner** — full aiding suite, fixed R         |
+| Aided EKF (adapt-R)   | Full aiding suite + adaptive R — slightly worse |
 
 The `★` marks the recommended configuration.
 
@@ -712,11 +762,13 @@ This chart answers the question: "if the GNSS multipath error is very bad, does 
 - **Three lines:** Raw GNSS (red), Fixed-R (dark blue), Adaptive-R (gold)
 
 **Reading the chart:**
+
 - At low severity (5–30 m bias): Fixed-R EKF dominates. The filter's odometry holds position well, and GNSS helps with heading.
 - At very high severity (60–80 m): Adaptive-R starts to catch up because at that level of corruption it's correct to distrust GNSS completely.
 - The crossover (~80 m) is beyond typical urban canyon conditions — even harsh Mong Kok GNSS errors rarely exceed 60 m.
 
 **The practical conclusion (on slide 27 of the presentation):**
+
 > On a full AV sensor suite (IMU + wheel encoder), use SENTINEL's P(DEGRADED) as a **mode-switch trigger** — not as direct R-inflation. On a GNSS-only platform (no IMU, no encoder), adaptive-R wins clearly above 20 m multipath.
 
 ---
@@ -740,6 +792,7 @@ A: In open sky, all filters perform similarly — GNSS SPP gives 2–3 m accurac
 
 **Q: What is "wheel odometry + NHC + ZUPT"?**  
 A: These are three motion constraints that allow the EKF to keep positioning even when GNSS drops:
+
 - **Wheel odometry:** Forward velocity from wheel rotation speed sensor. Gives accurate speed along the driving direction.
 - **NHC (Non-Holonomic Constraint):** A land vehicle cannot slide sideways — lateral velocity must be ~0. This eliminates one degree of freedom and dramatically reduces position drift.
 - **ZUPT (Zero-velocity Update):** When the vehicle is stopped (speed ≈ 0), use this to reset IMU bias drift. Very effective at traffic lights.
@@ -755,6 +808,7 @@ A: The trajectory is 100% real (SPAN-INS driven, real streets). The GNSS positio
 
 **Q: What does the slide say about the EKF results?**  
 A:
+
 - Synthetic blockage test: **−33.8%** improvement (54.4 m → 36.0 m)
 - Semi-synthetic Tokyo: **+82%** improvement (36.3 m → 6.4 m)
 - Fully real Tokyo: **+48.8%** improvement (47.4 m → 24.3 m)
@@ -771,26 +825,26 @@ A: For privacy, accuracy, and offline capability. The dashboard converts lat/lon
 
 ## Glossary
 
-| Term | Definition |
-|------|-----------|
-| **GNSS** | Global Navigation Satellite System — umbrella term for GPS (USA), GLONASS (Russia), BeiDou (China), Galileo (EU) |
-| **GPS** | The US constellation specifically. Colloquially used to mean GNSS |
-| **SPP** | Single Point Positioning — simplest GNSS solution, 2–5 m accuracy, no base station |
-| **RTK** | Real-Time Kinematic — cm-level GNSS using carrier phase + base station |
-| **RTKLIB** | Open-source toolkit for GNSS processing. We use it in SPP mode to get positions from RINEX files |
-| **RINEX** | Receiver Independent Exchange Format — standard file format for raw GNSS measurements |
-| **Trimble** | Professional GNSS receiver brand (here: Trimble R10 or equivalent survey receiver) |
-| **u-blox F9P** | Dual-frequency GNSS receiver module. Popular in drones and research (~$200) |
-| **SPAN-INS** | NovAtel Synchronized Position Attitude Navigation — tactical IMU + RTK fusion, cm-level ground truth |
-| **EKF** | Extended Kalman Filter — recursive Bayesian estimator for non-linear systems |
-| **NHC** | Non-Holonomic Constraint — land vehicles cannot slide laterally; used as a virtual measurement |
-| **ZUPT** | Zero-velocity Update — IMU bias reset applied when vehicle speed ≈ 0 |
-| **IMU** | Inertial Measurement Unit — accelerometers + gyroscopes, measures motion at 100 Hz |
-| **RMSE** | Root Mean Square Error — standard accuracy metric, here in metres vs SPAN-INS truth |
-| **Multipath** | GNSS signal reflections off buildings that corrupt the pseudorange measurement |
-| **DOP** | Dilution of Precision — how satellite geometry amplifies positioning error |
-| **Blockage** | Period when GNSS satellites are physically blocked (building overhang, tunnel, canyon) |
-| **P(DEGRADED)** | SENTINEL's output probability that GNSS quality will degrade in the next 5/15/30 s |
-| **Adaptive-R** | EKF variant where measurement noise R grows with P(DEGRADED), reducing GNSS trust pre-emptively |
-| **Fixed-R** | EKF variant where measurement noise R is constant — always trusts GNSS equally |
-| **Aiding** | Supplementary sensors (wheel encoder, IMU) that let the filter continue when GNSS drops |
+| Term            | Definition                                                                                                       |
+| --------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **GNSS**        | Global Navigation Satellite System — umbrella term for GPS (USA), GLONASS (Russia), BeiDou (China), Galileo (EU) |
+| **GPS**         | The US constellation specifically. Colloquially used to mean GNSS                                                |
+| **SPP**         | Single Point Positioning — simplest GNSS solution, 2–5 m accuracy, no base station                               |
+| **RTK**         | Real-Time Kinematic — cm-level GNSS using carrier phase + base station                                           |
+| **RTKLIB**      | Open-source toolkit for GNSS processing. We use it in SPP mode to get positions from RINEX files                 |
+| **RINEX**       | Receiver Independent Exchange Format — standard file format for raw GNSS measurements                            |
+| **Trimble**     | Professional GNSS receiver brand (here: Trimble R10 or equivalent survey receiver)                               |
+| **u-blox F9P**  | Dual-frequency GNSS receiver module. Popular in drones and research (~$200)                                      |
+| **SPAN-INS**    | NovAtel Synchronized Position Attitude Navigation — tactical IMU + RTK fusion, cm-level ground truth             |
+| **EKF**         | Extended Kalman Filter — recursive Bayesian estimator for non-linear systems                                     |
+| **NHC**         | Non-Holonomic Constraint — land vehicles cannot slide laterally; used as a virtual measurement                   |
+| **ZUPT**        | Zero-velocity Update — IMU bias reset applied when vehicle speed ≈ 0                                             |
+| **IMU**         | Inertial Measurement Unit — accelerometers + gyroscopes, measures motion at 100 Hz                               |
+| **RMSE**        | Root Mean Square Error — standard accuracy metric, here in metres vs SPAN-INS truth                              |
+| **Multipath**   | GNSS signal reflections off buildings that corrupt the pseudorange measurement                                   |
+| **DOP**         | Dilution of Precision — how satellite geometry amplifies positioning error                                       |
+| **Blockage**    | Period when GNSS satellites are physically blocked (building overhang, tunnel, canyon)                           |
+| **P(DEGRADED)** | SENTINEL's output probability that GNSS quality will degrade in the next 5/15/30 s                               |
+| **Adaptive-R**  | EKF variant where measurement noise R grows with P(DEGRADED), reducing GNSS trust pre-emptively                  |
+| **Fixed-R**     | EKF variant where measurement noise R is constant — always trusts GNSS equally                                   |
+| **Aiding**      | Supplementary sensors (wheel encoder, IMU) that let the filter continue when GNSS drops                          |

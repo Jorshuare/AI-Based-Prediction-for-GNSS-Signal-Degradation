@@ -61,7 +61,7 @@ per-class F1, bootstrap CIs; inference latency.
 
 ### 3.3 Results (✅ confirmed Run 15 — RESULTS_REFERENCE §7, §10c)
 
-> **Training corpus:** Beijing (Beihang field Scenarios A–E) + UrbanNav Hong Kong (Medium,
+> **Training corpus:** Hangzhou (Beihang field Scenarios A–E) + UrbanNav Hong Kong (Medium,
 > Deep, Harsh, Tunnel) — 62,413 windows. **UrbanNav Tokyo: excluded from training; zero-shot
 > cross-city test only.**
 
@@ -76,7 +76,7 @@ per-class F1, bootstrap CIs; inference latency.
 - **E9 persistence:** at +5 s the label is unchanged 94.4% of the time → a persistence baseline
   scores 0.908. Report persistence as a baseline; the models' value is transitions + longer
   horizons.
-- **E1/E2:** temporal *order* contributes ~3%; removing temporal features doesn't hurt RF →
+- **E1/E2:** temporal _order_ contributes ~3%; removing temporal features doesn't hurt RF →
   the value is representation transfer, not memory.
 
 ### 3.4 Selection ⭐

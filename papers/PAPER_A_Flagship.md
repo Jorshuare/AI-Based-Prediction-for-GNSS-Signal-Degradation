@@ -220,7 +220,7 @@ to §5.5.
 
 ### 5.5 Cross-city generalisation (THE KEY RESULT — E6)
 
-- Table: Beihang/Beijing vs Tokyo for DL, RF, XGBoost and the **DL+XGBoost ensemble**, per-class.
+- Table: Beihang/Hangzhou vs Tokyo for DL, RF, XGBoost and the **DL+XGBoost ensemble**, per-class.
   Tokyo support: CLEAN 29,200 · WARNING 1,620 · DEGRADED 416.
 - **DEGRADED cross-city: ensemble 0.896, XGBoost 0.784, DL 0.753, RandomForest 0.148.**
 - Narrative: in-domain, trees win; out-of-domain, **RandomForest** memorised thresholds do not

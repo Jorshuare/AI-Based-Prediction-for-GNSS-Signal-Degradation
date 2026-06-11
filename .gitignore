@@ -68,3 +68,19 @@ PROJECT_COMPLETE_GUIDE.md
 # ─── Always track these regardless of above rules ────────────────────────────
 !**/.gitkeep
 !docs/dataset_references/*.pdf
+# ─── LaTeX editor temp files & build artifacts ────────────────────────────────
+*.tex.tmp.*
+*.aux
+*.log
+*.out
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.bbl
+*.blg
+*.toc
+*.lof
+*.lot
+*.snm
+*.nav
+*.vrb

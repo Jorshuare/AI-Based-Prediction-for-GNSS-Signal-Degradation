@@ -1,4 +1,5 @@
 # SENTINEL-GNSS Presentation Script
+
 ## Every Slide with Full Justification & Speaking Notes
 
 **Audience:** Professors, committee members, stakeholders  
@@ -8,9 +9,11 @@
 ---
 
 ## **Slide 1: Title Slide**
+
 **Text:** SENTINEL-GNSS | Predicting GNSS Signal Degradation for Autonomous Driving
 
 **Say:**
+
 > "Good morning/afternoon. I'm presenting SENTINEL-GNSS, a system that predicts when GNSS signals will degrade 5 to 30 seconds into the future. Why is this important? Because autonomous vehicles depend on precise positioning every single second, and GNSS can fail suddenly in cities—without warning. Our system gives the vehicle time to prepare."
 
 **Why:** Frame the problem as real and urgent.
@@ -20,13 +23,16 @@
 ## **Section 1: The Problem (Slides 2–4)**
 
 ### **Slide 2: Why GNSS Prediction Matters**
+
 **Bullets:**
+
 - GNSS is the primary absolute-positioning sensor for autonomous vehicles
 - It fails abruptly: urban canyons, tunnels, foliage, multipath
 - Every existing monitor (RTKLIB, RAIM, ML classifiers) is REACTIVE—only reports degradation AFTER it happens
 - Our question is harder: will the signal degrade in the next 5 / 15 / 30 seconds?
 
 **Say:**
+
 > "GNSS works great on open highways. But cities are different. Buildings block signals. Reflections create multipath errors. A car at 60 km/h travels 17 metres every second—by the time the system detects a GNSS failure, it's too late.
 >
 > Existing monitors are **reactive**. They say 'GNSS is bad NOW.' We ask a harder question: **'Is GNSS going to be bad in the next 5 seconds?'** That's the hard part—prediction, not detection. And that's what SENTINEL-GNSS does."
@@ -36,6 +42,7 @@
 ---
 
 ### **Slide 3: What Proactive Warning Buys**
+
 **Table:**
 | Horizon | Distance @ 60 km/h | Action |
 |---------|-------------------|--------|
@@ -44,6 +51,7 @@
 | +30 s | 500 m | Re-route to avoid the degradation zone |
 
 **Say:**
+
 > "With 5 seconds warning, the vehicle can tighten up its IMU-based dead-reckoning. With 15 seconds, it can pre-plan a route change. With 30 seconds, it can avoid the problem entirely.
 >
 > Prediction converts a sudden failure into a **planned hand-off** to backup localisation. That's the safety benefit."
@@ -53,10 +61,13 @@
 ---
 
 ### **Slide 4: Three Signal Classes**
+
 **Visuals (or describe):** CLEAN sky, WARNING partial shadow, DEGRADED dense urban
 
 **Say:**
+
 > "We classify GNSS signal quality into three states:
+>
 > - **CLEAN**: healthy, full constellation, high C/N₀ (signal strength)
 > - **WARNING**: partial blockage, some satellites lost, degrading C/N₀
 > - **DEGRADED**: heavy blockage, few satellites, low C/N₀, potential loss of fix
@@ -70,17 +81,19 @@
 ## **Section 2: Data (Slides 5–7)**
 
 ### **Slide 5: A Multi-City, Multi-Receiver Dataset**
+
 **Table:**
 | Source | City | Receivers | Role |
 |--------|------|-----------|------|
-| Beihang Field A–E | Beijing | Septentrio | train / test |
+| Beihang Field A–E | Hangzhou | Septentrio | train / test |
 | UrbanNav Deep/Harsh | Hong Kong | 9+ types | train / val |
 | Tokyo Shinjuku | Tokyo | Trimble + u-blox | **held-out city** |
 
 **Say:**
+
 > "We collected 149,662 labelled epochs—one-second GNSS snapshots, each labelled CLEAN, WARNING, or DEGRADED.
 >
-> Why multi-city? Because **cross-city generalisation is hard**. A model trained in Beijing might fail in Tokyo. Tokyo is completely held-out—it never touches training. That's how we prove the model actually generalises.
+> Why multi-city? Because **cross-city generalisation is hard**. A model trained in Hangzhou might fail in Tokyo. Tokyo is completely held-out—it never touches training. That's how we prove the model actually generalises.
 >
 > Why multi-receiver? Because different receivers see GNSS quality differently. Septentrio (professional) vs. u-blox (cheap) vs. smartphone receivers—all different. We handle all of them."
 
@@ -89,7 +102,9 @@
 ---
 
 ### **Slide 6: From Raw Signals to Model-Ready Features**
+
 **Say:**
+
 > "Raw GNSS data is noisy and high-dimensional. We don't feed raw phase/pseudorange to the model. Instead, we compute 37 engineered features from raw observations:
 >
 > - **Signal strength:** C/N₀ (carrier-to-noise ratio) per satellite
@@ -106,7 +121,9 @@
 ---
 
 ### **Slide 7: Data Split Strategy**
+
 **Say:**
+
 > "Here's how we avoided data leakage:
 >
 > - **Session-level split:** all data from a collection session goes to train/val/test together (never mixed)
@@ -130,11 +147,12 @@
 `SENSORS → FEATURE ENGINEERING → SENTINEL MODEL → ADAPTIVE EKF → OUTPUTS & DASHBOARD`
 
 **Say:**
+
 > "Before we dive into each component, let me show you the whole system in one picture.
 >
 > On the left, we have three sensors. The **GNSS receiver** gives us raw position observations — C/N₀ ratios, DOP values, satellite counts — at 1 Hz. The **IMU** at 100 Hz gives us acceleration and heading. **Wheel encoders** give us odometry.
 >
-> These raw signals go into **feature engineering**: 37 handcrafted features extracted per 1-second epoch, arranged into a 30×37 sliding window tensor. Critically, we exclude latitude and longitude — we deliberately blocked the model from learning 'this city looks like Beijing' — it has to learn signal physics, not geography.
+> These raw signals go into **feature engineering**: 37 handcrafted features extracted per 1-second epoch, arranged into a 30×37 sliding window tensor. Critically, we exclude latitude and longitude — we deliberately blocked the model from learning 'this city looks like Hangzhou' — it has to learn signal physics, not geography.
 >
 > That tensor goes into **SENTINEL**, our ML model — a Transformer-BiLSTM hybrid. One forward pass produces three calibrated probability outputs: P(DEGRADED) at +5 s, +15 s, and +30 s.
 >
@@ -149,18 +167,23 @@
 ---
 
 ### **Slide 9: The SENTINEL-GNSS Architecture**
+
 **Say:**
+
 > "The model is a Transformer-LSTM hybrid. Here's why:
 >
 > **Transformer** (2 layers, 8 attention heads, d=128):
+>
 > - Sees long-range dependencies in the 30-second window
 > - 'Ah, this satellite started fading 20 seconds ago—it's about to drop'
 >
 > **BiLSTM** (2 layers, hidden=256):
+>
 > - Captures the directional trajectory toward degradation
 > - 'The signal is getting worse; that trend will continue'
 >
 > **Three output heads** (+5s, +15s, +30s):
+>
 > - One forward pass, three predictions
 > - Calibrated probabilities P(CLEAN), P(WARNING), P(DEGRADED) at each horizon
 >
@@ -171,7 +194,9 @@
 ---
 
 ### **Slide 9: Honest Validation**
+
 **Say:**
+
 > "We don't just report in-domain accuracy. We validate honesty:
 >
 > 1. **Ablations:** Does the Transformer contribute? Does the LSTM? Yes to both.
@@ -185,6 +210,7 @@
 ---
 
 ### **Slide 10: The KEY RESULT—Cross-City Generalization**
+
 **Table:**
 | Model | Beihang (In-Domain) | Tokyo (Unseen City) | Tokyo DEGRADED F1 |
 |-------|-------------------|-------------------|------------------|
@@ -194,6 +220,7 @@
 | RandomForest | 0.926 | 0.618 | **0.148** |
 
 **Say:**
+
 > "This table is the heart of the paper. In-domain, RandomForest wins—0.926 Macro-F1. But **cross-city, RandomForest collapses to 0.148 on the safety-critical DEGRADED class**. That's terrible.
 >
 > XGBoost transfers better—0.784. DL alone is solid—0.753.
@@ -207,7 +234,9 @@
 ---
 
 ### **Slide 11: Efficiency & Calibration**
+
 **Say:**
+
 > "Fast inference (0.045 ms/sample on GPU) means we can run at 10 Hz on edge hardware.
 >
 > One 17.8 MB checkpoint handles all three horizons—not three separate models.
@@ -229,15 +258,16 @@
 
 **Slide layout:** Two-column comparison table
 
-| Standard Kalman Filter | Our Adaptive EKF |
-|---|---|
-| R = fixed (e.g. 9 m²) | R(t) = adaptive — grows with P(DEGRADED) |
-| Always trusts GNSS equally | Pre-emptively distrusts GNSS before blockage |
-| Position jumps when GNSS fails | Smooth handoff to dead-reckoning |
+| Standard Kalman Filter         | Our Adaptive EKF                             |
+| ------------------------------ | -------------------------------------------- |
+| R = fixed (e.g. 9 m²)          | R(t) = adaptive — grows with P(DEGRADED)     |
+| Always trusts GNSS equally     | Pre-emptively distrusts GNSS before blockage |
+| Position jumps when GNSS fails | Smooth handoff to dead-reckoning             |
 
-**Bottom callout (bold):** *"Prediction closes the loop: we don't wait for GNSS to fail — we pre-empt it."*
+**Bottom callout (bold):** _"Prediction closes the loop: we don't wait for GNSS to fail — we pre-empt it."_
 
 **Say:**
+
 > "Predicting degradation is one thing. **Using the prediction to actually improve navigation** is the real contribution.
 >
 > A standard Kalman filter fuses GNSS and a motion model with a fixed trust ratio — it always trusts GNSS equally. It waits until GNSS is corrupted, then slowly recovers.
@@ -253,26 +283,31 @@
 **Slide layout:** Large centred formula with annotated arrows, 3 concrete values at bottom.
 
 **Main formula (large, centred):**
+
 ```
 R(t) = σ²_base + (σ²_deg − σ²_base) × P̂_calib(t)
 ```
 
 **Second line:**
+
 ```
 P̂_calib(t) = clip( (P̂(t) − P₅) / (1 − P₅),  0,  1 )
 ```
 
 **Kalman gain line:**
+
 ```
 K_t = P⁻_t Hᵀ (H P⁻_t Hᵀ + R_t)⁻¹
 ```
 
 **Three concrete values (bottom row, colour-coded):**
+
 - 🟢 P̂=0 → R = 9 m² → Trust GNSS fully
 - 🟡 P̂=0.5 → R ≈ 500 m² → Moderate caution
 - 🔴 P̂=1 → R = 10,000 m² → Dead-reckon on odometry
 
 **Say:**
+
 > "Here's the mechanism. Measurement noise R controls how much the Kalman filter trusts GNSS. We make R a function of time, driven by our prediction.
 >
 > When P_calib is zero — signal is clean — R stays at σ²_base, 9 square metres. The filter trusts GNSS tightly. When P_calib is one — degradation is predicted — R jumps to 10,000 square metres. The Kalman gain K shrinks to near zero. The filter ignores GNSS and dead-reckons on wheel odometry alone.
@@ -291,15 +326,16 @@ K_t = P⁻_t Hᵀ (H P⁻_t Hᵀ + R_t)⁻¹
 
 **Table:**
 
-| Tier | Data | Blocked-Segment RMSE | Gain |
-|---|---|---|---|
-| Synthetic | Controlled simulation, known blockage timing | 54.4 m → 36.0 m | **−33.8 %** |
-| Semi-synthetic | Real Tokyo path + real IMU, synthetic GNSS errors | 36.3 m → **6.4 m** | **+82 %** |
-| **Fully real** | RTKLIB Trimble GNSS + real IMU + cm-level SPAN-INS truth | **47.4 m → 24.3 m** | **+48.8 %** |
+| Tier           | Data                                                     | Blocked-Segment RMSE | Gain        |
+| -------------- | -------------------------------------------------------- | -------------------- | ----------- |
+| Synthetic      | Controlled simulation, known blockage timing             | 54.4 m → 36.0 m      | **−33.8 %** |
+| Semi-synthetic | Real Tokyo path + real IMU, synthetic GNSS errors        | 36.3 m → **6.4 m**   | **+82 %**   |
+| **Fully real** | RTKLIB Trimble GNSS + real IMU + cm-level SPAN-INS truth | **47.4 m → 24.3 m**  | **+48.8 %** |
 
-**Bottom callout (bold):** *"Aided 9-state EKF (odometry + non-holonomic + ZUPT) is the decisive contribution. Adaptive-R adds on top in severe multipath."*
+**Bottom callout (bold):** _"Aided 9-state EKF (odometry + non-holonomic + ZUPT) is the decisive contribution. Adaptive-R adds on top in severe multipath."_
 
 **Say:**
+
 > "We validated at three levels of realism, because a single cherry-picked result isn't convincing.
 >
 > The controlled simulation gives −33.8% — proof of concept, but the GNSS errors are synthetic. The semi-synthetic run uses the real Tokyo trajectory and real IMU, but injects synthetic GNSS multipath — the 82% gain shows the aided EKF is powerful.
@@ -319,11 +355,13 @@ K_t = P⁻_t Hᵀ (H P⁻_t Hᵀ + R_t)⁻¹
 **Layout:** Left — severity sweep figure from `results/paper_figures/`; Right — two-bullet conclusion.
 
 **Right column:**
+
 - **GNSS-only platform:** adaptive-R wins above ~20 m multipath severity. Deep canyons, NLOS — exactly the target scenario.
 - **Well-aided platform (odometry + NHC + ZUPT):** fixed-R wins. GNSS provides the only heading reference — blanket R-inflation causes heading drift once odometry gives speed but not direction.
 - **SENTINEL's role on full AV:** integrity monitoring and regime selection, not global R-inflation.
 
 **Say:**
+
 > "We swept across multipath severities so we're not cherry-picking one scenario.
 >
 > On a **GNSS-only** platform — cheap receiver, no IMU, no odometry — adaptive-R starts winning at around 20 metres of multipath noise. That's exactly the deep canyon and tunnel regime we care about.
@@ -348,18 +386,19 @@ K_t = P⁻_t Hᵀ (H P⁻_t Hᵀ + R_t)⁻¹
 
 **Layout:** Screenshot mosaic of the 6 panels, each labelled.
 
-| Panel | What it shows |
-|---|---|
-| **Signal Gauge** | P(DEGRADED) at +5/+15/+30 s — green/amber/red |
-| **Probability Bars** | CLEAN / WARNING / DEGRADED live confidence |
-| **Trajectory Map** | Vehicle path coloured by predicted risk level |
-| **P(DEGRADED) Timeline** | All 3 horizons streaming with threshold lines |
-| **EKF Analytics** | Blocked-segment RMSE by filter strategy |
-| **Alert Centre** | CRITICAL (P > 0.8) and WARNING (P > 0.6) auto-notifications |
+| Panel                    | What it shows                                               |
+| ------------------------ | ----------------------------------------------------------- |
+| **Signal Gauge**         | P(DEGRADED) at +5/+15/+30 s — green/amber/red               |
+| **Probability Bars**     | CLEAN / WARNING / DEGRADED live confidence                  |
+| **Trajectory Map**       | Vehicle path coloured by predicted risk level               |
+| **P(DEGRADED) Timeline** | All 3 horizons streaming with threshold lines               |
+| **EKF Analytics**        | Blocked-segment RMSE by filter strategy                     |
+| **Alert Centre**         | CRITICAL (P > 0.8) and WARNING (P > 0.6) auto-notifications |
 
-**Bottom line:** *FastAPI backend + Next.js frontend · WebSocket at 1 Hz · Runs on any laptop*
+**Bottom line:** _FastAPI backend + Next.js frontend · WebSocket at 1 Hz · Runs on any laptop_
 
 **Say:**
+
 > "Everything we've described — prediction, EKF, calibration — lives in a real, running dashboard. It's not a mock-up.
 >
 > FastAPI streams real pre-computed inference outputs over WebSocket. The Next.js frontend updates at each epoch. Six panels: signal gauge, class probability bars, trajectory map coloured by risk, streaming P(DEGRADED) timeline, EKF analytics, and an alert centre that fires CRITICAL warnings when P exceeds 0.8 at 5 seconds.
@@ -374,29 +413,30 @@ K_t = P⁻_t Hᵀ (H P⁻_t Hᵀ + R_t)⁻¹
 
 **On-slide step table:**
 
-| Step | Action | What audience sees |
-|---|---|---|
-| 1 | Open localhost:3000 | Full dashboard loads — 6 panels |
-| 2 | Select "A_log_0000" (instant blockage scenario) | Prediction data populates |
-| 3 | Press ▶ Play at 5× speed | Timeline starts streaming |
-| 4 | Watch gauge spike before GNSS drop | Gauge turns red; CRITICAL alert fires |
-| 5 | Pause — point to lead time | "83 m of reaction distance at 60 km/h" |
-| 6 | Switch to EKF Analytics tab | Blocked-segment RMSE chart loads |
-| 7 | Point to trajectory map | Path colour shifts red through blockage zone |
+| Step | Action                                          | What audience sees                           |
+| ---- | ----------------------------------------------- | -------------------------------------------- |
+| 1    | Open localhost:3000                             | Full dashboard loads — 6 panels              |
+| 2    | Select "A_log_0000" (instant blockage scenario) | Prediction data populates                    |
+| 3    | Press ▶ Play at 5× speed                        | Timeline starts streaming                    |
+| 4    | Watch gauge spike before GNSS drop              | Gauge turns red; CRITICAL alert fires        |
+| 5    | Pause — point to lead time                      | "83 m of reaction distance at 60 km/h"       |
+| 6    | Switch to EKF Analytics tab                     | Blocked-segment RMSE chart loads             |
+| 7    | Point to trajectory map                         | Path colour shifts red through blockage zone |
 
-**Bottom callout:** *"Everything is real pre-computed inference on real GNSS data — not a demo mode."*
+**Bottom callout:** _"Everything is real pre-computed inference on real GNSS data — not a demo mode."_
 
 **Say during demo:**
+
 > "I'm opening the dashboard now."
-> *(select scenario)*
+> _(select scenario)_
 > "Scenario A — the instant blockage scenario from our Beihang campus collection. Real NMEA data, real inference output."
-> *(press play)*
+> _(press play)_
 > "Watch the signal gauge top-left."
-> *(when gauge turns red)*
+> _(when gauge turns red)_
 > "There — P(DEGRADED) at the +5s horizon just crossed 0.8. CRITICAL alert fires. But look at the GNSS quality signal — it hasn't actually failed yet. That's the 5-second window. At 60 km/h, this vehicle has 83 metres to respond."
-> *(switch to EKF tab)*
+> _(switch to EKF tab)_
 > "EKF analytics — these are the real Tokyo results. Three filter strategies on the blocked segment. Aided EKF wins at 24.3 metres."
-> *(point to map)*
+> _(point to map)_
 > "The trajectory map shifts from green to red as the vehicle approaches the blockage zone. A dispatcher watching this would reroute before entry."
 > "Everything you're seeing is real inference output on real GNSS data."
 
@@ -405,18 +445,23 @@ K_t = P⁻_t Hᵀ (H P⁻_t Hᵀ + R_t)⁻¹
 ## **Section 7: Roadmap & Impact (Slides 19–25)**
 
 ### **Slide 19: Publication Plan**
+
 **Say:**
+
 > "We're publishing this across three venues:
 >
 > **Paper A (GPS Solutions, Q1 journal):**
+>
 > - Method: Transformer-LSTM architecture, multi-horizon prediction, cross-city validation
 > - Why: flagship paper, rigorous and novel
 >
 > **Paper B (Journal of Navigation):**
+>
 > - Systems paper: Model comparison, ensemble selection, EKF integration, real RMSE
 > - Why: complements Paper A with the applied side
 >
 > **Conference (ION GNSS+ 2026):**
+>
 > - Cross-city result as a systems/applications paper
 > - Reaches the GNSS community directly
 >
@@ -427,18 +472,21 @@ K_t = P⁻_t Hᵀ (H P⁻_t Hᵀ + R_t)⁻¹
 ---
 
 ### **Slide 20–23: Deliverables & Next Steps**
-*(Ensemble, dashboard, reproducibility—refer to PPTX)*
+
+_(Ensemble, dashboard, reproducibility—refer to PPTX)_
 
 ---
 
 ## **Closing Slides (Slides 36–37)**
 
 ### **Slide 36: Key Takeaways**
+
 **Say:**
+
 > "In summary:
 >
 > 1. **The Problem:** GNSS fails without warning in cities. Autonomous vehicles need time to prepare.
-> 2. **Our Solution:** Predict degradation 5–30 seconds ahead using Transformer-LSTM trained on Beijing and Hong Kong data.
+> 2. **Our Solution:** Predict degradation 5–30 seconds ahead using Transformer-LSTM trained on Hangzhou and Hong Kong data.
 > 3. **The Proof of Generalisation:** On unseen Tokyo, DEGRADED F1 = 0.75 (ours) vs 0.15 (RandomForest). The deep model learns physics; the trees memorise city-specific patterns.
 > 4. **The Navigation Payoff:** Adaptive EKF on real Tokyo data — 47.4 m → 24.3 m blocked-segment RMSE. 48.8% improvement, real data, real streets, held-out city.
 > 5. **The System:** Running dashboard, FastAPI + Next.js, WebSocket streaming, deployable today."
@@ -448,7 +496,9 @@ K_t = P⁻_t Hᵀ (H P⁻_t Hᵀ + R_t)⁻¹
 ---
 
 ### **Slide 37: Thank You**
+
 **Say:**
+
 > "Thank you for your attention. Our code and dataset will be released on GitHub and Zenodo for reproducibility. Questions?"
 
 ---
@@ -624,7 +674,7 @@ ARROWS:
   - Purple dashed arrow: SPAN-INS ground truth → right edge (labelled "validation only")
 
 BOTTOM BANNER (navy #003366):
-  White text: "Zero-shot cross-city: trained on Beijing (Beihang A–E) + HK UrbanNav
+  White text: "Zero-shot cross-city: trained on Hangzhou (Beihang A–E) + HK UrbanNav
               — tested on Tokyo Shinjuku (never seen during training)"
   Star symbol ★ in amber before the text.
 

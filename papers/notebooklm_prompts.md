@@ -210,7 +210,7 @@ _Run on both notebooks to verify papers are suitable_
 Review all papers in this notebook and rank the top 10 most relevant to cite in a paper about:
 - GNSS signal degradation prediction using Transformer-LSTM neural networks
 - Multi-horizon classification at 5, 15, 30 seconds ahead
-- Evaluation on Beijing urban field data and cross-city test on Tokyo
+- Evaluation on Hangzhou urban field data and cross-city test on Tokyo
 
 For each of the top 10: explain in one sentence WHY it should be cited and WHERE
 (Introduction, Related Work, Dataset section, Experimental section, Discussion).

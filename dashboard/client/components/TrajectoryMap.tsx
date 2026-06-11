@@ -5,27 +5,35 @@ import { useElementWidth } from "@/lib/ui";
 import type { Prediction } from "@/lib/types";
 
 /**
- * Full-route risk-coloured trajectory map.
+ * Risk-coloured trajectory map with progressive reveal.
  *
  * Props
  * -----
- * path      – complete pre-loaded predictions for the scenario (renders the full route)
- * liveHead  – the latest streamed prediction (pulsing current-position indicator)
- * height    – SVG pixel height (default 420)
+ * path        – complete pre-loaded predictions for the scenario
+ * currentIdx  – how many epochs have been streamed so far; if provided,
+ *               only path[0..currentIdx] is rendered (real-time discovery effect).
+ *               If undefined, renders the full path (static / post-run view).
+ * liveHead    – the latest streamed prediction (pulsing current-position indicator)
+ * height      – SVG pixel height (default 420)
  */
 export default function TrajectoryMap({
   path,
+  currentIdx,
   liveHead,
   height = 420,
-  // Legacy compat: some callers may still pass `data` instead of `path`
   data,
 }: {
   path?: Prediction[];
+  currentIdx?: number;
   liveHead?: Prediction | null;
   height?: number;
   data?: Prediction[];   // deprecated – use path
 }) {
-  const pts_src = path ?? data ?? [];
+  const full_src = path ?? data ?? [];
+  // Slice to revealed portion; if no currentIdx show everything (e.g. post-run)
+  const pts_src = currentIdx !== undefined
+    ? full_src.slice(0, currentIdx + 1)
+    : full_src;
   const [wrapRef, W] = useElementWidth<HTMLDivElement>();
   const width = Math.max(W, 280);
 
@@ -33,8 +41,11 @@ export default function TrajectoryMap({
     const valid = pts_src.filter((d) => d.x != null && d.y != null && isFinite(d.x) && isFinite(d.y));
     if (!valid.length) return { pts: [] as { px: number; py: number; p: number }[], headPx: null as null | { px: number; py: number } };
 
-    const xs = valid.map((d) => d.x);
-    const ys = valid.map((d) => d.y);
+    // Use current visible points for bounding box so the path fills the map
+    // as it is revealed. The scale will gently grow as more route is discovered.
+    const bbox = valid;
+    const xs = bbox.map((d) => d.x);
+    const ys = bbox.map((d) => d.y);
     const minX = Math.min(...xs), maxX = Math.max(...xs);
     const minY = Math.min(...ys), maxY = Math.max(...ys);
     const pad = 40;
@@ -122,7 +133,7 @@ export default function TrajectoryMap({
         {!pts.length && (
           <text x={width / 2} y={height / 2} textAnchor="middle"
             fontSize={15} fontWeight={700} fill="#5B7BA6">
-            Press Play — full route will appear immediately
+            Press Play, route reveals epoch by epoch as data streams
           </text>
         )}
 
@@ -140,11 +151,11 @@ export default function TrajectoryMap({
           ))}
         </g>
 
-        {/* Point count label */}
-        {pts.length > 0 && (
+        {/* Point count / progress label */}
+        {full_src.length > 0 && (
           <text x={width - 12} y={height - 10} textAnchor="end"
             fontSize={11} fill="#3A5A7A" fontWeight={600}>
-            {pts.length.toLocaleString()} pts
+            {pts.length.toLocaleString()} / {full_src.length.toLocaleString()} pts
           </text>
         )}
       </svg>

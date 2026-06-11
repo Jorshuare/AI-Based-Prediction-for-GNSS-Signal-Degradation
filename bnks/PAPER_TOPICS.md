@@ -8,7 +8,7 @@
 **Project core (never lose sight of this):**
 
 > A Transformer–LSTM that predicts GNSS signal degradation **5, 15 and 30 seconds before it
-> happens**, so an autonomous vehicle can proactively switch to backup localisation *before*
+> happens**, so an autonomous vehicle can proactively switch to backup localisation _before_
 > signal loss — not after.
 
 ---
@@ -18,11 +18,11 @@
 Consolidated from an earlier 4-paper idea (four papers from one model/dataset risks
 salami-slicing). The three outputs target three distinct communities and do not overlap.
 
-| Output | Type | Scope | Venue | Status |
-|--------|------|-------|-------|--------|
-| **Paper A** | Method (flagship) | Proactive multi-horizon Transformer–LSTM; ablations; interpretability; cross-receiver + cross-city robustness | *GPS Solutions* (Q1) | core ✅, receiver ⏳ |
-| **Paper B** | Systems / application | Fair **model-family comparison** → select deployable model → **prediction-informed adaptive EKF** → navigation RMSE | *IEEE T-ITS* / *J. Navigation* | EKF ✅ (sim), comparison ✅, real-data RMSE ⏳ |
-| **Conference** | Short paper | **Cross-city generalisation** (Beihang/Beijing + HK → unseen Tokyo); the headline transfer result | **ION GNSS+ 2026** | core ✅ (E6) |
+| Output         | Type                  | Scope                                                                                                               | Venue                          | Status                                         |
+| -------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------ | ---------------------------------------------- |
+| **Paper A**    | Method (flagship)     | Proactive multi-horizon Transformer–LSTM; ablations; interpretability; cross-receiver + cross-city robustness       | _GPS Solutions_ (Q1)           | core ✅, receiver ⏳                           |
+| **Paper B**    | Systems / application | Fair **model-family comparison** → select deployable model → **prediction-informed adaptive EKF** → navigation RMSE | _IEEE T-ITS_ / _J. Navigation_ | EKF ✅ (sim+real), comparison ✅, real-data RMSE ✅ |
+| **Conference** | Short paper           | **Cross-city generalisation** (Beihang/Hangzhou + HK → unseen Tokyo); the headline transfer result                  | **ION GNSS+ 2026**             | core ✅ (E6)                                   |
 
 > The cross-city result appears in both the conference paper and (extended) in Paper A §5.5 —
 > a standard, accepted conference→journal extension.
@@ -33,13 +33,13 @@ salami-slicing). The three outputs target three distinct communities and do not 
 
 ## Why each paper stands on its own
 
-- **Paper A** is the learning contribution: the *first* proactive multi-horizon GNSS
+- **Paper A** is the learning contribution: the _first_ proactive multi-horizon GNSS
   degradation predictor (to our knowledge — ⚠️ verify the literature claim before submission).
-  Its robustness sections (cross-receiver, cross-city) are analyses of the *same* model, which
+  Its robustness sections (cross-receiver, cross-city) are analyses of the _same_ model, which
   is exactly how strong applied-GNSS papers are structured.
-- **Paper B** is the systems contribution: it proves prediction *matters* by closing the loop
+- **Paper B** is the systems contribution: it proves prediction _matters_ by closing the loop
   (predict → adapt the filter → measurably better position). It uses the model comparison as
-  the *selection rationale* for the EKF, so the comparison is not a thin standalone paper.
+  the _selection rationale_ for the EKF, so the comparison is not a thin standalone paper.
 - **Conference** gives the team a presentation and early feedback on the strongest, most
   defensible single result (cross-city transfer).
 
@@ -66,12 +66,13 @@ salami-slicing). The three outputs target three distinct communities and do not 
 4. Frame the adaptive EKF real-data RMSE as ongoing until the aligned reference trajectory is
    processed; the simulation result is reported as a simulation.
 5. Soften any "first / only / zero prior work" to "to our knowledge after a systematic search."
-6. Data site = **Beihang University campus, Beijing, China** (Beihang is the university; the
-   city for cross-city claims is Beijing).
+6. Data site = **Beihang University campus, Hangzhou, China** (Beihang is the university; the
+   city for cross-city claims is Hangzhou).
 
 ---
 
 ## Phase 2/3 (open, not yet run)
+
 - DL multi-head **+60 s** horizon (needs retrain; `feature_prep --extra_horizons 60` ready).
 - **Raw per-satellite C/N₀** streams (new extractor + retrain).
 - Real-data EKF RMSE with an aligned reference/RTK trajectory.

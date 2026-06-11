@@ -161,11 +161,11 @@ python src/utils/analyze_route_testing_v2.py route_planning/Phone_b route_planni
 
 **Combined labelled dataset (Run 12):** **146,055 rows** × 41 columns across **12 source groups** and 4 cities.
 
-| Role | Cities / Sources |
-|---|---|
-| **Training + in-domain test** | Beihang (Beijing) field collection + UrbanNav Hong Kong (Medium, Deep, Harsh, Tunnel) |
-| **Cross-city zero-shot evaluation only** | UrbanNav Tokyo Shinjuku (never in training) |
-| **Excluded from training** | NCLT (Michigan), Oxford RobotCar, drone data |
+| Role                                     | Cities / Sources                                                                       |
+| ---------------------------------------- | -------------------------------------------------------------------------------------- |
+| **Training + in-domain test**            | Beihang (Hangzhou) field collection + UrbanNav Hong Kong (Medium, Deep, Harsh, Tunnel) |
+| **Cross-city zero-shot evaluation only** | UrbanNav Tokyo Shinjuku (never in training)                                            |
+| **Excluded from training**               | NCLT (Michigan), Oxford RobotCar, drone data                                           |
 
 Labels: CLEAN ~45%, WARNING ~42%, DEGRADED ~13% (varies by split — see NEXT_STEPS.md).
 

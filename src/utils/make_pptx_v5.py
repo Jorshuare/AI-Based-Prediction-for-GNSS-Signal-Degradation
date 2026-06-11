@@ -17,15 +17,19 @@ Run:
     python -m src.utils.make_pptx_v5
 """
 
-import copy, sys, io, os
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-
-from pptx import Presentation
-from pptx.util import Inches, Pt, Emu
-from pptx.dml.color import RGBColor
-from pptx.enum.text import PP_ALIGN
-from pptx.oxml.ns import qn
 import lxml.etree as etree
+from pptx.oxml.ns import qn
+from pptx.enum.text import PP_ALIGN
+from pptx.dml.color import RGBColor
+from pptx.util import Inches, Pt, Emu
+from pptx import Presentation
+import copy
+import sys
+import io
+import os
+sys.stdout = io.TextIOWrapper(
+    sys.stdout.buffer, encoding='utf-8', errors='replace')
+
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -38,17 +42,17 @@ DST = ("docs/SENTINEL_GNSS_Presentation_V5.pptx")
 # ---------------------------------------------------------------------------
 # Colour palette (match existing design)
 # ---------------------------------------------------------------------------
-NAVY      = RGBColor(0x00, 0x33, 0x66)   # section divider bg
+NAVY = RGBColor(0x00, 0x33, 0x66)   # section divider bg
 BLUE_DARK = RGBColor(0x00, 0x38, 0x93)   # headings
-BLUE_MID  = RGBColor(0x00, 0x5B, 0xAC)   # sub-headings
-WHITE     = RGBColor(0xFF, 0xFF, 0xFF)
-DARK      = RGBColor(0x0A, 0x17, 0x33)
-GREY      = RGBColor(0x33, 0x33, 0x33)
-GREY2     = RGBColor(0x55, 0x55, 0x55)
-CYAN      = RGBColor(0x4F, 0xC3, 0xF7)   # callout accent
-GREEN     = RGBColor(0x1B, 0x87, 0x3A)
-AMBER     = RGBColor(0xF5, 0x7F, 0x17)
-RED       = RGBColor(0xC6, 0x28, 0x28)
+BLUE_MID = RGBColor(0x00, 0x5B, 0xAC)   # sub-headings
+WHITE = RGBColor(0xFF, 0xFF, 0xFF)
+DARK = RGBColor(0x0A, 0x17, 0x33)
+GREY = RGBColor(0x33, 0x33, 0x33)
+GREY2 = RGBColor(0x55, 0x55, 0x55)
+CYAN = RGBColor(0x4F, 0xC3, 0xF7)   # callout accent
+GREEN = RGBColor(0x1B, 0x87, 0x3A)
+AMBER = RGBColor(0xF5, 0x7F, 0x17)
+RED = RGBColor(0xC6, 0x28, 0x28)
 
 W = Inches(13.33)
 H = Inches(7.50)
@@ -56,6 +60,7 @@ H = Inches(7.50)
 # ---------------------------------------------------------------------------
 # Low-level helpers
 # ---------------------------------------------------------------------------
+
 
 def _sp(slide):
     """Return the spTree element of the slide."""
@@ -142,7 +147,8 @@ def add_table_shape(slide, rows, cols, left, top, width, height,
         cell.fill.fore_color.rgb = hdr_bg
         tf = cell.text_frame
         tf.paragraphs[0].alignment = PP_ALIGN.CENTER
-        run = tf.paragraphs[0].runs[0] if tf.paragraphs[0].runs else tf.paragraphs[0].add_run()
+        run = tf.paragraphs[0].runs[0] if tf.paragraphs[0].runs else tf.paragraphs[0].add_run(
+        )
         run.text = hdr
         run.font.bold = True
         run.font.size = Pt(12)
@@ -157,7 +163,8 @@ def add_table_shape(slide, rows, cols, left, top, width, height,
             cell.fill.fore_color.rgb = bg
             tf = cell.text_frame
             tf.paragraphs[0].alignment = PP_ALIGN.CENTER
-            run = tf.paragraphs[0].runs[0] if tf.paragraphs[0].runs else tf.paragraphs[0].add_run()
+            run = tf.paragraphs[0].runs[0] if tf.paragraphs[0].runs else tf.paragraphs[0].add_run(
+            )
             run.text = val
             run.font.size = Pt(11)
             run.font.color.rgb = DARK
@@ -179,28 +186,28 @@ def add_frame(slide, title_text):
     """Add the top bar, bottom bar, and title label matching the presentation style."""
     # Top bar (dark navy)
     bar = slide.shapes.add_shape(1,
-        Inches(0), Inches(-0.03), Inches(13.33), Inches(0.84))
+                                 Inches(0), Inches(-0.03), Inches(13.33), Inches(0.84))
     bar.fill.solid()
     bar.fill.fore_color.rgb = NAVY
     bar.line.fill.background()
 
     # Top accent line (cyan)
     acc = slide.shapes.add_shape(1,
-        Inches(0), Inches(0.77), Inches(13.33), Inches(0.04))
+                                 Inches(0), Inches(0.77), Inches(13.33), Inches(0.04))
     acc.fill.solid()
     acc.fill.fore_color.rgb = CYAN
     acc.line.fill.background()
 
     # Bottom bar
     bot = slide.shapes.add_shape(1,
-        Inches(0), Inches(7.27), Inches(13.33), Inches(0.23))
+                                 Inches(0), Inches(7.27), Inches(13.33), Inches(0.23))
     bot.fill.solid()
     bot.fill.fore_color.rgb = NAVY
     bot.line.fill.background()
 
     # Bottom accent
     bacc = slide.shapes.add_shape(1,
-        Inches(0), Inches(7.24), Inches(13.33), Inches(0.03))
+                                  Inches(0), Inches(7.24), Inches(13.33), Inches(0.03))
     bacc.fill.solid()
     bacc.fill.fore_color.rgb = CYAN
     bacc.line.fill.background()
@@ -241,7 +248,7 @@ def make_divider_slide(prs, text):
 
     # Accent underline
     acc = slide.shapes.add_shape(1,
-        Inches(0.95), Inches(4.15), Inches(3.20), Inches(0.07))
+                                 Inches(0.95), Inches(4.15), Inches(3.20), Inches(0.07))
     acc.fill.solid()
     acc.fill.fore_color.rgb = CYAN
     acc.line.fill.background()
@@ -357,7 +364,7 @@ def build_ekf_why(prs):
 
     # Divider line between columns
     div = slide.shapes.add_shape(1,
-        Inches(6.60), Inches(1.55), Inches(0.05), Inches(3.00))
+                                 Inches(6.60), Inches(1.55), Inches(0.05), Inches(3.00))
     div.fill.solid()
     div.fill.fore_color.rgb = RGBColor(0xCC, 0xCC, 0xCC)
     div.line.fill.background()
@@ -402,11 +409,16 @@ def build_ekf_formula(prs):
             size=12, color=BLUE_MID, bold=True)
 
     annotations = [
-        ("σ²_base  =  9 m²",      "Baseline GNSS noise (signal is CLEAN) — filter trusts GNSS tightly"),
-        ("σ²_deg  =  10,000 m²",  "Noise under full degradation — filter ignores GNSS, dead-reckons"),
-        ("P̂_calib(t)",                      "Calibrated probability from SENTINEL (0 = clean, 1 = fully degraded)"),
-        ("P₅  =  0.153",                     "Floor offset — unsupervised calibration removes receiver-domain bias"),
-        ("Kₜ  shrinks when Rₜ rises",   "When SENTINEL predicts degradation, filter leans on motion model"),
+        ("σ²_base  =  9 m²",
+         "Baseline GNSS noise (signal is CLEAN) — filter trusts GNSS tightly"),
+        ("σ²_deg  =  10,000 m²",
+         "Noise under full degradation — filter ignores GNSS, dead-reckons"),
+        ("P̂_calib(t)",
+         "Calibrated probability from SENTINEL (0 = clean, 1 = fully degraded)"),
+        ("P₅  =  0.153",
+         "Floor offset — unsupervised calibration removes receiver-domain bias"),
+        ("Kₜ  shrinks when Rₜ rises",
+         "When SENTINEL predicts degradation, filter leans on motion model"),
     ]
     top = 3.55
     for term, desc in annotations:
@@ -464,9 +476,12 @@ def build_ekf_results(prs):
     # Table
     headers = ["Tier", "Data", "Blocked RMSE", "Gain"]
     body = [
-        ["Synthetic",       "Controlled blockage simulation",              "54.4 m → 36.0 m", "−33.8%"],
-        ["Semi-synthetic",  "Real Tokyo path + IMU, synthetic GNSS errors","36.3 m → 6.4 m",  "+82%"],
-        ["Fully real ★","RTKLIB Trimble + real IMU + SPAN-INS truth", "47.4 m → 24.3 m", "+48.8%"],
+        ["Synthetic",       "Controlled blockage simulation",
+            "54.4 m → 36.0 m", "−33.8%"],
+        ["Semi-synthetic",  "Real Tokyo path + IMU, synthetic GNSS errors",
+            "36.3 m → 6.4 m",  "+82%"],
+        ["Fully real ★", "RTKLIB Trimble + real IMU + SPAN-INS truth",
+            "47.4 m → 24.3 m", "+48.8%"],
     ]
     add_table_shape(slide, rows=4, cols=4,
                     left=0.67, top=3.15, width=12.0, height=1.70,
@@ -542,7 +557,7 @@ def build_ekf_severity(prs):
 
     # Divider
     div = slide.shapes.add_shape(1,
-        Inches(6.60), Inches(1.45), Inches(0.05), Inches(2.70))
+                                 Inches(6.60), Inches(1.45), Inches(0.05), Inches(2.70))
     div.fill.solid()
     div.fill.fore_color.rgb = RGBColor(0xCC, 0xCC, 0xCC)
     div.line.fill.background()
@@ -694,7 +709,7 @@ def update_dataset_slide(slide):
     """Add a role-clarification note to the dataset slide (slide index 5)."""
     add_filled_box(slide, 0.67, 6.40, 12.0, 0.48, RGBColor(0xFF, 0xF8, 0xE1))
     add_box(slide,
-            "Training: Beihang (Beijing) field Scenarios A–E  +  UrbanNav Hong Kong (Medium / Deep / Harsh / Tunnel)  —  62,413 windows  |  "
+            "Training: Beihang (Hangzhou) field Scenarios A–E  +  UrbanNav Hong Kong (Medium / Deep / Harsh / Tunnel)  —  62,413 windows  |  "
             "Zero-shot test: UrbanNav Tokyo Shinjuku (NEVER in training)",
             left=0.77, top=6.40, width=11.80, height=0.48,
             size=11, color=RGBColor(0x7B, 0x52, 0x00), bold=True)
@@ -745,7 +760,8 @@ def rebuild_validation_slide(slide):
         add_box(slide, code,
                 left=0.67, top=top + 0.40, width=0.60, height=0.50,
                 size=18, color=WHITE, bold=True, align=PP_ALIGN.CENTER)
-        add_filled_box(slide, 1.37, top, 11.30, 1.35, RGBColor(0xF5, 0xF7, 0xFF))
+        add_filled_box(slide, 1.37, top, 11.30, 1.35,
+                       RGBColor(0xF5, 0xF7, 0xFF))
         add_box(slide, title,
                 left=1.47, top=top + 0.05, width=11.10, height=0.38,
                 size=13, color=col, bold=True)
@@ -809,14 +825,14 @@ def main():
     clear_content_shapes(s16)
     add_frame(s16, "CROSS-CITY GENERALISATION — THE CHALLENGE")
     add_box(s16,
-            "Can a model trained in Beijing and Hong Kong predict GNSS quality in Tokyo — "
+            "Can a model trained in Hangzhou and Hong Kong predict GNSS quality in Tokyo — "
             "a city it has never seen?",
             left=0.67, top=1.10, width=12.0, height=0.50,
             size=16, color=DARK, bold=False, align=PP_ALIGN.CENTER)
 
     challenges = [
         ("Different skyline geometry",
-         "Tokyo Shinjuku has a distinct building density and canyon profile vs Beijing ring-roads."),
+         "Tokyo Shinjuku has a distinct building density and canyon profile vs Hangzhou ring-roads."),
         ("Different satellite visibility",
          "Latitude difference changes GNSS constellation elevation angles and multipath patterns."),
         ("Different receiver hardware",
@@ -892,7 +908,8 @@ def main():
                 size=13, color=col, bold=(col == GREEN))
         top += 0.47
 
-    div = s23.shapes.add_shape(1, Inches(6.60), Inches(1.55), Inches(0.05), Inches(3.00))
+    div = s23.shapes.add_shape(1, Inches(6.60), Inches(
+        1.55), Inches(0.05), Inches(3.00))
     div.fill.solid()
     div.fill.fore_color.rgb = RGBColor(0xCC, 0xCC, 0xCC)
     div.line.fill.background()
@@ -929,11 +946,16 @@ def main():
             size=15, color=GREY, align=PP_ALIGN.CENTER)
 
     annotations = [
-        ("σ²_base = 9 m²",       "Baseline GNSS noise (CLEAN signal) — filter trusts GNSS tightly"),
-        ("σ²_deg = 10,000 m²",   "Noise under full degradation — filter ignores GNSS, dead-reckons"),
-        ("P̂_calib(t)",                     "Calibrated DEGRADED probability from SENTINEL (0 = clean, 1 = degraded)"),
-        ("P₅ = 0.153",                      "Floor offset — unsupervised calibration removes cross-receiver bias"),
-        ("Kₜ shrinks when Rₜ rises",    "Filter leans on motion model when SENTINEL predicts degradation"),
+        ("σ²_base = 9 m²",
+         "Baseline GNSS noise (CLEAN signal) — filter trusts GNSS tightly"),
+        ("σ²_deg = 10,000 m²",
+         "Noise under full degradation — filter ignores GNSS, dead-reckons"),
+        ("P̂_calib(t)",
+         "Calibrated DEGRADED probability from SENTINEL (0 = clean, 1 = degraded)"),
+        ("P₅ = 0.153",
+         "Floor offset — unsupervised calibration removes cross-receiver bias"),
+        ("Kₜ shrinks when Rₜ rises",
+         "Filter leans on motion model when SENTINEL predicts degradation"),
     ]
     top = 3.18
     for term, desc in annotations:
@@ -988,7 +1010,8 @@ def main():
     # slides shift down by 1, but since we capture n_now-4..n_now-1
     # we track the correct current index at each step.
     move_slide(prs, n_now - 4, 24)   # ekf_results:  32 → 24
-    move_slide(prs, n_now - 3, 25)   # ekf_severity: after prev move still at 32 → 25
+    # ekf_severity: after prev move still at 32 → 25
+    move_slide(prs, n_now - 3, 25)
     move_slide(prs, n_now - 2, 26)   # dash_overview: 33 → 26
     move_slide(prs, n_now - 1, 27)   # dash_demo:     34 → 27
     print("7. EKF Results, Severity, Dashboard slides moved to positions 24-27")

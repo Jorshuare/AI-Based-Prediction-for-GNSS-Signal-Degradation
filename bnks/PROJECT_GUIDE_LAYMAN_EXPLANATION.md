@@ -24,7 +24,7 @@ the car can prepare (slow down, lean on its other sensors, or reroute).
   new city" result is our strongest selling point.
 - It runs in well under a millisecond — fast enough for a real vehicle.
 
-**The data:** ~150,000 labelled one-second snapshots; training on Beihang (Beijing) and Hong
+**The data:** ~150,000 labelled one-second snapshots; training on Beihang (Hangzhou) and Hong
 Kong data (62,413 windows), with Tokyo held out entirely as the cross-city zero-shot test.
 Receivers span professional units down to ordinary phone chips.
 
@@ -43,6 +43,7 @@ A car navigating with GNSS gets position fixes every second. When the signal is 
 **The old way:** A standard Kalman filter trusts GNSS equally all the time. When GNSS breaks, the filter gets confused.
 
 **Our way:** We **pre-emptively adapt the filter's trust** in GNSS based on our prediction:
+
 - When P(DEGRADED) is high → the filter says "GNSS is probably going to fail soon, so I'll lean more on the vehicle's motion model (dead-reckoning)"
 - When P(DEGRADED) is low → the filter says "GNSS is healthy, so I'll trust it to correct my drift"
 
@@ -51,15 +52,16 @@ A car navigating with GNSS gets position fixes every second. When the signal is 
 ### **Results (Synthetic Blockage Scenario)**
 
 We tested this on a **controlled simulation** (NOT real data) to validate the concept:
+
 - Synthetic 300-epoch trajectory with **artificial blockage** (epochs 120–180)
 - Blockage includes simulated noise spikes and multipath bias
 - The predictor (our model) **warns from epoch 115** (proactive, 5 seconds early)
 
-| Filter Type | Position Error During Blockage |
-|---|---|
-| Raw GNSS (no filter) | 54.4 m |
-| Standard Kalman Filter (fixed trust) | 45.6 m |
-| **Our Adaptive EKF** | **36.0 m (-34% vs raw)** |
+| Filter Type                          | Position Error During Blockage |
+| ------------------------------------ | ------------------------------ |
+| Raw GNSS (no filter)                 | 54.4 m                         |
+| Standard Kalman Filter (fixed trust) | 45.6 m                         |
+| **Our Adaptive EKF**                 | **36.0 m (-34% vs raw)**       |
 
 **Translation:** When GNSS is failing, our adaptive filter keeps position error at 36 m instead of 54 m—a **34% improvement**.
 
@@ -68,6 +70,7 @@ We tested this on a **controlled simulation** (NOT real data) to validate the co
 ### **Next Phase: Real-Data Validation (Option B)**
 
 The synthetic result is promising, but **we need real proof**. We're validating on UrbanNav Tokyo because:
+
 - **It has ground truth:** cm-level SPAN-INS post-processed trajectory (the true position)
 - **It has real blockage:** actual urban canyons and signal loss, not simulated
 - **It has IMU data:** we can build a more sophisticated 9-state EKF using accelerometer and gyro

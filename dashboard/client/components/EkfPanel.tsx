@@ -99,7 +99,7 @@ export default function EkfPanel() {
       <div className="flex items-center gap-3 border-b pb-3" style={{ borderColor: BEIHANG.line }}>
         <div className="h-1 w-8 rounded" style={{ background: BEIHANG.primary }} />
         <h3 className="text-lg font-bold tracking-tight" style={{ color: BEIHANG.primary }}>
-          {t("ekf_section_title") ?? "Adaptive Sensor-Fusion Analytics"}
+          {t("analytics_title")}
         </h3>
         <InfoDot text="How much does each filter improve GNSS positioning during satellite blockage? Compare raw GNSS against progressively smarter fusion strategies." />
       </div>
@@ -208,7 +208,7 @@ export default function EkfPanel() {
           <div className="mb-5">
             <h4 className="text-base font-bold" style={{ color: BEIHANG.ink }}>
               {t("ekf_when_title") ?? "When does adaptive-R help?"}
-              <InfoDot text="Sweeps GNSS multipath severity. With wheel-odometry aiding, fixed-R stays best — inflating R discards heading observability." />
+              <InfoDot text="Sweeps GNSS multipath severity. With wheel-odometry aiding, fixed-R stays best: inflating R discards heading observability." />
             </h4>
             <p className="mt-0.5 text-xs" style={{ color: BEIHANG.slate }}>
               Blocked-segment RMSE vs injected multipath bias · aided platform
@@ -334,13 +334,13 @@ export default function EkfPanel() {
             ))}
           </div>
 
-          {/* insight box */}
           <div className="mt-4 rounded-xl border-l-4 px-4 py-3 text-sm leading-relaxed"
             style={{ background: "#EEF2FF", color: "#1E3A5F", borderColor: BEIHANG.primary }}>
-            <strong>Key insight:</strong> With wheel-odometry + NHC + ZUPT aiding, <strong>fixed-R wins across the entire range</strong>.
-            Inflating R discards heading observability — the aiding already dead-reckons through the gap.
+            With wheel-odometry + NHC + ZUPT aiding, <strong>fixed-R wins across the entire range</strong>.
+            Inflating R discards heading observability: the aiding already dead-reckons through the gap.
             Adaptive-R is better on <em>GNSS-only platforms</em> (no IMU, no odometry).
           </div>
+
         </div>
       </div>
     </div>

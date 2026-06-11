@@ -7,35 +7,35 @@ Outputs:
 Colors match the V5 presentation palette.
 """
 
+import os
+import numpy as np
+import matplotlib.patheffects as pe
+from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
+import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
-import matplotlib.patheffects as pe
-import numpy as np
-import os
 
 os.makedirs("results/paper_figures", exist_ok=True)
 
 # ── Palette (matching V5 slide hex codes) ──────────────────────────────────
-NAVY      = "#003366"
-BLUE      = "#003893"
-MID_BLUE  = "#005BAC"
-CYAN      = "#4FC3F7"
-GREEN     = "#1B873A"
-RED       = "#C62828"
-AMBER     = "#F57F17"
-PURPLE    = "#6A1B9A"
-DARK      = "#0A1733"
-GREY      = "#333333"
-LGREY     = "#5A6A86"
+NAVY = "#003366"
+BLUE = "#003893"
+MID_BLUE = "#005BAC"
+CYAN = "#4FC3F7"
+GREEN = "#1B873A"
+RED = "#C62828"
+AMBER = "#F57F17"
+PURPLE = "#6A1B9A"
+DARK = "#0A1733"
+GREY = "#333333"
+LGREY = "#5A6A86"
 
-BG_WHITE  = "#FFFFFF"
+BG_WHITE = "#FFFFFF"
 FILL_BLUE = "#E3F2FD"
-FILL_GREEN= "#E8F5E9"
-FILL_RED  = "#FDECEA"
-FILL_AMB  = "#FFF8E1"
+FILL_GREEN = "#E8F5E9"
+FILL_RED = "#FDECEA"
+FILL_AMB = "#FFF8E1"
 FILL_NAVY = "#EEF2FF"
 FILL_PURP = "#F3E5F5"
 FILL_GREY = "#F5F7FF"
@@ -50,6 +50,7 @@ ax.axis('off')
 fig.patch.set_facecolor(BG_WHITE)
 
 # ── Helper functions ────────────────────────────────────────────────────────
+
 
 def box(ax, x, y, w, h, fill, border, title, title_color=DARK,
         body_lines=None, body_color=GREY, radius=0.18,
@@ -75,12 +76,14 @@ def box(ax, x, y, w, h, fill, border, title, title_color=DARK,
                     linespacing=1.3)
             by -= 0.185
 
+
 def top_strip(ax, x, y, w, h_strip, color):
     """Colored top strip inside a box."""
     rect = FancyBboxPatch((x, y + h_strip * 3.2 - h_strip), w, h_strip,
                           boxstyle="round,pad=0,rounding_size=0.10",
                           linewidth=0, edgecolor='none', facecolor=color, zorder=4)
     ax.add_patch(rect)
+
 
 def arrow(ax, x0, y0, x1, y1, color=LGREY, lw=1.5, label=None,
           label_size=6.5, head=0.12, style='->', bidirectional=False):
@@ -100,6 +103,7 @@ def arrow(ax, x0, y0, x1, y1, color=LGREY, lw=1.5, label=None,
                 ha='center', va='bottom', fontsize=label_size,
                 color=color, style='italic', zorder=5,
                 bbox=dict(boxstyle='round,pad=0.15', fc='white', ec='none', alpha=0.85))
+
 
 def curved_arrow(ax, x0, y0, x1, y1, color=LGREY, lw=1.5, label=None,
                  label_size=6.5, rad=0.3):
@@ -213,9 +217,9 @@ ax.text(2.68, 1.30, "✗  lat/lon excluded (geo-overfitting)", ha='center',
 
 # Sub-boxes inside SENTINEL
 sentinel_bg = FancyBboxPatch((3.88, 0.45), 3.30, 4.75,
-                              boxstyle="round,pad=0,rounding_size=0.20",
-                              linewidth=2, edgecolor=BLUE,
-                              facecolor="#F8F9FF", zorder=2)
+                             boxstyle="round,pad=0,rounding_size=0.20",
+                             linewidth=2, edgecolor=BLUE,
+                             facecolor="#F8F9FF", zorder=2)
 ax.add_patch(sentinel_bg)
 ax.text(5.53, 5.12, "SENTINEL  ML  MODEL  —  1.46 M parameters",
         ha='center', va='center', fontsize=8, color=BLUE,
@@ -267,9 +271,9 @@ ax.text(5.53, 0.35, "Focal loss γ=1.0 · class weights [1, 2, 5] · no SMOTE",
 # ═══════════════════════════════════════════════════════════════════════════
 
 ekf_bg = FancyBboxPatch((7.38, 0.45), 2.55, 4.75,
-                         boxstyle="round,pad=0,rounding_size=0.20",
-                         linewidth=2, edgecolor=GREEN,
-                         facecolor="#F5FFF7", zorder=2)
+                        boxstyle="round,pad=0,rounding_size=0.20",
+                        linewidth=2, edgecolor=GREEN,
+                        facecolor="#F5FFF7", zorder=2)
 ax.add_patch(ekf_bg)
 ax.text(8.65, 5.12, "9-STATE ADAPTIVE EKF",
         ha='center', va='center', fontsize=8, color=GREEN,
@@ -335,9 +339,9 @@ box(ax, 10.08, 2.20, 3.15, 0.76, FILL_AMB, AMBER,
 
 # Dashboard
 dash_bg = FancyBboxPatch((10.08, 0.20), 3.15, 1.78,
-                          boxstyle="round,pad=0,rounding_size=0.15",
-                          linewidth=2, edgecolor=MID_BLUE,
-                          facecolor=FILL_NAVY, zorder=3)
+                         boxstyle="round,pad=0,rounding_size=0.15",
+                         linewidth=2, edgecolor=MID_BLUE,
+                         facecolor=FILL_NAVY, zorder=3)
 ax.add_patch(dash_bg)
 ax.text(11.65, 1.88, "DASHBOARD  (FastAPI + Next.js)",
         ha='center', va='top', fontsize=7.5, color=BLUE,
@@ -428,7 +432,7 @@ badge = FancyBboxPatch((3.95, 0.08), 3.15, 0.30,
                        boxstyle="round,pad=0,rounding_size=0.10",
                        linewidth=1.2, edgecolor=RED, facecolor=FILL_RED, zorder=5)
 ax.add_patch(badge)
-ax.text(5.53, 0.23, "★  Zero-shot cross-city:  trained Beijing + HK  |  tested Tokyo (never in training)",
+ax.text(5.53, 0.23, "★  Zero-shot cross-city:  trained Hangzhou + HK  |  tested Tokyo (never in training)",
         ha='center', va='center', fontsize=7, color=RED,
         fontweight='bold', zorder=6)
 

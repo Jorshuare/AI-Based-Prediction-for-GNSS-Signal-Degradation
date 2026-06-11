@@ -45,7 +45,7 @@ function DashboardInner() {
   const [muted, setMuted] = useState(false);
   const [connected, setConnected] = useState(false);
   const [playing, setPlaying] = useState(false);
-  const [speed, setSpeed] = useState(15);
+  const [speed, setSpeed] = useState(30);
   const [stream, setStream] = useState<Prediction[]>([]);
   const [fullPath, setFullPath] = useState<Prediction[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -177,9 +177,10 @@ function DashboardInner() {
                 <>
                   <Card><LeadTimeCard warnEpoch={warnEpoch} onsetEpoch={onsetEpoch} /></Card>
                   <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-                    <ChartCard title={t("trajectory")} hint="Full route coloured by predicted risk. The pulsing dot is the current replay position. Green = safe, amber = warning, red = degraded.">
+                    <ChartCard title={t("trajectory")} hint="Route revealed epoch by epoch as streaming progresses. Each dot is coloured by predicted risk at that point. The pulsing marker is the current position.">
                       <TrajectoryMap
                         path={fullPath}
+                        currentIdx={playing || currentIdx > 0 ? currentIdx : undefined}
                         liveHead={stream.length ? stream[stream.length - 1] : null}
                         height={MAP_H}
                       />

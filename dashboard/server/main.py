@@ -102,8 +102,16 @@ def load_ekf() -> dict:
 
 
 FUSION_SOURCES = {
-    "trimble": "Trimble · RTKLIB SPP · GPS+GLONASS dual-freq",
-    "ublox":   "u-blox F9P · georinex SPP · GPS L1 only",
+    "trimble":      "Shinjuku · Trimble RTKLIB SPP · GPS+GLONASS dual-freq",
+    "ublox":        "Shinjuku · u-blox F9P · georinex SPP · GPS L1 only",
+    "odaiba_ublox": "Odaiba · u-blox F9P · georinex SPP · GPS L1 only",
+}
+
+# ENU origin (first valid GNSS fix, computed from ECEF via spp_rinex)
+FUSION_ORIGINS: dict[str, tuple[float, float]] = {
+    "trimble":      (35.687165, 139.692026),  # Shinjuku
+    "ublox":        (35.687165, 139.692026),  # Shinjuku (same drive)
+    "odaiba_ublox": (35.629353, 139.787146),  # Odaiba
 }
 
 
@@ -125,8 +133,11 @@ def load_fusion(source: str = "trimble") -> dict:
         return [[round(float(p[0]), 2), round(float(p[1]), 2)] for p in a[sl]]
 
     summary = json.loads(summ.read_text())
+    origin = FUSION_ORIGINS.get(source, (35.687165, 139.692026))
     return {
         "summary": summary,
+        "origin_lat": origin[0],
+        "origin_lon": origin[1],
         "truth": xy(z["truth"]),
         "gnss": xy(z["gnss"]),
         "aided_fixed": xy(z["aided_fixed"]),

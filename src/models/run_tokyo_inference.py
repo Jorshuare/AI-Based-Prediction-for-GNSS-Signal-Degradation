@@ -77,15 +77,64 @@ def run(features_csv: Path, stem: str, out_dir: Path,
             feat[c] = 0.0
     feat[FEATURE_NAMES] = feat[FEATURE_NAMES].fillna(0.0)
 
-    # ── ENU positions ─────────────────────────────────────────────────────────
+    # ── ENU positions — merge from SPAN-INS reference.csv ────────────────────
+    # The features CSV has no lat/lon (extracted from RINEX obs, not position).
+    # Use the reference.csv ground-truth positions aligned by timestamp.
     pos = pd.DataFrame({"timestamp": feat.get("timestamp", pd.RangeIndex(len(feat)))})
-    if "lat" in feat.columns and feat["lat"].notna().any():
-        v    = feat["lat"].notna() & feat["lon"].notna()
-        lat0 = float(feat.loc[v, "lat"].iloc[0])
-        lon0 = float(feat.loc[v, "lon"].iloc[0])
-        x, y = latlon_to_enu(feat["lat"].values, feat["lon"].values, lat0, lon0)
-        pos["lat"] = feat["lat"].values
-        pos["lon"] = feat["lon"].values
+
+    ref_file = features_csv.parents[2] / "raw" / "public" / "urbannav" / "Tokyo" / features_csv.stem.replace("tokyo_", "").replace("_features", "").capitalize() / "reference.csv"
+    if not ref_file.exists():
+        # Try lower-case folder name
+        cap = features_csv.stem.replace("tokyo_", "").replace("_features", "")
+        for candidate in features_csv.parents[2].rglob("reference.csv"):
+            if cap in str(candidate).lower():
+                ref_file = candidate
+                break
+
+    lat_arr = np.full(len(feat), np.nan)
+    lon_arr = np.full(len(feat), np.nan)
+
+    if ref_file.exists():
+        print(f"[info] Merging positions from {ref_file}")
+        import datetime
+        ref = pd.read_csv(ref_file)
+        ref.columns = ref.columns.str.strip()
+        gps_epoch = datetime.datetime(1980, 1, 6, tzinfo=datetime.timezone.utc)
+        ref_ts = pd.to_datetime([
+            gps_epoch + datetime.timedelta(weeks=int(w), seconds=float(t))
+            for w, t in zip(ref["GPS Week"], ref["GPS TOW (s)"])
+        ], utc=True)
+        ref_lat = ref["Latitude (deg)"].values
+        ref_lon = ref["Longitude (deg)"].values
+
+        feat_ts = pd.to_datetime(feat["timestamp"], format="mixed", utc=True)
+
+        # Nearest-neighbour join within 0.2 s tolerance
+        ref_idx  = ref_ts.values.astype("int64")  # nanoseconds
+        feat_idx = feat_ts.values.astype("int64")
+        tol_ns   = int(0.2e9)  # 0.2 s
+
+        for i, ft in enumerate(feat_idx):
+            diff = np.abs(ref_idx - ft)
+            best = int(np.argmin(diff))
+            if diff[best] <= tol_ns:
+                lat_arr[i] = ref_lat[best]
+                lon_arr[i] = ref_lon[best]
+
+        filled = np.sum(~np.isnan(lat_arr))
+        print(f"[info]  Matched {filled}/{len(feat)} epochs to reference positions")
+    else:
+        print(f"[warn] reference.csv not found at {ref_file} — positions will be NaN")
+
+    if not np.all(np.isnan(lat_arr)):
+        v    = ~np.isnan(lat_arr)
+        lat0 = float(lat_arr[v][0])
+        lon0 = float(lon_arr[v][0])
+        x, y = latlon_to_enu(lat_arr, lon_arr, lat0, lon0)
+        x[np.isnan(lat_arr)] = np.nan
+        y[np.isnan(lat_arr)] = np.nan
+        pos["lat"] = lat_arr
+        pos["lon"] = lon_arr
         pos["x"]   = x
         pos["y"]   = y
     else:

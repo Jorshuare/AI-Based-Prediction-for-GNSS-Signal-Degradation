@@ -258,7 +258,7 @@ table_slide("Per-class performance at +5 s",
 figure_slide("Ablation — component contribution", "fig04_ablation.png",
              "Full vs LSTM-only vs Transformer-only; full model wins on all metrics.")
 table_slide("KEY RESULT — cross-city generalisation (Tokyo, never seen)",
-            ["Model", "Beihang/Beijing", "Tokyo", "Tokyo DEGRADED F1"],
+            ["Model", "Beihang/Hangzhou", "Tokyo", "Tokyo DEGRADED F1"],
             [["DL + XGBoost ENSEMBLE", "0.911", "0.892", "0.896"],
                 ["SENTINEL-GNSS (DL)", "0.822", "0.649", "0.753"],
                 ["XGBoost", "0.919", "0.821", "0.784"],

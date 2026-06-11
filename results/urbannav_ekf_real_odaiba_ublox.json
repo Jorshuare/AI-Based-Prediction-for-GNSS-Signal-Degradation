@@ -1,0 +1,44 @@
+{
+  "scenario": "Odaiba",
+  "gnss_source": "ublox",
+  "engine": "georinex GPS-only L1 SPP on rover_ublox.obs",
+  "data_mode": "FULLY REAL: real GNSS positions + real IMU + real wheel odometry + cm truth",
+  "timestamp": "2026-06-10T17:59:40.219629",
+  "n_epochs": 12409,
+  "n_real_fixes": 12392,
+  "n_degraded_epochs": 1497,
+  "mean_sats": 6.72,
+  "rmse_overall": {
+    "gnss_raw": 32.432,
+    "cv_kf": 28.175,
+    "aided_ekf_fixed": 44.421,
+    "aided_ekf_adaptive": 45.972
+  },
+  "rmse_degraded_segment": {
+    "gnss_raw": 59.126,
+    "cv_kf": 46.131,
+    "aided_ekf_fixed": 48.708,
+    "aided_ekf_adaptive": 51.446
+  },
+  "degraded_gain_vs_raw": {
+    "gnss_raw": 0.0,
+    "cv_kf": 22.0,
+    "aided_ekf_fixed": 17.6,
+    "aided_ekf_adaptive": 13.0
+  },
+  "config": {
+    "dt": 0.1,
+    "r_base_m": 8.0,
+    "r_degraded_m": 40.0,
+    "degraded_def": "real GNSS fix with <=5 satellites (poor geometry)",
+    "p_degraded_source": "nsat proxy (P=0 at nsat>=5, P=1 at nsat<=2)",
+    "chi2_gate_dof2_pct": "99.9% (threshold 13.82)"
+  },
+  "_methodology": [
+    "FULLY REAL GNSS via georinex GPS-only L1 SPP on rover_ublox.obs. Errors are REAL urban multipath/NLOS, not synthetic.",
+    "The EKF predicts at 10 Hz on real IMU + wheel-odometry and updates on real fixes.",
+    "Degradation is defined by REAL satellite geometry (<=5 sats), not injected windows.",
+    "P(DEGRADED) source: nsat proxy (P=0 at nsat>=5, P=1 at nsat<=2).",
+    "Chi-squared innovation gate (99.9%, 2-DOF): outlier fixes are soft-rejected even at P=0."
+  ]
+}

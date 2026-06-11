@@ -623,7 +623,7 @@ def run_phase_2a(scenario='Shinjuku'):
     return result
 
 
-def load_real_gnss(source: str):
+def load_real_gnss(source: str, scenario: str = 'Shinjuku'):
     """Load a real GNSS position track.
 
     Returns (tow, ecef Nx3, nsat, horiz_std_m)
@@ -634,13 +634,15 @@ def load_real_gnss(source: str):
                      For Trimble comes from RTKLIB sdx/sdy columns -- the receiver's
                      own uncertainty estimate. For u-blox not available (use None).
 
-    source='ublox'   : georinex GPS-only SPP  (results/urbannav_spp.npz)
-    source='trimble' : RTKLIB single-point on rover_trimble.obs (results/tokyo_trimble_spp.pos)
+    source='ublox'   : georinex GPS-only SPP (results/urbannav_spp[_<scenario>].npz)
+    source='trimble' : RTKLIB single-point on rover_trimble.obs (results/tokyo_trimble_spp.pos, Shinjuku only)
     """
     if source == 'ublox':
-        f = RESULTS / "urbannav_spp.npz"
+        stem = "urbannav_spp" if scenario == 'Shinjuku' else f"urbannav_spp_{scenario.lower()}"
+        f = RESULTS / f"{stem}.npz"
         if not f.exists():
-            raise FileNotFoundError("run `python -m src.models.spp_rinex` first")
+            sc_flag = "" if scenario == 'Shinjuku' else f" --scenario {scenario}"
+            raise FileNotFoundError(f"run `python -m src.models.spp_rinex{sc_flag}` first")
         z = np.load(f)
         return z["tow"], z["ecef"], z["nsat"], None  # no per-fix sigma for npz
     elif source == 'trimble':
@@ -685,7 +687,7 @@ def run_phase_2a_real(scenario='Shinjuku', gnss_source='trimble'):
     scenario_dir = DATA / scenario
     print("[1/5] Loading real GNSS, IMU, wheel-odometry, ground truth...")
     try:
-        spp_tow, spp_ecef, spp_nsat, spp_horiz_std = load_real_gnss(gnss_source)
+        spp_tow, spp_ecef, spp_nsat, spp_horiz_std = load_real_gnss(gnss_source, scenario)
     except FileNotFoundError as e:
         print(f"  ERROR: {e}")
         return None
@@ -855,15 +857,17 @@ def run_phase_2a_real(scenario='Shinjuku', gnss_source='trimble'):
             "Chi-squared innovation gate (99.9%, 2-DOF): outlier fixes are soft-rejected even at P=0.",
         ],
     }
-    out_file = RESULTS / f"urbannav_ekf_real_{gnss_source}.json"
+    sc_pfx = "" if scenario == "Shinjuku" else f"_{scenario.lower()}"
+    out_file = RESULTS / f"urbannav_ekf_real{sc_pfx}_{gnss_source}.json"
     with open(out_file, "w") as f:
         json.dump(result, f, indent=2)
     print(f"[4/5] Saved -> {out_file}")
-    np.savez(RESULTS / f"urbannav_ekf_real_{gnss_source}_tracks.npz",
+    tracks_name = f"urbannav_ekf_real{sc_pfx}_{gnss_source}_tracks.npz"
+    np.savez(RESULTS / tracks_name,
              truth=truth_enu, gnss=gnss_xy, gnss_mask=gnss_mask,
              cv=cv, aided_fixed=aided_fixed, aided_adapt=aided_adapt,
              is_degraded=is_degraded, nsat=nsat_grid, p_degraded=p_degraded)
-    print(f"[5/5] Saved tracks -> urbannav_ekf_real_{gnss_source}_tracks.npz\n")
+    print(f"[5/5] Saved tracks -> {tracks_name}\n")
     return result
 
 
@@ -1099,18 +1103,24 @@ def run_phase_2b_sentinel(gnss_source: str = 'trimble') -> dict | None:
 
 if __name__ == "__main__":
     import sys
+    # -- parse --scenario flag (default Shinjuku) --
+    sc = "Shinjuku"
+    for i, a in enumerate(sys.argv):
+        if a == "--scenario" and i + 1 < len(sys.argv):
+            sc = sys.argv[i + 1].capitalize()
+            break
     if "--sentinel" in sys.argv:
         src = "ublox" if "--ublox" in sys.argv else "trimble"
         run_phase_2b_sentinel(gnss_source=src)
     elif "--real" in sys.argv:
         src = "ublox" if "--ublox" in sys.argv else "trimble"
         if "--both" in sys.argv:
-            run_phase_2a_real(scenario='Shinjuku', gnss_source='trimble')
-            run_phase_2a_real(scenario='Shinjuku', gnss_source='ublox')
+            run_phase_2a_real(scenario=sc, gnss_source='trimble')
+            run_phase_2a_real(scenario=sc, gnss_source='ublox')
         else:
-            run_phase_2a_real(scenario='Shinjuku', gnss_source=src)
+            run_phase_2a_real(scenario=sc, gnss_source=src)
     else:
-        results = run_phase_2a(scenario='Shinjuku')
+        results = run_phase_2a(scenario=sc)
         if results:
             print("="*80)
             print("Phase 2a COMPLETE -- Real-data EKF validation successful")
