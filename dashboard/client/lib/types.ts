@@ -85,6 +85,8 @@ export interface FusionResult {
   gnss: [number, number][];
   aided_fixed: [number, number][];
   aided_adapt: [number, number][];
+  aided_huber?: [number, number][];
+  aided_pf?: [number, number][];
   is_degraded: boolean[];
   nsat: number[];
   p_degraded: number[];

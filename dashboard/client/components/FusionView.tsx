@@ -14,10 +14,12 @@ const TILE_SIZE = 256;
 const MAP_ZOOM = 17;
 
 const SERIES = [
-  { key: "truth" as const, color: "#43A047", labelKey: "series_truth", w: 7 },
-  { key: "gnss" as const, color: "#EF5350", labelKey: "series_gnss", w: 3.5, dash: "6 5" },
-  { key: "aided_fixed" as const, color: EKF_FIXED_COLOR, labelKey: "series_fixed", w: 7 },
-  { key: "aided_adapt" as const, color: "#FFB300", labelKey: "series_adapt", w: 5, dash: "10 5" },
+  { key: "truth" as const,       color: "#43A047",   labelKey: "series_truth",  w: 7 },
+  { key: "gnss" as const,        color: "#EF5350",   labelKey: "series_gnss",   w: 3.5, dash: "6 5" },
+  { key: "aided_fixed" as const, color: EKF_FIXED_COLOR, labelKey: "series_fixed",  w: 7 },
+  { key: "aided_adapt" as const, color: "#FFB300",   labelKey: "series_adapt",  w: 5, dash: "10 5" },
+  { key: "aided_huber" as const, color: "#7C4DFF",   labelKey: "series_huber",  w: 5, dash: "4 3" },
+  { key: "aided_pf" as const,    color: "#0097A7",   labelKey: "series_pf",     w: 5, dash: "8 4" },
 ];
 type SeriesKey = (typeof SERIES)[number]["key"];
 
@@ -62,7 +64,8 @@ export default function FusionView({ minimal }: { minimal: boolean }) {
   const [f, setF] = useState<FusionResult | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [show, setShow] = useState<Record<string, boolean>>({
-    truth: true, gnss: true, aided_fixed: true, aided_adapt: true,
+    truth: true, gnss: true, aided_fixed: true, aided_adapt: false,
+    aided_huber: false, aided_pf: false,
   });
   const [viewMode, setViewMode] = useState<"svg" | "map">("svg");
   const [mapRef, mapW] = useElementWidth<HTMLDivElement>();
@@ -76,7 +79,10 @@ export default function FusionView({ minimal }: { minimal: boolean }) {
   // ── ENU projection geometry (for SVG mode) ──────────────────────────────────
   const svgGeom = useMemo(() => {
     if (!f) return null;
-    const all = [...f.truth, ...f.aided_fixed];
+    const all = [
+      ...f.truth, ...f.aided_fixed,
+      ...(f.aided_huber ?? []), ...(f.aided_pf ?? []),
+    ];
     const xs = all.map((p) => p[0]), ys = all.map((p) => p[1]);
     const minX = Math.min(...xs), maxX = Math.max(...xs);
     const minY = Math.min(...ys), maxY = Math.max(...ys);
@@ -163,17 +169,28 @@ export default function FusionView({ minimal }: { minimal: boolean }) {
     return <Card>{SourcePicker}<p className="mt-3 text-sm" style={{ color: BEIHANG.slate }}>Loading real fusion…</p></Card>;
 
   const s = f!.summary;
-  const rmseOrder = ["gnss_raw", "cv_kf", "aided_ekf_fixed", "aided_ekf_adaptive"];
+  // Show all methods present in the summary data
+  const rmseOrder = ["gnss_raw", "cv_kf", "aided_ekf_fixed", "aided_ekf_adaptive",
+                     "aided_ekf_huber", "aided_pf_student_t"].filter(
+    (k) => s.rmse_degraded_segment[k] != null
+  );
   const rmseLabel: Record<string, string> = {
     gnss_raw: t("rmse_raw"), cv_kf: t("rmse_simplekf"),
     aided_ekf_fixed: t("rmse_fixed"), aided_ekf_adaptive: t("rmse_adapt"),
+    aided_ekf_huber: t("rmse_huber"), aided_pf_student_t: t("rmse_pf"),
   };
   const maxR = Math.max(...rmseOrder.map((k) => s.rmse_degraded_segment[k] ?? 0));
-  const bestGain = s.degraded_gain_vs_raw["aided_ekf_fixed"];
+  // Highlight best non-raw method (highest degraded gain)
+  const bestKey = rmseOrder.filter((k) => k !== "gnss_raw")
+    .reduce((a, b) => (s.degraded_gain_vs_raw[a] ?? 0) > (s.degraded_gain_vs_raw[b] ?? 0) ? a : b,
+      "aided_ekf_fixed");
+  const bestGain = s.degraded_gain_vs_raw[bestKey] ?? s.degraded_gain_vs_raw["aided_ekf_fixed"];
 
   const pathOf = (key: SeriesKey) => {
     if (!svgGeom) return "";
-    return f![key].map((p, i) => {
+    const track = f![key] as [number, number][] | undefined;
+    if (!track) return "";
+    return track.map((p, i) => {
       const q = svgGeom.proj(p);
       return `${i === 0 ? "M" : "L"}${q[0].toFixed(1)},${q[1].toFixed(1)}`;
     }).join(" ");
@@ -181,7 +198,9 @@ export default function FusionView({ minimal }: { minimal: boolean }) {
 
   const mapPathOf = (key: SeriesKey) => {
     if (!mapGeom) return "";
-    const pts = mapGeom.projectTrack(f![key] as [number, number][]);
+    const track = f![key] as [number, number][] | undefined;
+    if (!track) return "";
+    const pts = mapGeom.projectTrack(track);
     return pts.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
   };
 
@@ -207,7 +226,7 @@ export default function FusionView({ minimal }: { minimal: boolean }) {
         <Card pad={false}>
           <div className="flex items-center gap-2 px-6 pt-6 pb-3">
             <h3 className="text-lg font-bold tracking-tight" style={{ color: BEIHANG.primary }}>{t("where_car")}</h3>
-            <InfoDot text="Green = ground truth (SPAN-INS cm-level). Teal = Aided EKF fixed-R (recommended). Red dashed = raw GNSS. Yellow dashed = adaptive EKF. Closer to green = better." />
+            <InfoDot text="Green = ground truth (SPAN-INS cm-level). Teal = EKF fixed-R. Yellow dashed = EKF adaptive. Purple dashed = EKF Huber robust. Cyan dashed = PF Student-t. Red dashed = raw GNSS. Closer to green = better. Toggle tracks using the legend below." />
             {/* View mode toggle */}
             <div className="ml-auto flex items-center gap-1 rounded-xl border p-1" style={{ borderColor: BEIHANG.line }}>
               <button onClick={() => setViewMode("svg")}
@@ -268,7 +287,11 @@ export default function FusionView({ minimal }: { minimal: boolean }) {
           </div>
 
           <div className="flex flex-wrap gap-2 px-6 pb-5">
-            {SERIES.map((ss) => (
+            {SERIES.filter((ss) => {
+              if (ss.key === "aided_huber") return !!f?.aided_huber;
+              if (ss.key === "aided_pf")    return !!f?.aided_pf;
+              return true;
+            }).map((ss) => (
               <button key={ss.key} onClick={() => setShow((p) => ({ ...p, [ss.key]: !p[ss.key] }))}
                 className="flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold transition"
                 style={{ background: show[ss.key] ? "#fff" : BEIHANG.mist, color: BEIHANG.ink, opacity: show[ss.key] ? 1 : 0.5, borderColor: BEIHANG.line }}>
@@ -286,7 +309,7 @@ export default function FusionView({ minimal }: { minimal: boolean }) {
           <div className="flex flex-col gap-3.5">
             {rmseOrder.map((k, i) => {
               const v = s.rmse_degraded_segment[k] ?? 0;
-              const best = k === "aided_ekf_fixed";
+              const best = k === bestKey;
               const gain = s.degraded_gain_vs_raw[k];
               return (
                 <div key={k}>
