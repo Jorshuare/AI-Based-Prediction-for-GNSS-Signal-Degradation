@@ -102,8 +102,16 @@ def load_ekf() -> dict:
 
 
 FUSION_SOURCES = {
-    "trimble": "UrbanNav Tokyo · Trimble (RTKLIB)",
-    "ublox": "UrbanNav Tokyo · u-blox (SPP)",
+    "trimble":      "Shinjuku · Trimble RTKLIB SPP · GPS+GLONASS dual-freq",
+    "ublox":        "Shinjuku · u-blox F9P · georinex SPP · GPS L1 only",
+    "odaiba_ublox": "Odaiba · u-blox F9P · georinex SPP · GPS L1 only",
+}
+
+# ENU origin (first valid GNSS fix, computed from ECEF via spp_rinex)
+FUSION_ORIGINS: dict[str, tuple[float, float]] = {
+    "trimble":      (35.687165, 139.692026),  # Shinjuku
+    "ublox":        (35.687165, 139.692026),  # Shinjuku (same drive)
+    "odaiba_ublox": (35.629353, 139.787146),  # Odaiba
 }
 
 
@@ -125,8 +133,11 @@ def load_fusion(source: str = "trimble") -> dict:
         return [[round(float(p[0]), 2), round(float(p[1]), 2)] for p in a[sl]]
 
     summary = json.loads(summ.read_text())
-    return {
+    origin = FUSION_ORIGINS.get(source, (35.687165, 139.692026))
+    payload: dict = {
         "summary": summary,
+        "origin_lat": origin[0],
+        "origin_lon": origin[1],
         "truth": xy(z["truth"]),
         "gnss": xy(z["gnss"]),
         "aided_fixed": xy(z["aided_fixed"]),
@@ -135,6 +146,12 @@ def load_fusion(source: str = "trimble") -> dict:
         "nsat": [int(s) for s in z["nsat"][sl]],
         "p_degraded": [round(float(p), 3) for p in z["p_degraded"][sl]],
     }
+    # Include robust methods when present (added in Phase 2b/2c)
+    if "aided_huber" in z:
+        payload["aided_huber"] = xy(z["aided_huber"])
+    if "aided_pf" in z:
+        payload["aided_pf"] = xy(z["aided_pf"])
+    return payload
 
 
 # --------------------------------------------------------------------------- #

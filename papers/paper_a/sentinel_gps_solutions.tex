@@ -43,7 +43,7 @@
 \affil*[1]{%
   \orgdiv{School of Electronics and Information Engineering},
   \orgname{Beihang University},
-  \orgaddress{\city{Beijing}, \postcode{100191}, \country{China}}}
+  \orgaddress{\city{Hangzhou}, \postcode{100191}, \country{China}}}
 
 % ── Abstract (GPS Solutions: unstructured, ≤200 words, no abbreviations) ──────
 \abstract{%
@@ -150,7 +150,7 @@ The main contributions of this paper are:
 
   \item A comprehensive evaluation against nine baselines (two heuristic,
     two oversampled tree models, two standard tree models, one persistence
-    baseline, and two ablations) on a multi-scenario dataset spanning Beijing
+    baseline, and two ablations) on a multi-scenario dataset spanning Hangzhou
     and Hong Kong urban environments, demonstrating that SENTINEL's
     degraded-class recall of 0.847 at the 5-second horizon exceeds
     tree-based methods by 12--17 percentage points on the safety-critical
@@ -253,10 +253,10 @@ Extended Kalman Filter, as demonstrated in the companion paper
 
 Training and in-domain evaluation draw on two complementary urban data
 sources.  The primary source is the RCSSTEAP dataset collected at Beihang
-University and in the surrounding Beijing urban area, comprising five
+University and in the surrounding Hangzhou urban area, comprising five
 scenarios (A--E) with varying obstruction severity---from semi-open campus
 roads (Scenario~D: clean baseline) to dense high-rise corridors (Scenario~B:
-frequent blockage and multipath).  All Beijing recordings use u-blox F9P
+frequent blockage and multipath).  All Hangzhou recordings use u-blox F9P
 dual-frequency (GPS~$+$~GLONASS) receivers at 1~Hz logging standard
 NMEA-0183 sentences.  Ground truth positions are provided by a post-processed
 SPAN-CPT reference trajectory at centimetre-level accuracy.
@@ -267,7 +267,7 @@ environments are included in the training set
 urban canyon (Whampoa), harsh urban canyon (Mong Kok), and cross-harbour
 tunnel.  Hong Kong recordings use the same u-blox F9P dual-frequency receiver
 family and are labelled by the same position-error thresholds.  The combined
-training corpus spans \textbf{two cities} (Beijing and Hong Kong), totalling
+training corpus spans \textbf{two cities} (Hangzhou and Hong Kong), totalling
 62,413 sliding windows (no-oversampling split) across five controlled
 obstruction scenarios and diverse urban morphology.  UrbanNav Tokyo data are
 explicitly excluded from training and reserved for zero-shot cross-city
@@ -279,10 +279,10 @@ Cross-city generalisation is evaluated on the UrbanNav Tokyo Shinjuku subset
 \cite{[AuthorYear_UrbanNav_dataset]}, collected independently using a u-blox
 M8T single-frequency (GPS only) receiver in Tokyo's Shinjuku district.
 This dataset was \textbf{entirely excluded from training}.  The Tokyo subset
-introduces three simultaneous domain shifts relative to the Beijing and
+introduces three simultaneous domain shifts relative to the Hangzhou and
 Hong Kong training data: receiver hardware (M8T vs.\ F9P), satellite
 constellation (GPS only vs.\ GPS+GLONASS), and urban morphology (Tokyo
-high-rise grid vs.\ Beijing ring-road and Hong Kong vertical-canyon
+high-rise grid vs.\ Hangzhou ring-road and Hong Kong vertical-canyon
 patterns).  This combination makes it a stringent zero-shot test of learned
 feature generalisability.
 
@@ -474,11 +474,11 @@ ablation categories:
 
 \subsection{Cross-City Generalisation Protocol}
 
-Models trained on the RCSSTEAP Beijing dataset are evaluated \emph{zero-shot}
+Models trained on the RCSSTEAP Hangzhou dataset are evaluated \emph{zero-shot}
 on UrbanNav Tokyo---no fine-tuning, no Tokyo labels, no re-training.  Two
 ensemble strategies are tested: soft-voting (average of SENTINEL and XGBoost
 posterior probabilities) and stacking (logistic regression meta-learner
-trained on a small held-out Beijing split).
+trained on a small held-out Hangzhou split).
 
 % ──────────────────────────────────────────────────────────────────────────────
 \section{Results}\label{sec:results}
@@ -622,7 +622,7 @@ domains.  Fig.~\ref{fig:cross_city} visualises this result.
 \centering
 \includegraphics[width=0.95\columnwidth]{figures/fig_cross_city.pdf}
 \caption{%
-  In-domain (Beijing) versus cross-city (Tokyo) Macro-F1 for four models.
+  In-domain (Hangzhou) versus cross-city (Tokyo) Macro-F1 for four models.
   SENTINEL's domain shift is largest individually (0.172 drop) but the
   soft-voting ensemble recovers to within 0.029 of the RF in-domain
   performance.}\label{fig:cross_city}
@@ -670,7 +670,7 @@ demonstrated for the navigation application in \cite{[AuthorYear_Paper_B_TITS]}.
 \subsection{Limitations}
 
 Three main limitations constrain the current results.  First, the training
-data spans two cities (Beijing and Hong Kong) within a single receiver family
+data spans two cities (Hangzhou and Hong Kong) within a single receiver family
 (u-blox F9P); geographic diversity beyond East Asia and hardware diversity
 beyond the u-blox F9P would further strengthen the generalisation claim.  Second, the 30-second window length is fixed; an adaptive window
 strategy may better serve environments with varying obstruction scale.

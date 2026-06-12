@@ -1,0 +1,29 @@
+{
+  "nmea_file": "C:\\Users\\Joel\\Desktop\\Beihang University\\Team-Pilot-Project\\data\\processed\\tokyo\\tokyo_shinjuku_features.csv",
+  "n_epochs": 31265,
+  "window_size": 30,
+  "receiver_tier": 1,
+  "status": "ok",
+  "source": "UrbanNav Tokyo \u00b7 Shinjuku \u00b7 Trimble",
+  "note": "Pre-processed features (zero-shot cross-city test set)",
+  "class_counts_5s": {
+    "CLEAN": 28564,
+    "WARNING": 2170,
+    "DEGRADED": 502
+  },
+  "mean_p_degraded_5s": 0.1806,
+  "class_counts_15s": {
+    "CLEAN": 27355,
+    "WARNING": 2869,
+    "DEGRADED": 1012
+  },
+  "mean_p_degraded_15s": 0.2088,
+  "class_counts_30s": {
+    "CLEAN": 24170,
+    "WARNING": 3550,
+    "DEGRADED": 3516
+  },
+  "mean_p_degraded_30s": 0.2201,
+  "first_degraded_window_5s": 4206,
+  "predictions_csv": "C:\\Users\\Joel\\Desktop\\Beihang University\\Team-Pilot-Project\\results\\inference\\tokyo_shinjuku_predictions.csv"
+}

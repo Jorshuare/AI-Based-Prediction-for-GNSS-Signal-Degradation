@@ -623,7 +623,7 @@ def run_phase_2a(scenario='Shinjuku'):
     return result
 
 
-def load_real_gnss(source: str):
+def load_real_gnss(source: str, scenario: str = 'Shinjuku'):
     """Load a real GNSS position track.
 
     Returns (tow, ecef Nx3, nsat, horiz_std_m)
@@ -634,13 +634,15 @@ def load_real_gnss(source: str):
                      For Trimble comes from RTKLIB sdx/sdy columns -- the receiver's
                      own uncertainty estimate. For u-blox not available (use None).
 
-    source='ublox'   : georinex GPS-only SPP  (results/urbannav_spp.npz)
-    source='trimble' : RTKLIB single-point on rover_trimble.obs (results/tokyo_trimble_spp.pos)
+    source='ublox'   : georinex GPS-only SPP (results/urbannav_spp[_<scenario>].npz)
+    source='trimble' : RTKLIB single-point on rover_trimble.obs (results/tokyo_trimble_spp.pos, Shinjuku only)
     """
     if source == 'ublox':
-        f = RESULTS / "urbannav_spp.npz"
+        stem = "urbannav_spp" if scenario == 'Shinjuku' else f"urbannav_spp_{scenario.lower()}"
+        f = RESULTS / f"{stem}.npz"
         if not f.exists():
-            raise FileNotFoundError("run `python -m src.models.spp_rinex` first")
+            sc_flag = "" if scenario == 'Shinjuku' else f" --scenario {scenario}"
+            raise FileNotFoundError(f"run `python -m src.models.spp_rinex{sc_flag}` first")
         z = np.load(f)
         return z["tow"], z["ecef"], z["nsat"], None  # no per-fix sigma for npz
     elif source == 'trimble':
@@ -685,7 +687,7 @@ def run_phase_2a_real(scenario='Shinjuku', gnss_source='trimble'):
     scenario_dir = DATA / scenario
     print("[1/5] Loading real GNSS, IMU, wheel-odometry, ground truth...")
     try:
-        spp_tow, spp_ecef, spp_nsat, spp_horiz_std = load_real_gnss(gnss_source)
+        spp_tow, spp_ecef, spp_nsat, spp_horiz_std = load_real_gnss(gnss_source, scenario)
     except FileNotFoundError as e:
         print(f"  ERROR: {e}")
         return None
@@ -794,10 +796,40 @@ def run_phase_2a_real(scenario='Shinjuku', gnss_source='trimble'):
     # These are the EKF's prior on GNSS accuracy -- should bracket the real error range.
     # Trimble SPP in Shinjuku: overall RMSE ~28 m (all fixes), degraded window ~47 m.
     # u-blox GPS-only SPP:     overall RMSE ~54 m, degraded window ~78 m.
+    from .pf_9state import PF9State, PFParams
+
     r_base, r_deg = (4.0, 40.0) if gnss_source == 'trimble' else (8.0, 40.0)
-    params = EKF9StateParams(dt=dt, r_base=r_base, r_degraded=r_deg)
+    params       = EKF9StateParams(dt=dt, r_base=r_base, r_degraded=r_deg)
+    # Huber threshold c: must be calibrated to the actual GPS error scale, not just r_base.
+    # The normalised residual is |y| / sigma where sigma = sqrt(HP H^T + R) ≈ r_base when
+    # P is small. So threshold = c × r_base meters.
+    # Trimble r_base=4m: c=5 → 20m threshold. Trimble clean errors ~10-20m, NLOS ~20-50m.
+    #   Some valid GPS updates exceed 20m and get downweighted → slight performance loss
+    #   vs fixed-R, but major outliers (>20m) in degraded windows are correctly penalised.
+    # u-blox r_base=8m: c=30 → 240m threshold. u-blox 99th-percentile innovation=209m;
+    #   normal NLOS errors (30-80m) pass through unpenalised; only GPS catastrophes
+    #   (spikes >240m, e.g. 1472m multipath jump seen in dataset) are downweighted.
+    #   This gives a small but consistent improvement over fixed-R in u-blox environments.
+    huber_c = 5.0 if gnss_source == 'trimble' else 30.0
+    params_huber = EKF9StateParams(dt=dt, r_base=r_base, r_degraded=r_deg,
+                                   use_huber=True, huber_c=huber_c)
+    # PF uses calibrated r_base matching actual GPS accuracy in clean conditions.
+    # The EKF r_base (4/8 m) is intentionally conservative — it relies on large r_deg
+    # and SENTINEL to handle bad conditions. The PF Student-t already handles heavy
+    # tails, so r_base should reflect real GPS error levels for correct discrimination.
+    # Trimble clean Shinjuku: ~10-15 m; u-blox Shinjuku: ~40-55 m (persistent NLOS);
+    # Odaiba open sky: ~8 m. A larger r_pf reduces GPS-attractor collapse in urban NLOS
+    # at the cost of weaker GPS corrections — essential for u-blox where GPS bias > r_pf
+    # drives particle starvation with N=500.
+    r_pf   = (15.0 if gnss_source == 'trimble' else
+              8.0  if scenario == 'Odaiba'       else 50.0)
+    # r_pf_deg multiplier: Trimble needs 4× to prevent GPS attractor during NLOS epochs
+    # (Trimble r_pf=15m is small, so r_pf_deg must be large to reduce GPS pull in degraded).
+    # u-blox (r_pf=50m) and Odaiba (r_pf=8m, open sky) work well with 3×.
+    r_pf_deg_mult = 4.0 if gnss_source == 'trimble' else 3.0
+    r_pf_deg = r_pf * r_pf_deg_mult
+    pf_params = PFParams(dt=dt, r_base=r_pf, r_degraded=r_pf_deg)
     r_fixed = np.full(n, r_base ** 2)
-    r_adapt = (r_base + (r_deg - r_base) * p_degraded) ** 2
 
     cv = run_cv_kf(gnss_xy, dt, r_fixed, gnss_mask=gnss_mask)
     aided_fixed = EKF9State(params).run(imu_accel, imu_gyro, gnss_xy, p_degraded,
@@ -806,13 +838,30 @@ def run_phase_2a_real(scenario='Shinjuku', gnss_source='trimble'):
     aided_adapt = EKF9State(params).run(imu_accel, imu_gyro, gnss_xy, p_degraded,
                                         adaptive=True, wheel_speed=wheel_speed,
                                         gnss_mask=gnss_mask)[0]
+    # Huber robust EKF: downweights GPS outliers via IRLS weight function.
+    # Run with adaptive=False (constant R = r_base²) so Huber acts as a principled
+    # standalone replacement for fixed-R EKF — not stacked on top of SENTINEL.
+    # Stacking Huber + SENTINEL is counterproductive: SENTINEL lowers Kalman gain
+    # during degraded epochs, which causes filter drift; when the filter tries to
+    # recover (large innovation), Huber wrongly suppresses the correction as an outlier.
+    aided_huber = EKF9State(params_huber).run(imu_accel, imu_gyro, gnss_xy, p_degraded,
+                                              adaptive=False, wheel_speed=wheel_speed,
+                                              gnss_mask=gnss_mask)[0]
+    # Particle filter with Student-t GPS likelihood: handles all four EKF noise
+    # assumption violations. Heavy tails survive NLOS outliers; particle diversity
+    # prevents commitment to a single wrong heading hypothesis.
+    print("[2b/5] Running particle filter (N=500, Student-t nu=3)...")
+    aided_pf = PF9State(pf_params).run(imu_accel, imu_gyro, gnss_xy, p_degraded,
+                                       adaptive=True, wheel_speed=wheel_speed,
+                                       gnss_mask=gnss_mask, seed=42)
 
     def rmse(a, m):
         return float(np.sqrt(np.mean(np.sum((a[m] - truth_enu[m]) ** 2, axis=1))))
 
     fix_only = gnss_mask                       # evaluate raw GNSS only where a fix exists
     methods = {"gnss_raw": gnss_xy, "cv_kf": cv,
-               "aided_ekf_fixed": aided_fixed, "aided_ekf_adaptive": aided_adapt}
+               "aided_ekf_fixed": aided_fixed, "aided_ekf_adaptive": aided_adapt,
+               "aided_ekf_huber": aided_huber, "aided_pf_student_t": aided_pf}
     overall = {k: round(rmse(v, fix_only), 3) for k, v in methods.items()}
     deg = {k: round(rmse(v, is_degraded), 3) for k, v in methods.items()}
 
@@ -846,7 +895,10 @@ def run_phase_2a_real(scenario='Shinjuku', gnss_source='trimble'):
         "config": {"dt": dt, "r_base_m": r_base, "r_degraded_m": r_deg,
                    "degraded_def": "real GNSS fix with <=5 satellites (poor geometry)",
                    "p_degraded_source": p_src,
-                   "chi2_gate_dof2_pct": "99.9% (threshold 13.82)"},
+                   "chi2_gate_dof2_pct": "99.9% (threshold 13.82)",
+                   "huber_c": huber_c, "huber_adaptive": False,
+                   "pf_n_particles": 500, "pf_obs_nu": 3.0,
+                   "pf_r_base_m": r_pf, "pf_r_degraded_m": r_pf_deg},
         "_methodology": [
             f"FULLY REAL GNSS via {engine}. Errors are REAL urban multipath/NLOS, not synthetic.",
             "The EKF predicts at 10 Hz on real IMU + wheel-odometry and updates on real fixes.",
@@ -855,15 +907,18 @@ def run_phase_2a_real(scenario='Shinjuku', gnss_source='trimble'):
             "Chi-squared innovation gate (99.9%, 2-DOF): outlier fixes are soft-rejected even at P=0.",
         ],
     }
-    out_file = RESULTS / f"urbannav_ekf_real_{gnss_source}.json"
+    sc_pfx = "" if scenario == "Shinjuku" else f"_{scenario.lower()}"
+    out_file = RESULTS / f"urbannav_ekf_real{sc_pfx}_{gnss_source}.json"
     with open(out_file, "w") as f:
         json.dump(result, f, indent=2)
     print(f"[4/5] Saved -> {out_file}")
-    np.savez(RESULTS / f"urbannav_ekf_real_{gnss_source}_tracks.npz",
+    tracks_name = f"urbannav_ekf_real{sc_pfx}_{gnss_source}_tracks.npz"
+    np.savez(RESULTS / tracks_name,
              truth=truth_enu, gnss=gnss_xy, gnss_mask=gnss_mask,
              cv=cv, aided_fixed=aided_fixed, aided_adapt=aided_adapt,
+             aided_huber=aided_huber, aided_pf=aided_pf,
              is_degraded=is_degraded, nsat=nsat_grid, p_degraded=p_degraded)
-    print(f"[5/5] Saved tracks -> urbannav_ekf_real_{gnss_source}_tracks.npz\n")
+    print(f"[5/5] Saved tracks -> {tracks_name}\n")
     return result
 
 
@@ -1099,18 +1154,24 @@ def run_phase_2b_sentinel(gnss_source: str = 'trimble') -> dict | None:
 
 if __name__ == "__main__":
     import sys
+    # -- parse --scenario flag (default Shinjuku) --
+    sc = "Shinjuku"
+    for i, a in enumerate(sys.argv):
+        if a == "--scenario" and i + 1 < len(sys.argv):
+            sc = sys.argv[i + 1].capitalize()
+            break
     if "--sentinel" in sys.argv:
         src = "ublox" if "--ublox" in sys.argv else "trimble"
         run_phase_2b_sentinel(gnss_source=src)
     elif "--real" in sys.argv:
         src = "ublox" if "--ublox" in sys.argv else "trimble"
         if "--both" in sys.argv:
-            run_phase_2a_real(scenario='Shinjuku', gnss_source='trimble')
-            run_phase_2a_real(scenario='Shinjuku', gnss_source='ublox')
+            run_phase_2a_real(scenario=sc, gnss_source='trimble')
+            run_phase_2a_real(scenario=sc, gnss_source='ublox')
         else:
-            run_phase_2a_real(scenario='Shinjuku', gnss_source=src)
+            run_phase_2a_real(scenario=sc, gnss_source=src)
     else:
-        results = run_phase_2a(scenario='Shinjuku')
+        results = run_phase_2a(scenario=sc)
         if results:
             print("="*80)
             print("Phase 2a COMPLETE -- Real-data EKF validation successful")

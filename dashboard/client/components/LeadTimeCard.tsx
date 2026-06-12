@@ -27,7 +27,7 @@ export default function LeadTimeCard({ warnEpoch, onsetEpoch, epochDt = 1 }: {
 
       <div className="flex items-center justify-between gap-3">
         <Step Icon={FiTarget} color={BEIHANG.accent} label={t("lead_warn")} sub={t("lead_warn_sub")}
-          value={warnEpoch != null ? t("lead_epoch", { n: warnEpoch }) : "—"} active={warnEpoch != null} />
+          value={warnEpoch != null ? t("lead_epoch", { n: warnEpoch }) : "n/a"} active={warnEpoch != null} />
         <div className="flex flex-1 flex-col items-center">
           <motion.div
             className="h-0.5 w-full rounded-full"
@@ -39,7 +39,7 @@ export default function LeadTimeCard({ warnEpoch, onsetEpoch, epochDt = 1 }: {
           </span>
         </div>
         <Step Icon={FiCheckCircle} color="#C0392B" label={t("lead_imminent")} sub={t("lead_imminent_sub")}
-          value={onsetEpoch != null ? t("lead_epoch", { n: onsetEpoch }) : "—"} active={onsetEpoch != null} />
+          value={onsetEpoch != null ? t("lead_epoch", { n: onsetEpoch }) : "n/a"} active={onsetEpoch != null} />
       </div>
 
       <div className="mt-4 flex items-center gap-2 rounded-xl px-4 py-3" style={{ background: BEIHANG.mist }}>

@@ -26,4 +26,6 @@ export {
   FiDownload,
   FiImage,
   FiFileText,
+  FiMap,
+  FiGrid,
 } from "react-icons/fi";

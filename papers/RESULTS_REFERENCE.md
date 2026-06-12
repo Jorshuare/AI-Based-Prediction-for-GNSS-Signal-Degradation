@@ -38,10 +38,10 @@
 - Full labelled dataset: **149,662 rows × 41 columns** across 12 source groups, 4 cities.
 - Window: 30-second sliding window, 37 features per timestep → tensor `(N, 30, 37)`.
 - Test set includes `scenario_a_r13` (293 instant-blockage windows) — first dedicated blockage test coverage.
-- **Training cities: Beijing (Beihang) + Hong Kong.** The main train/val/test windows cover Beihang field data (Scenarios A–E) and UrbanNav Hong Kong (Medium, Deep, Harsh, Tunnel). **UrbanNav Tokyo Shinjuku data are excluded from the main train/val/test split** and are used exclusively for the cross-city zero-shot experiment (E6). Michigan (NCLT), Oxford, and drone data are also excluded from training.
-- **Field-collection site = Beihang University campus, Beijing, China** (Beihang is the
-  university; for the cross-city claim the *cities* are Beijing + Hong Kong, vs unseen Tokyo). Write
-  "Beihang University, Beijing" in papers; note HK was also in training when describing the training corpus.
+- **Training cities: Hangzhou (Beihang) + Hong Kong.** The main train/val/test windows cover Beihang field data (Scenarios A–E) and UrbanNav Hong Kong (Medium, Deep, Harsh, Tunnel). **UrbanNav Tokyo Shinjuku data are excluded from the main train/val/test split** and are used exclusively for the cross-city zero-shot experiment (E6). Michigan (NCLT), Oxford, and drone data are also excluded from training.
+- **Field-collection site = Beihang University campus, Hangzhou, China** (Beihang is the
+  university; for the cross-city claim the _cities_ are Hangzhou + Hong Kong, vs unseen Tokyo). Write
+  "Beihang University, Hangzhou" in papers; note HK was also in training when describing the training corpus.
 
 ---
 
@@ -219,9 +219,9 @@ every DEGRADED number in the paper.
 
 | Model            | ms / sample | Notes                                                     |
 | ---------------- | ----------: | --------------------------------------------------------- |
-| Transformer+LSTM |     0.0449 | 1 forward pass → +5s, +15s, +30s simultaneously; 17.81 MB |
-| RandomForest     |     0.4248 | 3 separate models (one per horizon)                       |
-| **Speedup**      |  **9.46×** | DL is ~9.5× faster on GPU                                  |
+| Transformer+LSTM |      0.0449 | 1 forward pass → +5s, +15s, +30s simultaneously; 17.81 MB |
+| RandomForest     |      0.4248 | 3 separate models (one per horizon)                       |
+| **Speedup**      |   **9.46×** | DL is ~9.5× faster on GPU                                 |
 
 **Strong DL deployment advantage:** a single unified 17.8 MB model serves all three
 horizons in one pass, ~9.5× faster than three independent tree models.
@@ -270,13 +270,13 @@ but the reason is interpolation noise, not distribution distance.
 
 ### E7 — Calibration (ECE) — ✅ CONFIRMED (fixed run)
 
-| Metric | Value |
-| ------ | ----: |
-| Temperature (refit on val) | **0.4023** |
-| ECE raw (T=1.0) | 0.1139 |
-| ECE after temperature scaling | **0.0685** |
-| Improvement | −0.0454 (40% reduction) |
-| well_calibrated (<0.05)? | **No** (0.069 > 0.05) |
+| Metric                        |                   Value |
+| ----------------------------- | ----------------------: |
+| Temperature (refit on val)    |              **0.4023** |
+| ECE raw (T=1.0)               |                  0.1139 |
+| ECE after temperature scaling |              **0.0685** |
+| Improvement                   | −0.0454 (40% reduction) |
+| well_calibrated (<0.05)?      |   **No** (0.069 > 0.05) |
 
 **Honest statement for the paper:** temperature scaling reduces ECE by 40% (0.114 → 0.069),
 **approaching but not reaching** the 0.05 well-calibrated threshold. Report as "improves
@@ -315,18 +315,18 @@ with a GNSS-blockage segment (epochs 120–180); predictor warns from epoch 115.
 | **Adaptive EKF (ours)** |   **17.0 m** |            **36.0 m** |
 
 - Adaptive EKF cuts blockage-segment error **−33.8% vs raw GNSS**, **−21% vs fixed-R EKF**.
-- ⏳ **Real-data RMSE** pending an aligned (gnss_xy, reference_xy, p_degraded) sequence;
-  `run_ekf_experiment(...)` already accepts it. This is a _simulation_ result — report as such.
+- ⏳ **Real-data RMSE** pending an aligned (gnss*xy, reference_xy, p_degraded) sequence;
+  `run_ekf_experiment(...)` already accepts it. This is a \_simulation* result — report as such.
 
 ## 10c. Ensemble & Memory Diagnostics (E8–E10) — ✅ CONFIRMED (`results/ensemble_comparison.json`)
 
 ### E8 — Ensembles (DL + XGBoost), +5 s Macro-F1 ⭐ HEADLINE
 
-| Setting | DL | XGB | RF | **Soft-vote** | Stacking |
-|---------|---:|----:|---:|--------------:|---------:|
-| In-domain (Beihang/Beijing) | 0.822 | 0.919 | 0.926 | 0.911 | 0.899 |
-| **Cross-city (Tokyo)** | 0.649 | 0.821 | 0.618 | **0.892** | 0.886 |
-| **Cross-city DEGRADED F1** | 0.753 | 0.784 | 0.148 | **0.896** | 0.879 |
+| Setting                      |    DL |   XGB |    RF | **Soft-vote** | Stacking |
+| ---------------------------- | ----: | ----: | ----: | ------------: | -------: |
+| In-domain (Beihang/Hangzhou) | 0.822 | 0.919 | 0.926 |         0.911 |    0.899 |
+| **Cross-city (Tokyo)**       | 0.649 | 0.821 | 0.618 |     **0.892** |    0.886 |
+| **Cross-city DEGRADED F1**   | 0.753 | 0.784 | 0.148 |     **0.896** |    0.879 |
 
 > **This overturns the earlier prediction.** In-domain, single trees lead (~0.92) and the
 > ensemble is competitive (0.911). **Cross-city, the DL+XGBoost soft-vote ensemble beats every
@@ -338,12 +338,12 @@ with a GNSS-blockage segment (epochs 120–180); predictor warns from epoch 115.
 ### E9 — Persistence baseline (predict t+h = current label) ⚠️ MUST DISCLOSE
 
 | Horizon | Persistence Macro-F1 | Persistence accuracy | Labels that change |
-|---------|---------------------:|---------------------:|-------------------:|
-| +5s | **0.908** | 0.944 | 5.6% |
-| +15s | 0.871 | 0.921 | 8.0% |
-| +30s | 0.826 | 0.893 | 10.7% |
+| ------- | -------------------: | -------------------: | -----------------: |
+| +5s     |            **0.908** |                0.944 |               5.6% |
+| +15s    |                0.871 |                0.921 |               8.0% |
+| +30s    |                0.826 |                0.893 |              10.7% |
 
-> **Critical honesty finding.** At +5 s the class is unchanged from *now* 94.4% of the time, so
+> **Critical honesty finding.** At +5 s the class is unchanged from _now_ 94.4% of the time, so
 > a trivial persistence baseline scores **0.908** — above DL (0.82) and barely below trees
 > (0.92). The learned models' value is (a) catching the **5.6% transitions** (the safety-critical
 > CLEAN→DEGRADED moments persistence is blind to), and (b) **longer horizons** (persistence
@@ -352,11 +352,11 @@ with a GNSS-blockage segment (epochs 120–180); predictor warns from epoch 115.
 
 ### E10 — Per-horizon gap (in-domain Macro-F1)
 
-| Horizon | DL | RF | XGB | best single |
-|---------|---:|---:|----:|------------:|
-| +5s | 0.822 | 0.926 | 0.919 | 0.926 |
-| +15s | 0.762 | 0.912 | 0.890 | 0.912 |
-| +30s | 0.782 | 0.899 | 0.877 | 0.899 |
+| Horizon |    DL |    RF |   XGB | best single |
+| ------- | ----: | ----: | ----: | ----------: |
+| +5s     | 0.822 | 0.926 | 0.919 |       0.926 |
+| +15s    | 0.762 | 0.912 | 0.890 |       0.912 |
+| +30s    | 0.782 | 0.899 | 0.877 |       0.899 |
 
 The DL–tree gap stays ~0.10–0.12 across horizons in-domain (it does not shrink at +30 s).
 Trees lead in-domain at every horizon; the DL advantage is **cross-domain** (E8), not in-domain.

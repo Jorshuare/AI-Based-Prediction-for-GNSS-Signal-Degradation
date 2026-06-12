@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "SENTINEL-GNSS Dashboard",
-  description: "Real-time GNSS degradation prediction & adaptive EKF fusion — Beihang University",
+  description: "Real-time GNSS degradation prediction, adaptive EKF fusion, Beihang University",
 };
 
 export default function RootLayout({
@@ -26,8 +26,9 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col" suppressHydrationWarning>{children}</body>
+      <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
 }

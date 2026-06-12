@@ -1,0 +1,201 @@
+% ============================================================
+%  SENTINEL-GNSS — Individual Poster: Mustapha Ibrahim (LS2525238)
+%  A1 Portrait · Compile: pdflatex (single pass)
+% ============================================================
+\documentclass[20pt]{extarticle}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[a1paper,landscape=false,
+            top=1.8cm,bottom=1.8cm,left=2cm,right=2cm]{geometry}
+\usepackage{multicol}
+\setlength{\columnsep}{1.4cm}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{caption}
+\captionsetup{font=large,labelfont=bf}
+\usepackage[dvipsnames]{xcolor}
+\definecolor{buaaBlue}{RGB}{0,91,172}
+\definecolor{buaaNavy}{RGB}{0,51,102}
+\definecolor{buaaSky}{RGB}{0,160,233}
+\definecolor{cleanGreen}{RGB}{76,175,80}
+\definecolor{warnOrange}{RGB}{255,152,0}
+\definecolor{degradRed}{RGB}{244,67,54}
+\definecolor{blockBG}{RGB}{235,244,252}
+\usepackage{tcolorbox}
+\tcbuselibrary{skins}
+\usepackage{mdframed}
+\usepackage{parskip}
+\setlength{\parskip}{5pt}
+\usepackage{enumitem}
+\setlist[itemize]{noitemsep,topsep=2pt}
+\newmdenv[backgroundcolor=blockBG,linecolor=buaaBlue,linewidth=2pt,
+          roundcorner=6pt,innertopmargin=8pt,innerbottommargin=8pt,
+          innerleftmargin=10pt,innerrightmargin=10pt,
+          skipabove=6pt,skipbelow=6pt]{poblock}
+\newcommand{\posec}[1]{\vspace{4pt}{\large\bfseries\color{buaaNavy}#1}\\[-4pt]
+  {\color{buaaBlue}\rule{\linewidth}{1.5pt}}\vspace{4pt}}
+\pagestyle{empty}
+
+\begin{document}
+
+\noindent
+\begin{tcolorbox}[colback=buaaNavy,colframe=buaaNavy,boxrule=0pt,arc=8pt,
+                  left=16pt,right=16pt,top=10pt,bottom=10pt]
+  \begin{center}
+    {\fontsize{46}{54}\bfseries\color{white} SENTINEL-GNSS — Individual Poster}\\[6pt]
+    {\fontsize{26}{32}\color{buaaSky}
+     EKF Implementation, Real-Time Dashboard, and Live System Integration}\\[8pt]
+    {\large\color{white}
+     \textbf{Mustapha Ibrahim} (LS2525238) \quad Systems Engineer}\\[4pt]
+    {\normalsize\color{white!70!buaaSky} Beihang University H3I · 2025}
+  \end{center}
+\end{tcolorbox}
+\vspace{0.5cm}
+
+\begin{multicols}{3}
+
+\posec{My Role}
+\begin{poblock}
+I built the systems layer of SENTINEL-GNSS:
+\begin{itemize}
+  \item 9-state EKF skeleton with adaptive R formula
+  \item Simulated blockage EKF validation
+  \item All five dashboard panels (Plotly Dash prototype)
+  \item 1\,Hz real-time data playback integration
+  \item Room 3058 Septentrio receiver connection
+  \item Live NMEA/UBX parsing and feature streaming
+  \item End-to-end latency measurement: \textbf{82\,ms} (target: $<$100\,ms ✓)
+  \item Paper Section 6: System Demonstration
+\end{itemize}
+\end{poblock}
+
+\posec{9-State EKF I Implemented}
+\begin{poblock}
+State vector:
+\[
+  \mathbf{x} = [x, y, v_x, v_y, \psi, b, b_{a_x}, b_{a_y}, z]^\top \in \mathbb{R}^9
+\]
+
+Adaptive R formula:
+\[
+  R = R_\mathrm{base} \times (1 + 10 \cdot P_\mathrm{DEGRADED})
+\]
+
+When $P=0$: standard EKF ($R = R_\mathrm{base}$)\\
+When $P=1$: GPS weight $\approx$ 8\,\% of standard
+
+\medskip
+\textbf{Simulated validation:}\\
+Fed 60-second blockage sequence; GNSS weight plot showed
+expected drop when $P_\mathrm{DEGRADED}$ rose to 1.0 ✓
+\end{poblock}
+
+\posec{Dashboard Panel 1 — Map}
+\begin{poblock}
+Interactive Leaflet/Folium map with:
+\begin{itemize}
+  \item Full GPS track coloured \textcolor{cleanGreen}{\textbf{CLEAN}} / \textcolor{warnOrange}{\textbf{WARNING}} / \textcolor{degradRed}{\textbf{DEGRADED}} by predicted class
+  \item Moving vehicle marker advancing at 1\,Hz
+  \item Predicted-quality halo around current position
+\end{itemize}
+\end{poblock}
+
+\posec{Dashboard Panel 2 — Signal Quality}
+\begin{poblock}
+Three scrolling Plotly time-series at 1\,Hz:
+\begin{itemize}
+  \item Mean C/N$_0$ with 30\,/\,35\,dB-Hz threshold lines
+  \item SV count with minimum-4 alert line
+  \item PDOP with 3.0 alert threshold
+\end{itemize}
+\end{poblock}
+
+\posec{Dashboard Panel 3 — Prediction Gauges}
+\begin{poblock}
+Three semicircular probability gauges ($+5$s, $+15$s, $+30$s):
+\begin{itemize}
+  \item Gauge sweep shows $P(\text{CLEAN})$/$P(\text{WARNING})$/$P(\text{DEGRADED})$
+  \item Status banner: \textcolor{cleanGreen}{\textbf{NOMINAL}} / \textcolor{warnOrange}{\textbf{CAUTION}} / \textcolor{degradRed}{\textbf{ALERT}}
+  \item Visual ``fuel-gauge'' representation for non-technical users
+\end{itemize}
+\end{poblock}
+
+\posec{Dashboard Panel 4 — Sky Plot}
+\begin{poblock}
+Azimuth--elevation circular plot (one dot per satellite):
+\begin{itemize}
+  \item \textcolor{cleanGreen}{\textbf{Green}}: C/N$_0 > 40$\,dB-Hz (healthy)
+  \item \textcolor{warnOrange}{\textbf{Amber}}: C/N$_0$ 30--40\,dB-Hz (marginal)
+  \item \textcolor{degradRed}{\textbf{Red}}: C/N$_0 < 30$\,dB-Hz (degraded)
+\end{itemize}
+During the live campus test: three satellites switched green→red as we
+entered the building shadow, immediately before the ALERT fired.
+\end{poblock}
+
+\posec{Dashboard Panel 5 — Fusion Status}
+\begin{poblock}
+Stacked horizontal bar showing real-time GNSS/IMU weighting:
+\[
+  \text{GNSS\%} = 100 \cdot (1 - P_\mathrm{DEGRADED}), \quad
+  \text{IMU\%} = 100 \cdot P_\mathrm{DEGRADED}
+\]
+Makes the prediction tangible: bar shifts visually from green-GNSS to
+blue-IMU as the vehicle enters the building shadow.
+\end{poblock}
+
+\posec{Live Receiver Integration}
+\begin{poblock}
+Connected Septentrio Mosaic-X5C (Room 3058) via USB/serial:
+\begin{verbatim}
+ser = serial.Serial('COM8', 115200)
+\end{verbatim}
+Parsed: \$GPGGA, \$GPRMC, \$GPGSV sentences.\\
+Extracted: lat/lon/alt, SV count, HDOP, per-SV C/N$_0$.
+
+\textbf{Live feature extraction verified:}
+\begin{itemize}
+  \item 1\,Hz epoch rate, $<$2\,ms jitter
+  \item C/N$_0$ values consistent with historical RTKLIB results
+  \item Feature extraction $<$15\,ms/epoch
+\end{itemize}
+\end{poblock}
+
+\posec{End-to-End Latency}
+\begin{poblock}
+\begin{tabular}{lc}
+  \toprule
+  Stage & Time (ms) \\
+  \midrule
+  Feature extraction & 12 \\
+  SENTINEL inference  & 0.039 \\
+  Dash callback + serialise & 48 \\
+  Browser render & 22 \\
+  \midrule
+  \textbf{Total} & \textbf{82\,ms} \\
+  \bottomrule
+\end{tabular}
+
+\medskip
+Target: $<$100\,ms. Achieved: 82\,ms. ✓
+
+Dominant cost: Plotly serialisation (48\,ms).
+Resolved in the production Next.js version using WebSocket push.
+\end{poblock}
+
+\posec{Key Lesson}
+\begin{poblock}
+\textbf{Sky plot is the most compelling demonstration tool.}
+No table of RMSE numbers communicates the physics of satellite blockage
+as clearly as watching satellite dots turn red in real time.
+For stakeholder communication, one animated sky plot is worth 10 charts.
+\end{poblock}
+
+\end{multicols}
+
+\noindent{\color{buaaBlue}\rule{\linewidth}{1.5pt}}\\[2pt]
+{\small\color{buaaNavy}\centering Beihang University H3I · 2025}
+
+\end{document}

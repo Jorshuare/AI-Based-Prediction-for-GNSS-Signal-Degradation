@@ -31,7 +31,8 @@ from __future__ import annotations
 import json
 import numpy as np
 from pathlib import Path
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from collections import deque
 
 ROOT = Path(__file__).resolve().parents[2]
 RESULTS = ROOT / "results"
@@ -66,6 +67,15 @@ class EKF9StateParams:
     alpha: float = 1.0            # R adaptation scaling factor
     v_max: float = 50.0           # velocity saturation (m/s, ~180 km/h)
     ba_max: float = 5.0           # accel bias saturation (m/s²)
+    # Huber M-estimator robust measurement update (Agamennoni et al. 2011)
+    use_huber: bool = False        # replace quadratic cost with Huber cost
+    huber_c: float = 5.0           # threshold in σ units; 5.0 for urban GPS
+                                   # (flags only extreme outliers; lower values reduce
+                                   # GPS trust too broadly, causing heading drift)
+    # Mehra innovation-based adaptive R (Mohamed 1999) — kept as research option
+    mehra_enabled: bool = False    # (note: unstable under urban NLOS — see paper discussion)
+    mehra_window: int = 40
+    mehra_alpha: float = 0.05
 
 
 class EKF9State:
@@ -75,9 +85,11 @@ class EKF9State:
         if params is None:
             params = EKF9StateParams()
         self.p = params
-        # Initialize state & covariance
-        self.state = None  # will be set on first update
-        self.P = None      # covariance
+        self.state = None
+        self.P = None
+        # Mehra innovation-based R estimation (Mohamed 1999)
+        self._innov_window: deque = deque(maxlen=self.p.mehra_window)
+        self._R_mehra: np.ndarray | None = None
 
     def _build_Q(self):
         """Process noise covariance (continuous-time approximation)."""
@@ -208,7 +220,7 @@ class EKF9State:
         H[0, 0] = 1.0
         H[1, 1] = 1.0
 
-        # Adaptive measurement covariance
+        # Base measurement covariance (SENTINEL-driven or fixed)
         if adaptive:
             R = self._R_adaptive(p_degraded)
         else:
@@ -218,6 +230,55 @@ class EKF9State:
         z = gnss_pos
         z_pred = H @ self.state
         y = z - z_pred
+
+        # Simplified Mehra (Mohamed 1999): estimate R from innovation sample covariance.
+        # C_hat directly (no H*P*H^T subtraction) — biased but always positive-definite
+        # and safe at startup when P is large. As P converges C_hat approaches true noise.
+        # Hard ceiling at r_degraded^2 prevents divergence runaway.
+        # Mehra can REDUCE R in open sky (Odaiba) or INCREASE it in urban blockage.
+        if self.p.mehra_enabled:
+            self._innov_window.append(np.outer(y, y))
+            min_samples = max(30, self.p.mehra_window // 2)  # wait ~3s for P to settle
+            if len(self._innov_window) >= min_samples:
+                C_hat = np.mean(list(self._innov_window), axis=0)
+                C_hat = (C_hat + C_hat.T) / 2
+                evals = np.linalg.eigvalsh(C_hat)
+                if evals.min() < 1e-4:
+                    C_hat += np.eye(2) * (1e-4 - evals.min())
+                R_ceil = np.eye(2) * self.p.r_degraded ** 2
+                C_hat = np.minimum(C_hat, R_ceil)
+                if self._R_mehra is None:
+                    self._R_mehra = C_hat
+                else:
+                    a = self.p.mehra_alpha
+                    self._R_mehra = (1 - a) * self._R_mehra + a * C_hat
+                # Build Mehra-combined R: Mehra as data-driven baseline,
+                # SENTINEL inflation on top for pre-emptive degradation response.
+                R_mehra_comb = self._R_mehra.copy()
+                if adaptive and float(p_degraded) > 0:
+                    p_clip = np.clip(float(p_degraded), 0, 1)
+                    R_extra = np.eye(2) * ((self.p.r_degraded - self.p.r_base) ** 2 * p_clip)
+                    R_mehra_comb = R_mehra_comb + R_extra
+                # Use element-wise minimum: Mehra reduces R in clean open-sky
+                # but never increases R beyond SENTINEL estimate (SENTINEL still dominates
+                # when GPS is about to fail — Mehra only helps in clean conditions).
+                R = np.minimum(R, R_mehra_comb)
+
+        # Huber M-estimator: replace quadratic GPS cost with Huber cost.
+        # Large innovations (|e| > c σ) get downweighted by inflating R component-wise.
+        # This means the filter ignores GPS outliers without needing a hard gate —
+        # the weight degrades smoothly, which is more principled than chi-squared rejection.
+        # Reference: Agamennoni et al., "An outlier-robust Kalman filter," ICRA 2011.
+        if self.p.use_huber:
+            # Approximate S_diag = diag(H*P*H^T) + diag(R) for normalisation
+            HP_HT_diag = np.diag(H @ self.P @ H.T)
+            s_diag = HP_HT_diag + np.diag(R)
+            sigma = np.sqrt(np.maximum(s_diag, 1e-8))
+            norm_res = np.abs(y) / sigma
+            # Huber weight: 1 for inliers (|e| ≤ c), c/|e| for outliers
+            w_h = np.minimum(1.0, self.p.huber_c / np.maximum(norm_res, 1e-8))
+            # Inflate R for outlier components: R_robust_ii = R_ii / w_i
+            R = np.diag(np.diag(R) / w_h)
 
         # Innovation covariance: S = H @ P @ H^T + R
         S = H @ self.P @ H.T + R

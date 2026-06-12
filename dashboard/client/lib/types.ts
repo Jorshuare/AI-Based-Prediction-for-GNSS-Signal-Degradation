@@ -78,10 +78,15 @@ export interface FusionResult {
     rmse_degraded_segment: Record<string, number>;
     degraded_gain_vs_raw: Record<string, number>;
   };
+  /** ENU origin lat/lon (first valid GNSS fix) — used for map overlay */
+  origin_lat: number;
+  origin_lon: number;
   truth: [number, number][];
   gnss: [number, number][];
   aided_fixed: [number, number][];
   aided_adapt: [number, number][];
+  aided_huber?: [number, number][];
+  aided_pf?: [number, number][];
   is_degraded: boolean[];
   nsat: number[];
   p_degraded: number[];

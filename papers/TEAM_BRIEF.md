@@ -98,7 +98,7 @@ We have **five layers of validation**:
 
 **The one-line answer to "how do you know it generalises?"**
 
-> "We trained on Beijing (Beihang) and Hong Kong data, then tested on a city the model never
+> "We trained on Hangzhou (Beihang) and Hong Kong data, then tested on a city the model never
 > saw (Tokyo — explicitly excluded from training). On the safety-critical loss-of-fix class,
 > our model held F1 = 0.75 while the strongest classical baseline (RandomForest) dropped to
 > 0.15, and a DL+XGBoost ensemble reached 0.90. The deep model learns generalizable degradation
@@ -108,14 +108,14 @@ We have **five layers of validation**:
 
 ## 6. Anticipated reviewer questions & our answers
 
-| Question                                           | Answer                                                                                                                                                                                    |
-| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Question                                           | Answer                                                                                                                                                                                            |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | "Trees beat your model — why publish the network?" | In-domain yes; out-of-domain (Tokyo) the network keeps DEGRADED F1 at 0.75 vs RandomForest's 0.15, runs 10.5× faster, and serves 3 horizons in one model. Deployment needs cross-city robustness. |
-| "Does the Transformer actually use time?"          | Honestly, temporal _order_ contributes ~3% (E1). The benefit is representational transfer, not order modelling. We state this plainly.                                                    |
-| "DEGRADED test set is small (n=209)."              | We report bootstrap 95% CIs on every per-class metric; DEGRADED F1 = 0.717 [0.671, 0.762].                                                                                                |
-| "Any data leakage?"                                | Session-level split; scaler/SMOTE fit on train only; one within-site overlap (scenario_a_r13) explicitly disclosed; Tokyo fully held out.                                                 |
-| "Is the probability a usable risk score?"          | ⏳ Pending — calibration (E7) must be re-run with correct temperature before we claim this.                                                                                               |
-| "Where is the navigation benefit?"                 | ⏳ Adaptive-EKF experiment is ongoing; we currently show P(DEGRADED) correctly flags impending events.                                                                                    |
+| "Does the Transformer actually use time?"          | Honestly, temporal _order_ contributes ~3% (E1). The benefit is representational transfer, not order modelling. We state this plainly.                                                            |
+| "DEGRADED test set is small (n=209)."              | We report bootstrap 95% CIs on every per-class metric; DEGRADED F1 = 0.717 [0.671, 0.762].                                                                                                        |
+| "Any data leakage?"                                | Session-level split; scaler/SMOTE fit on train only; one within-site overlap (scenario_a_r13) explicitly disclosed; Tokyo fully held out.                                                         |
+| "Is the probability a usable risk score?"          | ⏳ Pending — calibration (E7) must be re-run with correct temperature before we claim this.                                                                                                       |
+| "Where is the navigation benefit?"                 | ⏳ Adaptive-EKF experiment is ongoing; we currently show P(DEGRADED) correctly flags impending events.                                                                                            |
 
 ---
 
@@ -211,9 +211,9 @@ attention heatmap, DL-vs-baseline comparison, dataset browser, and the full metr
       a systematic search."
 - [ ] Feature count = **37** everywhere (not 35 — old drafts say 35; that is wrong).
 - [ ] Architecture stated correctly: 8 heads, d=128, d_ff=512, LSTM hidden 256, 1.46M params.
-- [ ] **Training data stated correctly everywhere: trained on Beijing (Beihang field) + UrbanNav
+- [ ] **Training data stated correctly everywhere: trained on Hangzhou (Beihang field) + UrbanNav
       Hong Kong (Medium/Deep/Harsh/Tunnel). UrbanNav Tokyo excluded from training — zero-shot
-      cross-city test only. Never say "trained on Beijing only."**
+      cross-city test only. Never say "trained on Hangzhou only."**
 - [ ] Data balancing stated correctly: DL = no-SMOTE + focal + class weights; SMOTE only for
       tree baselines.
 - [ ] In-domain tree superiority disclosed, not hidden.

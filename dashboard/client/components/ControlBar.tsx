@@ -52,7 +52,7 @@ export default function ControlBar({
 
       <div className="ml-auto flex items-center gap-3">
         <span className="text-sm font-bold" style={{ color: BEIHANG.slate }}>{t("speed")}</span>
-        <input type="range" min={2} max={60} value={speed} onChange={(e) => onSpeed(Number(e.target.value))}
+        <input type="range" min={2} max={500} value={speed} onChange={(e) => onSpeed(Number(e.target.value))}
           className="w-28 accent-[#003360]" />
         <span className="w-16 text-sm font-bold tabular-nums" style={{ color: BEIHANG.slate }}>{speed} {t("eps")}</span>
         {!playing ? (
