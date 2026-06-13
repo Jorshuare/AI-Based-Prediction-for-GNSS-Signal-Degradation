@@ -89,7 +89,7 @@ Model defined in `src/models/transformer_lstm.py`. Key hyper-parameters (all jus
 | Group | Value |
 |---|---|
 | Transformer | 2 layers, 8 heads, d_model=128, d_ff=512 |
-| BiLSTM | 2 layers, 256 hidden, bidirectional |
+| LSTM | 2 stacked layers, 256 hidden, unidirectional |
 | Heads | 3 (one per horizon), 3 classes each |
 | Loss | Focal (γ=1.0) + class weights [1, 2, 5] |
 | Optimiser | AdamW, lr=1e-3, weight_decay=1e-4 |

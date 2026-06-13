@@ -145,7 +145,7 @@ horizons (1→3), receivers (1→9+), cities (1→4), integration target (none�
 
 - Input projection 37→128 → sinusoidal positional encoding.
 - Transformer encoder: 2 layers, 8 heads, d_model=128, d_ff=512.
-- BiLSTM: 2 layers, hidden=256; last hidden state → 4 heads.
+- LSTM: 2 stacked layers, hidden=256; last hidden state → 4 output heads (+5s/+15s/+30s + auxiliary t+0).
 - 1,456,652 parameters.
 - Figure: `architecture_diagram.pdf` (⏳ to create).
 

@@ -495,7 +495,9 @@ Features implemented:
 
 \subsection{Panel 2: Signal Quality Time Series}
 
-Panel~2 displays three scrolling Plotly time-series (60-epoch window, 1\,Hz refresh):
+Panel~2 displays three scrolling Plotly time-series over a rolling 60-second display
+buffer (independent of SENTINEL's 30-epoch model input window; the display simply shows
+extra context), refreshing at 1\,Hz:
 
 \begin{enumerate}
   \item \textbf{Mean C/N$_0$}: line plot with horizontal threshold lines at 30\,dB-Hz

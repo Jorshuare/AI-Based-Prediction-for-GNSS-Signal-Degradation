@@ -286,7 +286,7 @@ heading drift. This is the basis of the dashboard’s “When does adaptive-R he
 ## 9. Justification summary (the defensible claims)
 
 - **37 domain features + 30 s windows** → prediction (not detection) is possible, and it generalises.
-- **Transformer + BiLSTM hybrid** → pattern _and_ causal-trend reasoning (ablation-confirmed).
+- **Transformer + LSTM hybrid** → pattern _and_ causal-trend reasoning (ablation-confirmed).
 - **Focal loss (DL) / SMOTE (trees)** → imbalance handled per model family, verified by KL test.
 - **Cross-city Tokyo** → the real test; DL keeps DEGRADED skill where trees collapse.
 - **DL + XGBoost soft-vote** → best cross-city (0.892 / 0.896), saved for production.

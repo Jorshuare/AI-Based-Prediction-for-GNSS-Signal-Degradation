@@ -70,7 +70,7 @@ The accelerometer bias states are especially important during low-dynamics drivi
 
 Three horizons were trained and validated (+5s, +15s, +30s). We use +5s for real-time EKF fusion because:
 
-1. **Accuracy**: +5s achieves MacroF1=0.8206 vs. 0.7841 at +15s and 0.7103 at +30s. The longer horizons have significantly more false positives, which would incorrectly inflate R during clean GPS periods.
+1. **Accuracy**: +5s achieves Macro-F1=0.8206 vs. 0.7412 at +15s and 0.7825 at +30s. The +15s horizon is hardest (most mid-transition WARNING ambiguity); the longer horizons carry more false positives than +5s, which would incorrectly inflate R during clean GPS periods. +5s gives the cleanest pre-emptive trigger.
 
 2. **Action window**: 5 seconds is 3–7 EKF update steps at 1 Hz. This is sufficient for the EKF to reduce Kalman gain before the worst measurements arrive.
 

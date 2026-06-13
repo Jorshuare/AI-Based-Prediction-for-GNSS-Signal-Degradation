@@ -69,7 +69,7 @@
 % -------- Abstract --------
 \begin{abstract}
 This report documents my personal contributions to the SENTINEL-GNSS project:
-a Transformer--BiLSTM neural network for proactive prediction of GNSS signal
+a Transformer--LSTM neural network for proactive prediction of GNSS signal
 degradation in autonomous vehicle navigation.
 My responsibilities spanned the full technical pipeline: GitHub repository creation
 and project architecture, neural network design and training, 9-state EKF formulation
@@ -101,9 +101,9 @@ Table~\ref{tab:contributions} summarises my primary tasks across the four projec
     \midrule
     Repository & Created GitHub repo; defined folder structure and code conventions; initial README \\
     Feature spec & Wrote \texttt{feature\_list.py} — the shared specification for all 37 GNSS features \\
-    Architecture & Designed and implemented the Transformer+BiLSTM model (\texttt{transformer\_lstm.py}) \\
+    Architecture & Designed and implemented the Transformer+LSTM model (\texttt{transformer\_lstm.py}) \\
     Training & Implemented training loop, Focal Loss, SMOTE integration, model checkpointing (\texttt{train.py}) \\
-    Baselines & Implemented BiLSTM-only ablation, RAIM consistency check baseline \\
+    Baselines & Implemented LSTM-only ablation, RAIM consistency check baseline \\
     Ablation & Set up and ran 5 ablation experiments; wrote interpretation \\
     EKF & Formulated 9-state EKF with Joseph covariance form; implemented SENTINEL adaptive R inflation \\
     Huber EKF & Designed and implemented IRLS Huber robust update; calibrated $c$ parameters \\
@@ -183,7 +183,7 @@ C/N$_0$ resembles Septentrio WARNING) and miss genuine u-blox DEGRADED epochs
 \textbf{Temporal delta features.}
 I specified \code{cn0\_delta\_10s} and \code{pdop\_trend} as explicit features rather
 than leaving the model to compute temporal differences from the raw sequence.
-The reasoning: Transformer attention operates on the full 60-epoch window;
+The reasoning: Transformer attention operates on the full 30-epoch window;
 making the trend explicit as a feature ensures the model can detect it with a single
 weight assignment rather than needing to learn to compute differences across epochs.
 The ablation experiment (E6, not in the paper) confirmed: removing delta features
@@ -204,9 +204,9 @@ The model can use atmospheric features as a proxy for satellite geometry informa
 \subsection{Design Rationale}
 
 The central design question was: what architecture can best predict GNSS degradation
-5--30 seconds in advance from a 60-second feature window?
+5--30 seconds in advance from a 30-second feature window?
 
-I chose a \textbf{hybrid Transformer--BiLSTM} after evaluating three candidates:
+I chose a \textbf{hybrid Transformer--LSTM} after evaluating three candidates:
 
 \begin{enumerate}
   \item \textbf{LSTM-only}: Strong at sequential prediction but limited by O($t$)
@@ -217,8 +217,8 @@ I chose a \textbf{hybrid Transformer--BiLSTM} after evaluating three candidates:
     but over-flags DEGRADED (precision 0.42) without sequential context.
     Ablation result: Macro-F1\,=\,0.767, DEGRADED F1\,=\,0.571.
 
-  \item \textbf{Transformer+BiLSTM (SENTINEL)}: The Transformer learns global patterns
-    (PDOP trends, satellite rise/set across 60\,s); the BiLSTM learns directional
+  \item \textbf{Transformer+LSTM (SENTINEL)}: The Transformer learns global patterns
+    (PDOP trends, satellite rise/set across 30\,s); the LSTM learns directional
     approach dynamics (gradual C/N$_0$ decline).
     \textbf{Result: Macro-F1\,=\,0.821, DEGRADED F1\,=\,0.718}.
 \end{enumerate}
@@ -228,9 +228,9 @@ I chose a \textbf{hybrid Transformer--BiLSTM} after evaluating three candidates:
 \begin{itemize}
   \item \textbf{Input}: $(B, 60, 37)$ — batch $\times$ window $\times$ features
   \item \textbf{Projection}: Linear(37 → 128) + sinusoidal positional encoding
-  \item \textbf{Transformer Encoder}: 2 layers, $d_\mathrm{model}=128$, 4 heads,
-    $d_\mathrm{ff}=512$, dropout 0.1
-  \item \textbf{BiLSTM}: 2 layers, hidden\,=\,256 (128 per direction), dropout 0.1
+  \item \textbf{Transformer Encoder}: 2 layers, $d_\mathrm{model}=128$, 8 heads,
+    $d_\mathrm{ff}=512$, dropout 0.3
+  \item \textbf{LSTM}: 2 stacked layers, hidden\,=\,256, dropout 0.3
   \item \textbf{Output heads}: 3 independent FC($512 \to 3$) heads for
     $+5$\,s, $+15$\,s, $+30$\,s
   \item \textbf{Auxiliary head}: FC($256 \to 3$) for regularisation
@@ -322,8 +322,8 @@ I designed and ran six ablation experiments to validate each architectural compo
     \textbf{Exp.} & \textbf{Change from full model} & \textbf{Macro-F1} & \textbf{DEG-F1} \\
     \midrule
     Full SENTINEL & --- (reference) & 0.821 & 0.718 \\
-    E1 & Remove Transformer (BiLSTM only) & 0.767 & 0.645 \\
-    E2 & Remove BiLSTM (Transformer only) & 0.767 & 0.571 \\
+    E1 & Remove Transformer (LSTM only) & 0.767 & 0.645 \\
+    E2 & Remove LSTM (Transformer only) & 0.767 & 0.571 \\
     E3 & Share one output head across horizons & 0.801 & 0.689 \\
     E4 & Remove \code{receiver\_tier} feature & 0.784 & 0.656 \\
     E5 & Replace focal loss with cross-entropy & 0.798 & 0.672 \\
@@ -333,15 +333,15 @@ I designed and ran six ablation experiments to validate each architectural compo
 \end{table}
 
 \textbf{E1 vs E2 interpretation.}
-Both Transformer-only and BiLSTM-only produce the same Macro-F1 (0.767), but their
+Both Transformer-only and LSTM-only produce the same Macro-F1 (0.767), but their
 failure modes differ.
 Transformer-only has DEGRADED recall 0.89 but DEGRADED precision only 0.42:
 it over-fires DEGRADED alerts (many false positives).
-BiLSTM-only has DEGRADED precision 0.81 but recall only 0.51: it misses many DEGRADED
+LSTM-only has DEGRADED precision 0.81 but recall only 0.51: it misses many DEGRADED
 events.
 The full model balances both: precision 0.623, recall 0.847.
 This suggests the Transformer provides detection range (catches events early, including
-some false positives) while the BiLSTM provides directional confirmation (suppresses
+some false positives) while the LSTM provides directional confirmation (suppresses
 false positives from transient satellite geometry changes).
 
 \textbf{E4 interpretation.}
@@ -363,8 +363,8 @@ from ``Septentrio at 38\,dB-Hz (DEGRADED).''
     $d_\mathrm{model}$      & 128    & Grid: \{64, 128, 256\}; 256 overfits \\
     Transformer heads       & 4      & Must divide $d_\mathrm{model}$; 8 slower, same F1 \\
     Transformer layers      & 2      & Grid: \{1, 2, 4\}; 4 overfits on small test set \\
-    BiLSTM hidden           & 256    & Grid: \{128, 256, 512\}; 512 no gain \\
-    BiLSTM layers           & 2      & Grid: \{1, 2, 3\}; 3 layers slower \\
+    LSTM hidden           & 256    & Grid: \{128, 256, 512\}; 512 no gain \\
+    LSTM layers           & 2      & Grid: \{1, 2, 3\}; 3 layers slower \\
     Dropout                 & 0.1    & Grid: \{0.0, 0.1, 0.2\}; 0.2 underfits \\
     Learning rate           & $10^{-3}$ & Cosine warmup sweep \\
     Batch size              & 64     & GPU memory constraint (8\,GB) \\
@@ -550,7 +550,7 @@ The inference module has three design requirements:
 
 \begin{itemize}
   \item Loads \code{results/models/sentinel\_best.pt} (epoch 10 checkpoint)
-  \item Takes a $(60 \times 37)$ normalised numpy array as input
+  \item Takes a $(30 \times 37)$ normalised numpy array as input
   \item Converts to \code{torch.Tensor}, calls \code{model.eval()} with
     \code{torch.no\_grad()}
   \item Returns a dictionary:

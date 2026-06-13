@@ -76,7 +76,7 @@ We acknowledge in the paper that persistent NLOS bias lasting >60 seconds cannot
 ## Q4: "If R is unknown (which it is in NLOS), how can you claim your EKF is well-calibrated? Have you tried adaptive R estimation?"
 
 ### The concern
-The covariance matrix R represents our uncertainty about GPS noise. In urban NLOS, the true R changes every epoch based on satellite geometry, building heights, and receiver dynamics. Manually setting r_base=8 m is an engineering approximation, not a principled estimate of the true noise covariance.
+The covariance matrix R represents our uncertainty about GPS noise. In urban NLOS, the true R changes every epoch based on satellite geometry, building heights, and receiver dynamics. A fixed r_base is a deliberate baseline, not the only option: a principled, per-epoch R can be obtained from the receiver's own reported horizontal sigma, from geometry as R ∝ (HDOP · UERE)², or estimated online from the data. We adopt the online estimator (see below); the fixed value is retained only as a comparison baseline.
 
 ### What we tried: Mehra Adaptive R
 
@@ -99,8 +99,18 @@ The fundamental assumption of the Mehra estimator is that the innovation sequenc
 
 This is precisely the worst case: the algorithm confidently converges to the wrong answer. Mehra is disabled in all production runs (`mehra_enabled=False`).
 
+### Can R be computed in a principled way? (Yes — several ways)
+
+R is uncertain and time-varying, but it is **not** unknowable. Principled options, in rough order of rigour:
+
+1. **Receiver-reported uncertainty** — RTKLIB and most receivers output a per-epoch horizontal standard deviation; set `R = σ_reported²` directly. This is fully per-epoch and is already loaded in our pipeline (`spp_horiz_std`).
+2. **Geometry-based `R ∝ (HDOP · UERE)²`** — scale a user-equivalent-range-error by the dilution of precision; turns satellite geometry into a position variance (classical GNSS practice).
+3. **C/N₀-weighted models** — per-satellite measurement variance as a function of signal strength.
+4. **Innovation-based (Mehra / Sage–Husa)** — principled in theory but diverges in urban NLOS (above), so disabled.
+5. **Online σ_degraded estimator (what we adopt)** — the causal running median of degraded-epoch innovation magnitudes is a data-driven estimate of the degraded-error scale. It removes the per-environment hand-tuning and, on the Tokyo data, improved the degraded-RMSE reduction from 38.7 % to 43.2 %.
+
 ### Our answer
-We solve the calibration problem through SENTINEL. Instead of estimating R from the innovation sequence (which fails in NLOS), we estimate the *degradation probability* from GNSS features using a learned classifier, then map it to a pre-specified R_degraded. This sidesteps the fundamental identification problem (you cannot separate "GPS is noisy" from "filter is drifting" using innovations alone).
+We solve the calibration problem through SENTINEL. Instead of estimating R from the innovation sequence (which fails in NLOS), we estimate the *degradation probability* from GNSS features using a learned classifier, then map it to an R that is either a pre-specified R_degraded or the online estimate above. This sidesteps the fundamental identification problem (you cannot separate "GPS is noisy" from "filter is drifting" using innovations alone).
 
 ---
 
@@ -111,7 +121,7 @@ Standard EKF assumes i.i.d. measurement noise. But NLOS errors are highly autoco
 
 ### What we did
 
-**SENTINEL directly models temporal correlation**: The Transformer+LSTM architecture processes a 60-second window of GNSS features. The Transformer captures global temporal patterns (the satellite rising/setting that precedes an NLOS episode), and the LSTM captures local sequential dynamics. The model learns that "building occlusion on epoch t" implies "building occlusion on epoch t+5" — precisely the temporal structure we want to exploit.
+**SENTINEL directly models temporal correlation**: The Transformer+LSTM architecture processes a 30-second window of GNSS features. The Transformer captures global temporal patterns (the satellite rising/setting that precedes an NLOS episode), and the LSTM captures local sequential dynamics. The model learns that "building occlusion on epoch t" implies "building occlusion on epoch t+5" — precisely the temporal structure we want to exploit.
 
 **In the EKF**: When SENTINEL predicts DEGRADED at epoch t, it inflates R for that epoch. Because SENTINEL is predictive (not reactive), the inflation typically starts 3–5 seconds before the worst measurements arrive and continues through the degradation episode, matching the temporal extent of the NLOS event.
 
@@ -127,21 +137,20 @@ We do not model the GPS error covariance as a first-order Gauss-Markov process (
 ### The concern
 Transformer architectures have a quadratic self-attention cost in sequence length. For a 60-epoch input, this is manageable, but it requires justification that the long-range dependencies captured by the Transformer provide measurable benefit over a simpler LSTM.
 
-### Ablation results
+### Ablation results (confirmed, Run 14 — `RESULTS_REFERENCE.md` §6)
 
-| Architecture | MacroF1 (+5s) | Δ vs. LSTM | Notes |
-|-------------|--------------|------------|-------|
-| LSTM only | 0.7889 | — | Baseline |
-| Transformer only | 0.8043 | +1.9% | Good at global patterns |
-| **Transformer + LSTM** | **0.8206** | **+4.0%** | Best |
-| GRU only | 0.7741 | −1.9% | Simpler but worse |
+| Architecture | Macro-F1 (+5s) | DEGRADED F1 | MCC | Params | Notes |
+|-------------|--------------|------------|-----|--------|-------|
+| Transformer only | 0.7672 | 0.571 | 0.7248 | 427K | Over-flags DEGRADED (precision 0.424) |
+| LSTM only | 0.7674 | 0.645 | 0.7018 | 1,027K | Misses transitions |
+| **Transformer + LSTM** | **0.8206** | **0.718** | **0.7729** | 1,457K | Best |
 
-The Transformer captures the slowly-varying satellite geometry (PDOP trends, satellite rising/setting events) that occurs over 30–60 seconds. The LSTM captures the rapid sequential transitions (a satellite suddenly dropping below the horizon). Neither alone captures both timescales optimally.
+The Transformer captures the slowly-varying satellite geometry (PDOP trends, satellite rising/setting events) across the 30-second window. The LSTM captures the rapid sequential transitions (a satellite suddenly dropping below the horizon). Neither alone captures both: the Transformer-only over-flags DEGRADED (precision 0.424) while the LSTM-only under-detects it. Together they give the best DEGRADED F1.
 
 ### Specific capability demonstrated
-The Transformer can attend to events at epoch t=10 and epoch t=60 simultaneously — for instance, a PDOP spike at t=10 that predicts a building entry at t=60 would be captured by cross-attention between these distant epochs. LSTM has O(t) gradient decay and cannot reliably capture dependencies at 50-epoch distance.
+The Transformer can attend to events at epoch t=1 and epoch t=30 simultaneously — for instance, a PDOP spike early in the window that predicts a building entry at the end of the window would be captured by cross-attention between these distant epochs. A plain LSTM has O(t) gradient decay and cannot reliably capture dependencies across the full 30-epoch span.
 
-The 4% MacroF1 improvement justifies the architecture. In binary decision terms: on the Hong Kong test set (~2,400 epochs), this translates to ~96 additional correctly classified epochs, which at 1 Hz corresponds to 96 seconds of correct degradation warnings.
+The full model improves Macro-F1 by ~5.3 points over either single-component ablation, and lifts DEGRADED F1 from 0.571/0.645 to 0.718 — directly improving the safety-critical class.
 
 ---
 
@@ -248,3 +257,32 @@ Inflating R by 5× is equivalent to trusting GPS 25× less during degraded windo
 - IMU is trusted more fully, providing a clean dead-reckoning trajectory
 
 A reactive system (inflate R only after detecting bad GPS) suffers from the "first bad epoch" problem — at least one bad measurement is fully incorporated before the filter adapts.
+
+---
+
+## Q13: "On the trajectory chart, raw GPS sometimes sits exactly on the ground truth while your EKF is offset. Doesn't that mean raw GPS is better? Why trust RMSE over what I can see point-by-point?"
+
+### The observation is correct
+At many individual epochs — particularly in open-sky stretches — **raw GPS genuinely is more accurate than the EKF.** This is real and expected. On the Tokyo degraded epochs the *median* (CEP50) error is actually **lower for raw GPS (6.7 m) than for the EKF fixed-R (9.7 m).** Raw GPS wins the typical point.
+
+### Why the EKF is slightly offset where GPS is good
+Two reasons, both deliberate:
+- **Filter lag** — the EKF blends a smooth IMU motion model with GPS corrections, so it trails fast wiggles instead of snapping onto each fix.
+- **Deliberate distrust** — we instruct the filter not to fully commit to GPS, so it cannot lurch.
+
+This small offset in benign regions is the **price of robustness**, and it is unavoidable: a filter tuned to snap perfectly onto GPS where GPS is good would *also* snap onto the *bad* GPS where GPS is bad — the "swirling" failure. You cannot have both with a single static trust level. This is exactly why adaptive-R + SENTINEL exist: trust GPS when good, distrust it when bad.
+
+### Why RMSE (and the tail), not per-point alignment, is the right judge
+
+| Metric (degraded epochs) | Raw GPS | EKF fixed-R |
+|---|---|---|
+| Median error (CEP50) | **6.7 m** ✅ | 9.7 m |
+| 95th-percentile (CEP95) | 76 m | **51 m** ✅ |
+| Worst case (max) | **888 m** ☠️ | **137 m** ✅ |
+
+RMSE is **dominated by the tail** because it squares errors. Raw GPS is usually excellent but occasionally **888 m** wrong — one such excursion puts a vehicle in the wrong lane or off the road. The EKF gives up a metre or two in the harmless regions to **cap the catastrophe at 137 m** and cut the 95th percentile from 76→51 m.
+
+The places where raw GPS beats the EKF are the **harmless** places; the places where the EKF beats raw GPS are the **dangerous** ones. That is precisely the trade a safety system wants: *surrender a little accuracy when it does not matter, to never be 800 m wrong when it does.*
+
+### Tie back to the goal
+The goal is that when GPS degrades, the vehicle still knows where it is well enough to act. A position estimate that is "usually within 7 m but sometimes 888 m off" is far more dangerous than one that is "usually within 10 m and never worse than 137 m." So the EKF output **should** track ground truth as closely as possible — and it does where it counts (the degraded/blocked regions). The visible offsets in clean regions are an acceptable, expected cost of never producing a catastrophic position during the moments the vehicle must act on.

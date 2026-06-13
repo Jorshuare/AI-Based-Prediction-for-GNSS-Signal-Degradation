@@ -688,7 +688,7 @@ Advance notice enables action.
 \textbf{Contributions list (5 items):}
 \begin{enumerate}
   \item Problem reformulation: predictive vs reactive
-  \item SENTINEL architecture: Transformer+BiLSTM, 1.46M parameters, 0.039ms
+  \item SENTINEL architecture: Transformer+LSTM, 1.46M parameters, 0.039ms
   \item Cross-city generalisation: 0.75 vs 0.15 Tokyo DEGRADED F1
   \item Prediction-informed sensor fusion: 48.8\,\% degraded-RMSE gain
   \item Open benchmark: 149,662 epochs, 4 cities, 9+ receiver types
@@ -782,9 +782,9 @@ The systematic taxonomy is what made this distinction rigorous rather than rheto
 
 I would implement a \textbf{GRU (Gated Recurrent Unit) baseline} alongside the RF and
 XGBoost.
-GRU is a lighter-weight alternative to BiLSTM with fewer parameters and sometimes
+GRU is a lighter-weight alternative to LSTM with fewer parameters and sometimes
 comparable sequential modelling performance.
-If GRU achieves similar Macro-F1 to the full Transformer+BiLSTM, it would suggest the
+If GRU achieves similar Macro-F1 to the full Transformer+LSTM, it would suggest the
 performance gain comes from the sequential modelling capacity, not specifically the
 Transformer attention.
 If GRU under-performs significantly, it confirms the Transformer's long-range attention

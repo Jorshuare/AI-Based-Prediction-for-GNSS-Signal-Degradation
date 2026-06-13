@@ -121,7 +121,7 @@ positioning performance, giving the vehicle zero preparation time.
 
 This report describes \buaa{SENTINEL-GNSS}, a Transformer--LSTM neural network that
 \emph{predicts} GNSS signal degradation 5, 15, and 30 seconds before it occurs.
-The model processes a 60-second sliding window of 37 receiver-derived features and
+The model processes a 30-second sliding window of 37 receiver-derived features and
 outputs a three-class forecast (\clean{CLEAN} / \warn{WARNING} / \degrad{DEGRADED})
 for each prediction horizon in a single forward pass.
 
@@ -176,7 +176,7 @@ This paper makes the following contributions:
     \emph{predictive} rather than reactive problem, and demonstrate that 5--30\,s lead
     times are achievable with a learned sequence model.
 
-  \item \textbf{SENTINEL-GNSS architecture.} A unified Transformer--BiLSTM network with
+  \item \textbf{SENTINEL-GNSS architecture.} A unified Transformer--LSTM network with
     three output heads ($+5$\,s, $+15$\,s, $+30$\,s) achieves Macro-F1\,=\,0.821 at the
     +5\,s horizon using 1.46\,M parameters and runs at 0.039\,ms per sample.
 
@@ -285,8 +285,8 @@ Features are $z$-score normalised using training-set statistics only.
 
 \subsection{Sliding Window Construction}
 
-A causal sliding window of $W = 60$ epochs (60\,s at 1\,Hz) produces input tensors
-of shape $(60 \times 37)$.
+A causal sliding window of $W = 30$ epochs (30\,s at 1\,Hz) produces input tensors
+of shape $(30 \times 37)$.
 Labels are assigned at horizons $h \in \{5, 15, 30\}$\,s after the last observed epoch,
 giving three binary-per-class prediction targets per window.
 The train/validation/test split follows session boundaries (70/15/15) to prevent
@@ -315,18 +315,18 @@ temporal leakage.
 
 \subsection{Model Architecture}
 
-SENTINEL-GNSS is a hybrid Transformer--BiLSTM network designed to exploit two
+SENTINEL-GNSS is a hybrid Transformer--LSTM network designed to exploit two
 complementary temporal scales:
 
 \begin{itemize}
   \item \textbf{Global dependencies (Transformer).} Satellite rising/setting events and
-    PDOP trends that recur across a 60-second window are captured by multi-head self-attention
+    PDOP trends that recur across a 30-second window are captured by multi-head self-attention
     \cite{vaswani2017attention}, which can directly relate distant timesteps without
     gradient decay.
 
-  \item \textbf{Sequential dynamics (BiLSTM).} The directional approach to a degradation
+  \item \textbf{Sequential dynamics (LSTM).} The directional approach to a degradation
     event (C/N$_0$ gradually declining, pseudorange residuals growing) is captured by a
-    bidirectional LSTM \cite{hochreiter1997lstm} which maintains a hidden state summarising
+    stacked two-layer LSTM \cite{hochreiter1997lstm} which maintains a hidden state summarising
     the trajectory within the window.
 \end{itemize}
 
@@ -335,15 +335,15 @@ The architecture (1.46\,M parameters) is:
 \begin{equation}
   \mathbf{x}_{1:T} \xrightarrow{\text{Linear + PE}}
   \mathbf{h}^\mathrm{T}_{1:T} \xrightarrow{\text{TransEnc}}
-  \mathbf{h}^\mathrm{T}_{T} \xrightarrow{\text{BiLSTM}}
+  \mathbf{h}^\mathrm{T}_{T} \xrightarrow{\text{LSTM}}
   \mathbf{h}^\mathrm{L}_T \xrightarrow{\text{FC}_h}
   \hat{y}^{(h)},\quad h \in \{5,15,30\}
 \end{equation}
 
-where the Transformer encoder has $d_\mathrm{model}=128$, 4 heads, 2 layers,
-feedforward dimension $d_\mathrm{ff}=512$, dropout 0.1;
-and the BiLSTM has hidden dimension 256, 2 layers.
-A shared auxiliary head over the BiLSTM output regularises against dataset shift.
+where the Transformer encoder has $d_\mathrm{model}=128$, 8 heads, 2 layers,
+feedforward dimension $d_\mathrm{ff}=512$, dropout 0.3;
+and the LSTM has hidden dimension 256, 2 stacked layers.
+A shared auxiliary head over the LSTM output regularises against dataset shift.
 
 \subsection{Training Protocol}
 
@@ -364,7 +364,7 @@ A shared auxiliary head over the BiLSTM output regularises against dataset shift
   \centering
   \includegraphics[width=0.78\textwidth]{../../results/paper_figures/fig14_architecture.pdf}
   \caption{SENTINEL-GNSS architecture. The Transformer encoder captures global
-           temporal patterns; the BiLSTM captures sequential approach dynamics.
+           temporal patterns; the LSTM captures sequential approach dynamics.
            Three output heads share one forward pass.}
   \label{fig:arch}
 \end{figure}
@@ -442,12 +442,12 @@ horizons.
 
 \subsection{Ablation Study}
 
-Table~\ref{tab:ablation} confirms that both the Transformer and the BiLSTM contribute
+Table~\ref{tab:ablation} confirms that both the Transformer and the LSTM contribute
 to performance.
 
 \begin{table}[H]
   \centering
-  \caption{Ablation results at the $+5$\,s horizon. The full Transformer+BiLSTM
+  \caption{Ablation results at the $+5$\,s horizon. The full Transformer+LSTM
            model outperforms all single-component variants.}
   \label{tab:ablation}
   \begin{tabular}{lcccc}
@@ -456,16 +456,16 @@ to performance.
     \textbf{DEGRADED F1} \\
     \midrule
     Transformer-only & 0.43\,M & 0.767 & 0.725 & 0.571 \\
-    BiLSTM-only      & 1.03\,M & 0.767 & 0.702 & 0.645 \\
-    \textbf{Full (Trans+BiLSTM)} & \textbf{1.46\,M} &
+    LSTM-only      & 1.03\,M & 0.767 & 0.702 & 0.645 \\
+    \textbf{Full (Trans+LSTM)} & \textbf{1.46\,M} &
       \textbf{0.821} & \textbf{0.773} & \textbf{0.718} \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-The Transformer alone over-flags DEGRADED (precision 0.42); the BiLSTM provides
+The Transformer alone over-flags DEGRADED (precision 0.42); the LSTM provides
 directional sequential context that suppresses false alarms.
-The BiLSTM alone under-detects DEGRADED (recall 0.645 vs 0.847); the Transformer
+The LSTM alone under-detects DEGRADED (recall 0.645 vs 0.847); the Transformer
 captures the longer-range satellite geometry changes that precede degradation.
 
 \begin{figure}[H]
@@ -737,7 +737,7 @@ geographic diversity.
     \midrule
     \textbf{Ojerinde Joel} (LS2525253) &
       GitHub repository and code architecture; feature specification
-      (\code{feature\_list.py}); SENTINEL Transformer--BiLSTM design, training,
+      (\code{feature\_list.py}); SENTINEL Transformer--LSTM design, training,
       and ablation; 9-state EKF formulation (Joseph form, adaptive R, Mehra
       disabled); Huber robust EKF (IRLS, c-calibration, SENTINEL+Huber
       incompatibility); Bootstrap PF (Student-$t$ likelihood, GPS attractor
@@ -786,7 +786,7 @@ geographic diversity.
 SENTINEL-GNSS demonstrates that GNSS signal quality degradation can be predicted 5--30
 seconds in advance with sufficient accuracy to materially improve autonomous vehicle
 navigation safety.
-The Transformer--BiLSTM architecture learns transferable temporal signatures of
+The Transformer--LSTM architecture learns transferable temporal signatures of
 approaching signal degradation --- C/N$_0$ decline, PDOP rise, pseudorange residual
 growth --- that generalise across cities and receiver types where classical threshold
 methods fail catastrophically.
@@ -885,8 +885,8 @@ direction.
     \textbf{DEG-F1} \\
     \midrule
     Full SENTINEL & --- (reference) & \textbf{0.821} & \textbf{0.773} & \textbf{0.718} \\
-    E1 & Transformer-only (no BiLSTM) & 0.767 & 0.725 & 0.571 \\
-    E2 & BiLSTM-only (no Transformer) & 0.767 & 0.702 & 0.645 \\
+    E1 & Transformer-only (no LSTM) & 0.767 & 0.725 & 0.571 \\
+    E2 & LSTM-only (no Transformer) & 0.767 & 0.702 & 0.645 \\
     E3 & Single output head (shared) & 0.801 & 0.751 & 0.689 \\
     E4 & Remove \code{receiver\_tier} & 0.784 & 0.729 & 0.656 \\
     E5 & Standard cross-entropy loss & 0.798 & 0.744 & 0.672 \\

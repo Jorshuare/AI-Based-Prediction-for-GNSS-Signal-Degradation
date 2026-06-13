@@ -107,10 +107,15 @@ class EKF9State:
         ]) + np.eye(8) * 1e-8  # ensure positivity
         return Q
 
-    def _R_adaptive(self, p_degraded):
-        """Adaptive measurement covariance: interpolate base → degraded."""
+    def _R_adaptive(self, p_degraded, r_degraded=None):
+        """Adaptive measurement covariance: interpolate base → degraded.
+
+        r_degraded : optional per-epoch override (online sigma_deg estimator).
+                     When None, uses the static self.p.r_degraded (default).
+        """
         p = np.clip(float(p_degraded), 0, 1)
-        std = self.p.r_base + (self.p.r_degraded - self.p.r_base) * self.p.alpha * p
+        r_deg = self.p.r_degraded if r_degraded is None else float(r_degraded)
+        std = self.p.r_base + (r_deg - self.p.r_base) * self.p.alpha * p
         return np.eye(2) * (std ** 2)
 
     def _jacobian_predict(self, state, imu_accel, imu_gyro, dt):
@@ -206,8 +211,11 @@ class EKF9State:
         if evals.min() < 1e-10:
             self.P += np.eye(8) * (1e-10 - evals.min())
 
-    def update(self, gnss_pos, p_degraded, adaptive=True):
-        """Update step: fuse GNSS measurement with adaptive R based on P(DEGRADED)."""
+    def update(self, gnss_pos, p_degraded, adaptive=True, r_degraded=None):
+        """Update step: fuse GNSS measurement with adaptive R based on P(DEGRADED).
+
+        r_degraded : optional per-epoch degraded-noise std (online estimator).
+        """
         if self.state is None:
             raise RuntimeError("State not initialized")
 
@@ -222,7 +230,7 @@ class EKF9State:
 
         # Base measurement covariance (SENTINEL-driven or fixed)
         if adaptive:
-            R = self._R_adaptive(p_degraded)
+            R = self._R_adaptive(p_degraded, r_degraded)
         else:
             R = self._R_adaptive(0.0)  # r_base only
 
@@ -367,7 +375,9 @@ class EKF9State:
             self.P += np.eye(8) * (1e-10 - evals.min())
 
     def run(self, imu_accel, imu_gyro, gnss_pos, p_degraded, adaptive=True,
-            wheel_speed=None, use_aiding=True, zupt_thresh=0.2, gnss_mask=None):
+            wheel_speed=None, use_aiding=True, zupt_thresh=0.2, gnss_mask=None,
+            online_sigma=False, online_window=80, online_p_thresh=0.10,
+            online_floor=8.0, online_ceil=80.0):
         """Run full filter on a sequence. Returns filtered positions and state history.
 
         Parameters
@@ -426,6 +436,12 @@ class EKF9State:
         positions[0] = self.state[:2]
         states[0] = self.state.copy()
 
+        # Online sigma_deg estimator: causal running median of the realised GNSS
+        # innovation magnitude over recent predicted-degraded epochs. Removes the
+        # need to hand-tune r_degraded per environment.
+        from collections import deque as _deque
+        _innov_deg = _deque(maxlen=online_window)
+
         # Main filter loop
         for k in range(1, n):
             # Predict (IMU-driven motion model).
@@ -442,7 +458,17 @@ class EKF9State:
             # Skip when no fix is available this epoch (real GNSS arrives slower than
             # the IMU; the aiding above carries the state through the gap).
             if gnss_mask is None or gnss_mask[k]:
-                self.update(gnss_pos[k], p_degraded[k], adaptive=adaptive)
+                r_deg_k = None
+                if online_sigma:
+                    # Innovation magnitude against the predicted (pre-update) position.
+                    innov = float(np.linalg.norm(gnss_pos[k] - self.state[:2]))
+                    if p_degraded[k] > online_p_thresh:
+                        _innov_deg.append(innov)
+                    if len(_innov_deg) >= 10:
+                        r_deg_k = float(np.clip(np.median(_innov_deg),
+                                                online_floor, online_ceil))
+                self.update(gnss_pos[k], p_degraded[k], adaptive=adaptive,
+                            r_degraded=r_deg_k)
 
             # Store
             positions[k] = self.state[:2]

@@ -73,7 +73,7 @@
 
 ## 4. Main Result — Multi-Horizon (✅ CONFIRMED)
 
-**SENTINEL-GNSS (Transformer + BiLSTM), test set, tuned thresholds + temperature scaling:**
+**SENTINEL-GNSS (Transformer + LSTM), test set, tuned thresholds + temperature scaling:**
 
 | Horizon | Accuracy |   Macro-F1 | Weighted-F1 | Cohen κ |    MCC | Bootstrap 95% CI (Macro-F1) |
 | ------- | -------: | ---------: | ----------: | ------: | -----: | :-------------------------: |
@@ -315,8 +315,33 @@ with a GNSS-blockage segment (epochs 120–180); predictor warns from epoch 115.
 | **Adaptive EKF (ours)** |   **17.0 m** |            **36.0 m** |
 
 - Adaptive EKF cuts blockage-segment error **−33.8% vs raw GNSS**, **−21% vs fixed-R EKF**.
-- ⏳ **Real-data RMSE** pending an aligned (gnss*xy, reference_xy, p_degraded) sequence;
-  `run_ekf_experiment(...)` already accepts it. This is a \_simulation* result — report as such.
+- This is a _simulation_ result — report as such. **The real-data result is now confirmed below (§10b-real).**
+
+## 10b-real. Adaptive EKF — Real-Data Tokyo Shinjuku (✅ CONFIRMED 2026-06-13)
+
+Real 9-state IMU-aided EKF on UrbanNav Tokyo Shinjuku (Trimble RTKLIB SPP + real IMU +
+wheel odometry + cm SPAN-INS truth). 20,949 epochs @10 Hz; 2,450 degraded (≤5 sats).
+Computed by `src/models/compute_calibrated_sentinel_tokyo.py` (validation reproduces the
+saved `aided_sent5`/`aided_fixed` tracks **exactly**) and
+`src/models/paperb_navigation_metrics.py`. Sources: `results/urbannav_ekf_real_trimble.json`,
+`results/urbannav_ekf_sentinel_trimble_calibrated.json`, `results/paperb_navigation_metrics.json`.
+
+| Method | Overall RMSE | Degraded RMSE | Deg. gain | Deg. CEP95 | Deg. max | RMSE 95% CI |
+| ------------------------- | ----: | ----: | -----: | ----: | -----: | :----------: |
+| GNSS raw                  | 27.76 | 47.40 | —      | 76.28 | 887.8 | [35.8, 58.8] |
+| CV-KF                     | 24.07 | 31.23 | 34.1%  | 64.74 | 273.0 | [29.2, 33.3] |
+| **EKF fixed-R**           | 19.33 | **24.28** | **48.8%** | 51.01 | 136.9 | [22.9, 25.6] |
+| EKF nsat proxy (reactive) | 19.45 | 26.76 | 43.6%  | 51.98 | 149.6 | [25.0, 28.4] |
+| EKF Huber (c=5)           | 20.70 | 30.11 | 36.5%  | 59.25 | 170.1 | [28.1, 32.1] |
+| Student-t PF (ν=3)        | 27.08 | 31.66 | 33.2%  | 65.53 | 122.4 | [30.4, 33.1] |
+| EKF SENTINEL raw          | 36.84 | 40.64 | 14.3%  | —     | —     | — |
+| **EKF SENTINEL calibrated** | 21.40 | **29.05** | **38.7%** | 53.66 | 162.8 | [27.3, 30.8] |
+| **SENTINEL calib + online σ_deg** | 19.88 | **26.93** | **43.2%** | — | — | — |
+
+- **Floor calibration (P5=0.153) lifts SENTINEL from 14.3% → 38.7%** — the headline Paper B result, now real (replaces the former projection/TODO). Calibrated mean P: 0.203 → 0.060.
+- **Online σ_deg estimator** (causal running median of innovations at elevated-P epochs, gate P_cal>0.10, clamp [8,80] m) removes per-environment hand-tuning AND improves to **43.2%** (degraded 26.93 m, overall 19.88 m); stable 43–44% across gate 0.05–0.15. Implemented in `ekf_9state.py` (`run(online_sigma=True)`, guarded defaults — validated runs unchanged).
+- Honest ordering on this clean dual-freq receiver: fixed-R (48.8%) > nsat (43.6%) > **SENTINEL-calib (38.7%)** > Huber (36.5%) > PF (33.2%). Paired Wilcoxon: fixed-R significantly better than SENTINEL-calib (z=−11.85, p<1e-30, n=2450). SENTINEL-calib **beats** the Huber and PF robust baselines.
+- Safety story is the **tail**: fusion barely moves CEP50 but cuts CEP95 (76→51 m) and max (888→137 m). Bootstrap CIs vs raw GNSS are non-overlapping for every fusion method.
 
 ## 10c. Ensemble & Memory Diagnostics (E8–E10) — ✅ CONFIRMED (`results/ensemble_comparison.json`)
 
