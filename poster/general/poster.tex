@@ -91,7 +91,7 @@
      \textbf{Ingeriyinkindi Claudine} (LS2525236) \quad
      \textbf{Rashid Md Harun Or} (LS2525219)}\\[4pt]
     {\normalsize\color{white!70!buaaSky}
-     School of Electronics and Information Engineering (H3I) · Beihang University · Beijing 2025}
+     Hangzhou International Institute of Innovation (H3I) · Beihang University · Hangzhou 2026}
   \end{center}
 \end{tcolorbox}
 
@@ -165,12 +165,12 @@ pseudorange, temporal, atmospheric, receiver status
 \posec{4. SENTINEL-GNSS Architecture}
 
 \begin{poblock}
-\textbf{Hybrid Transformer + BiLSTM} (1.46\,M parameters)
+\textbf{Hybrid Transformer + LSTM} (1.46\,M parameters)
 
 \begin{itemize}
-  \item \textbf{Transformer encoder} (2 layers, 4 heads, $d=128$):
-    captures global satellite-geometry trends across the 60-second window
-  \item \textbf{BiLSTM} (2 layers, hidden 256):
+  \item \textbf{Transformer encoder} (2 layers, 8 heads, $d=128$):
+    captures global satellite-geometry trends across the 30-second window
+  \item \textbf{LSTM} (2 layers, hidden 256):
     captures sequential approach dynamics (gradual C/N$_0$ decline)
   \item \textbf{Three output heads:} $+5$\,s, $+15$\,s, $+30$\,s
   \item \textbf{Training:} Focal loss ($\gamma=1.0$), class weights $[1,2,5]$,
@@ -179,7 +179,7 @@ pseudorange, temporal, atmospheric, receiver status
 \end{poblock}
 
 \begin{center}
-  \includegraphics[width=0.92\columnwidth]{../../results/paper_figures/fig14_architecture.pdf}
+  \includegraphics[width=0.92\columnwidth]{../../report/sentinel_gnss_inside.png}
   \captionof{figure}{SENTINEL architecture: one forward pass produces all three prediction horizons.}
 \end{center}
 
@@ -259,6 +259,7 @@ Also evaluated: \textbf{Huber robust EKF} (IRLS downweighting) and
   Method / Scenario & Deg. RMSE & Gain \\
   \midrule
   EKF Fixed-R (Trimble) & 24.3\,m & \textbf{+48.8\,\%} \\
+  SENTINEL calib.\,+\,online (Trimble) & 26.9\,m & \textbf{+43.2\,\%} \\
   Huber EKF (u-blox)    & 58.6\,m & \textbf{+25.2\,\%} \\
   PF Student-$t$ (Odaiba) & 35.4\,m & \textbf{+40.1\,\%} \\
   \bottomrule
@@ -277,7 +278,7 @@ Also evaluated: \textbf{Huber robust EKF} (IRLS downweighting) and
 \begin{itemize}
   \item GNSS degradation is \textbf{predictable 5–30\,s in advance}
     with Macro-F1\,=\,0.821 at the actionable +5\,s horizon
-  \item The hybrid Transformer+BiLSTM \textbf{transfers across cities};
+  \item The hybrid Transformer-LSTM \textbf{transfers across cities};
     classical ML does not (5$\times$ DEGRADED F1 gap on Tokyo)
   \item Prediction-informed EKF fusion reduces degraded positioning RMSE
     by \textbf{up to 48.8\,\%} in real Tokyo urban drives
@@ -299,7 +300,7 @@ Also evaluated: \textbf{Huber robust EKF} (IRLS downweighting) and
 \begin{center}
   {\small\color{buaaNavy}
    \textbf{Contact:} joelojerinde@gmail.com \quad
-   \textbf{Institution:} Beihang University (BUAA) H3I, Beijing, China \quad
+   \textbf{Institution:} H3I, Beihang University, Hangzhou, China \quad
    \textbf{Year:} 2025}
 \end{center}
 

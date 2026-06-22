@@ -1,5 +1,5 @@
 % ============================================================
-%  SENTINEL-GNSS — Individual Poster: Ojerinde Joel (LS2525253)
+%  SENTINEL-GNSS: Individual Poster: Ojerinde Joel (LS2525253)
 %  A1 Portrait · Compile: pdflatex (single pass)
 % ============================================================
 \documentclass[20pt]{extarticle}
@@ -11,6 +11,11 @@
 \usepackage{multicol}
 \setlength{\columnsep}{1.4cm}
 \usepackage{amsmath,amssymb}
+\DeclareUnicodeCharacter{2713}{\ensuremath{\checkmark}}
+\DeclareUnicodeCharacter{2717}{\ensuremath{\times}}
+\DeclareUnicodeCharacter{2192}{\ensuremath{\rightarrow}}
+\DeclareUnicodeCharacter{2265}{\ensuremath{\geq}}
+\DeclareUnicodeCharacter{2264}{\ensuremath{\leq}}
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{float}
@@ -49,14 +54,14 @@
 \begin{tcolorbox}[colback=buaaNavy,colframe=buaaNavy,boxrule=0pt,arc=8pt,
                   left=16pt,right=16pt,top=10pt,bottom=10pt]
   \begin{center}
-    {\fontsize{46}{54}\bfseries\color{white} SENTINEL-GNSS — Individual Poster}\\[6pt]
+    {\fontsize{46}{54}\bfseries\color{white} SENTINEL-GNSS: Individual Poster}\\[6pt]
     {\fontsize{26}{32}\color{buaaSky}
      Architecture, Training, EKF Integration, and Documentation}\\[8pt]
     {\large\color{white}
-     \textbf{Ojerinde Joel} (LS2525253) \quad
+     \textbf{Ojerinde Joel Segun} (LS2525253) \quad
      Project Lead · Model Architect · Sensor Fusion Engineer}\\[4pt]
     {\normalsize\color{white!70!buaaSky}
-     Beihang University H3I · 2025}
+     H3I, Beihang University · Hangzhou · 2026}
   \end{center}
 \end{tcolorbox}
 
@@ -71,7 +76,7 @@ I led the core technical pipeline of SENTINEL-GNSS:
 \begin{itemize}
   \item Repository creation and code architecture
   \item 37-feature specification (\texttt{feature\_list.py})
-  \item Transformer+BiLSTM neural network design \& training
+  \item Transformer+LSTM neural network design \& training
   \item 9-state EKF formulation (Joseph-form covariance)
   \item SENTINEL adaptive R integration
   \item Huber robust EKF (IRLS) — calibrated for each receiver
@@ -84,14 +89,14 @@ I led the core technical pipeline of SENTINEL-GNSS:
 
 \posec{Architecture I Designed}
 \begin{poblock}
-\textbf{Input}: $(B, 60, 37)$ feature windows
+\textbf{Input}: $(B, 30, 37)$ feature windows
 
 \textbf{Transformer Encoder}\\
-2 layers · 4 heads · $d=128$ · $d_{ff}=512$\\
+2 layers · 8 heads · $d=128$ · $d_{ff}=512$\\
 Captures: PDOP trends, satellite rise/set events
 
-\textbf{BiLSTM}\\
-2 layers · hidden\,256 (128/direction)\\
+\textbf{LSTM}\\
+2 layers · hidden\,256\\
 Captures: sequential C/N$_0$ decline, directional approach
 
 \textbf{3 Output Heads}: $+5$\,s, $+15$\,s, $+30$\,s
@@ -102,7 +107,7 @@ AdamW $10^{-3}$, cosine annealing, early stopping patience\,20
 \end{poblock}
 
 \begin{center}
-  \includegraphics[width=0.95\columnwidth]{../../results/paper_figures/fig14_architecture.pdf}
+  \includegraphics[width=0.95\columnwidth]{../../report/sentinel_gnss_inside.png}
   \captionof{figure}{SENTINEL-GNSS hybrid architecture.}
 \end{center}
 
@@ -113,14 +118,14 @@ AdamW $10^{-3}$, cosine annealing, early stopping patience\,20
   Architecture & Macro-F1 & DEG F1 \\
   \midrule
   Transformer-only & 0.767 & 0.571 \\
-  BiLSTM-only      & 0.767 & 0.645 \\
+  LSTM-only      & 0.767 & 0.645 \\
   \textbf{Full (mine)} & \textbf{0.821} & \textbf{0.718} \\
   \bottomrule
 \end{tabular}
 \medskip
 
 Transformer alone over-flags (precision 0.42).
-BiLSTM alone under-recalls (recall 0.645 vs \textbf{0.847}).
+LSTM alone under-recalls (recall 0.645 vs \textbf{0.847}).
 Together they are complementary.
 \end{poblock}
 
@@ -196,9 +201,11 @@ Needs N≥2000 or multi-hypothesis proposal to fix.
   \toprule
   Method / Scenario & Deg.RMSE & Gain \\
   \midrule
-  EKF Fixed-R · Trimble    & \textbf{24.3\,m} & \textbf{48.8\,\%} \\
-  Huber EKF · u-blox       & \textbf{58.6\,m} & \textbf{25.2\,\%} \\
-  PF Student-$t$ · Odaiba  & \textbf{35.4\,m} & \textbf{40.1\,\%} \\
+  EKF Fixed-R · Trimble       & \textbf{24.3\,m} & \textbf{48.8\,\%} \\
+  SENTINEL calibrated · Trimble & 29.0\,m & 38.7\,\% \\
+  \;+ online $\sigma$ scale    & \textbf{26.9\,m} & \textbf{43.2\,\%} \\
+  Huber EKF · u-blox          & \textbf{58.6\,m} & \textbf{25.2\,\%} \\
+  PF Student-$t$ · Odaiba     & \textbf{35.4\,m} & \textbf{40.1\,\%} \\
   \bottomrule
 \end{tabular}
 \end{poblock}
@@ -241,6 +248,6 @@ Result: 46.6\,m RMSE vs 88\,m with wrong $c$.
 
 \noindent{\color{buaaBlue}\rule{\linewidth}{1.5pt}}\\[2pt]
 {\small\color{buaaNavy}\centering Contact: joelojerinde@gmail.com \quad
-  Beihang University H3I · 2025}
+  H3I, Beihang University · Hangzhou · 2026}
 
 \end{document}
