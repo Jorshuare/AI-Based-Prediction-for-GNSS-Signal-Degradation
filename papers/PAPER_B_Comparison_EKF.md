@@ -1,5 +1,17 @@
 # Paper B — Systems Paper: Model Comparison → Selection → Adaptive EKF (Full Section Plan)
 
+> **⚠️ STATUS — PARTIALLY SUPERSEDED (2026-06).** The live manuscript is
+> `papers/paper_b/sentinel_tits.tex`, which has evolved past this plan: it is now a
+> **real-data** study using a **9-state IMU-aided EKF** on Tokyo Shinjuku plus a
+> 4-environment UrbanNav Hong Kong evaluation (constant-velocity EKF) with an
+> **unsupervised receiver-domain floor calibration** and a **tunnel-outage** result
+> (30.6% RMSE reduction). The §4 "2-D constant-velocity EKF + controlled simulation"
+> framing below is the earlier plan and is retained only for provenance. The
+> model-comparison content (§3, E8 ensemble / E9 persistence) remains current.
+> Confirmed architecture everywhere: 30-epoch window, Transformer (2 layers, 8 heads,
+> d_model 128, d_ff 512) + 2-layer LSTM (hidden 256), dropout 0.3.
+
+
 > **This replaces the former benchmark paper** (dropped per team decision). Paper B is now the
 > **systems/application** paper: it fairly compares model families, selects the deployable
 > model, integrates it into a prediction-informed **adaptive EKF**, and measures the

@@ -377,6 +377,34 @@ directory and cited in the paper's implementation section.
   \label{fig:ekf_realdata}
 \end{figure}
 
+\subsection{Final Results on the Real Tokyo Dataset}
+
+The 9-state skeleton I built was validated on the real Tokyo Shinjuku dataset with real
+GNSS, real IMU, and centimetre ground truth. The same predict and update structure, driven
+by the prediction-based measurement noise, gives the results in
+Table~\ref{tab:mustapha_ekf}. The fixed-R configuration reduces the degraded segment RMSE
+from 47.4\,m to 24.3\,m, a 48.8 percent reduction. The project lead then added a
+receiver-domain calibration that brings the learned prediction to 38.7 percent and an
+online estimate of the degraded noise scale that reaches 43.2 percent without manual
+tuning. These numbers confirm that the structure I implemented holds on real data, not only
+on the simulated blockage.
+
+\begin{table}[H]
+  \centering
+  \caption{Degraded segment RMSE of the 9-state filter on the real Tokyo Trimble dataset.}
+  \label{tab:mustapha_ekf}
+  \begin{tabular}{lcc}
+    \toprule
+    \textbf{Configuration} & \textbf{Degraded RMSE} & \textbf{Gain over raw GPS} \\
+    \midrule
+    Raw GPS                      & 47.40\,m & n/a \\
+    Fixed-R                      & 24.28\,m & 48.8\,\% \\
+    Prediction with calibration  & 29.05\,m & 38.7\,\% \\
+    Prediction with online scale & 26.93\,m & 43.2\,\% \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
 % ============================================================
 \section{Real-Time Dashboard --- Architecture and Design}
 % ============================================================
@@ -495,7 +523,9 @@ Features implemented:
 
 \subsection{Panel 2: Signal Quality Time Series}
 
-Panel~2 displays three scrolling Plotly time-series (60-epoch window, 1\,Hz refresh):
+Panel~2 displays three scrolling Plotly time-series over a rolling 60-second display
+buffer (independent of SENTINEL's 30-epoch model input window; the display simply shows
+extra context), refreshing at 1\,Hz:
 
 \begin{enumerate}
   \item \textbf{Mean C/N$_0$}: line plot with horizontal threshold lines at 30\,dB-Hz

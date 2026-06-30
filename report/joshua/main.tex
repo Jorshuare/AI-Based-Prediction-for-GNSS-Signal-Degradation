@@ -634,8 +634,8 @@ focal loss to learn from without making the classification task trivial.
 For each epoch $t$, the input window is:
 
 \begin{equation}
-  \mathbf{X}_t = [\mathbf{f}_{t-59},\; \mathbf{f}_{t-58},\; \ldots,\; \mathbf{f}_t]
-  \in \mathbb{R}^{60 \times 37}
+  \mathbf{X}_t = [\mathbf{f}_{t-29},\; \mathbf{f}_{t-28},\; \ldots,\; \mathbf{f}_t]
+  \in \mathbb{R}^{30 \times 37}
 \end{equation}
 
 with prediction targets:
@@ -646,8 +646,8 @@ with prediction targets:
 
 A key implementation constraint: \textbf{no window may span a session boundary}.
 I implemented a session-ID mask: any window where \code{session\_id} changes within the
-60-epoch lookback range is excluded.
-Approximately 120 windows per session are lost at boundaries (60 at the start, 60 at the
+30-epoch lookback range is excluded.
+Approximately 60 windows per session are lost at boundaries (30 at the start, 30 at the
 end); this is negligible relative to each session's 500--3,000 window count.
 
 \subsection{Session-Level Temporal Train/Validation/Test Split}

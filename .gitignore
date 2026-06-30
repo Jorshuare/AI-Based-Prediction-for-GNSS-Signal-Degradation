@@ -65,6 +65,13 @@ Team-Pilot-Project.code-workspace
 # ─── Private project guide (comprehensive internal reference) ─────────────────
 PROJECT_COMPLETE_GUIDE.md
 
+# ─── Private personal thesis notes (not a team deliverable) ───────────────────
+THESIS_DIRECTIONS.md
+
+# ─── Reports kept local for now (not pushed) ─────────────────────────────────
+report/joel/
+report/general/
+
 # ─── Always track these regardless of above rules ────────────────────────────
 !**/.gitkeep
 !docs/dataset_references/*.pdf

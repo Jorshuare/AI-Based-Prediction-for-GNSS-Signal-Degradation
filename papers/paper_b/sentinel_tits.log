@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (MiKTeX 24.1) (preloaded format=pdflatex 2026.6.8)  9 JUN 2026 09:00
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (MiKTeX 24.1) (preloaded format=pdflatex 2026.6.8)  13 JUN 2026 18:11
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -356,20 +356,23 @@ Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 4
 g
 File: epstopdf-sys.cfg 2021/03/18 v2.0 Configuration of epstopdf for MiKTeX
 ))
+Underfull \vbox (badness 1033) has occurred while \output is active []
+
+
 
 LaTeX Warning: Citation `[AuthorYear_AV_positioning_survey]' on page 1 undefine
-d on input line 137.
+d on input line 138.
 
 
 LaTeX Warning: Citation `[AuthorYear_NLOS_survey]' on page 1 undefined on input
- line 142.
+ line 143.
 
-LaTeX Font Info:    Trying to load font information for U+msa on input line 149
+LaTeX Font Info:    Trying to load font information for U+msa on input line 150
 .
 (C:\Users\Joel\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 149
+LaTeX Font Info:    Trying to load font information for U+msb on input line 150
 .
 
 (C:\Users\Joel\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\umsb.fd
@@ -377,23 +380,23 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
 
 LaTeX Warning: Citation `[AuthorYear_RAIM_classic]' on page 1 undefined on inpu
-t line 151.
+t line 152.
 
 
 LaTeX Warning: Citation `[AuthorYear_cooperative_driving]' on page 1 undefined 
-on input line 162.
+on input line 163.
 
 
 LaTeX Warning: Citation `[AuthorYear_Paper_A_GPS_Solutions]' on page 1 undefine
-d on input line 169.
+d on input line 170.
 
 
-Underfull \hbox (badness 1810) in paragraph at lines 167--177
+Underfull \hbox (badness 1810) in paragraph at lines 168--178
 \OT1/ptm/m/n/10 frame-work (Fig. 1[]) that in-te-grates SEN-TINEL degra-da-
  []
 
 LaTeX Font Info:    Trying to load font information for TS1+ptm on input line 1
-77.
+78.
 (C:\Users\Joel\AppData\Local\Programs\MiKTeX\tex/latex/psnfss\ts1ptm.fd
 File: ts1ptm.fd 2001/06/04 font definitions for TS1/ptm.
 )
@@ -402,91 +405,87 @@ l/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/base/8r.enc}
 
 
 ]
-Underfull \hbox (badness 1502) in paragraph at lines 180--183
-[]\OT1/ptm/m/n/10 A for-mally spec-i-fied adaptive-$\OT1/cmr/bx/n/10 R$ \OT1/pt
-m/m/n/10 co-vari-ance sched-
- []
-
 <figures/fig_system_overview.pdf, id=13, 505.1673pt x 172.63872pt>
 File: figures/fig_system_overview.pdf Graphic file (type pdf)
 <use figures/fig_system_overview.pdf>
-Package pdftex.def Info: figures/fig_system_overview.pdf  used on input line 19
-7.
+Package pdftex.def Info: figures/fig_system_overview.pdf  used on input line 20
+0.
 (pdftex.def)             Requested size: 252.0pt x 86.11893pt.
 
+
 LaTeX Warning: Citation `[AuthorYear_Groves_2013]' on page 2 undefined on input
- line 214.
+ line 217.
 
 
 LaTeX Warning: Citation `[AuthorYear_Petovello_2015]' on page 2 undefined on in
-put line 214.
+put line 217.
 
 
 LaTeX Warning: Citation `[AuthorYear_tight_coupling_urban]' on page 2 undefined
- on input line 217.
+ on input line 220.
 
 
 LaTeX Warning: Citation `[AuthorYear_factor_graph_GNSS_IMU]' on page 2 undefine
-d on input line 221.
+d on input line 224.
 
 
 LaTeX Warning: Citation `[AuthorYear_Sage_Husa]' on page 2 undefined on input l
-ine 226.
+ine 229.
 
 
 LaTeX Warning: Citation `[AuthorYear_IMM_GNSS]' on page 2 undefined on input li
-ne 229.
+ne 232.
 
 
 LaTeX Warning: Citation `[AuthorYear_chi2_GNSS]' on page 2 undefined on input l
-ine 230.
+ine 233.
 
 
 LaTeX Warning: Citation `[AuthorYear_predictive_adaptive_KF]' on page 2 undefin
-ed on input line 235.
+ed on input line 238.
 
 
 LaTeX Warning: Citation `[AuthorYear_TLIO]' on page 2 undefined on input line 2
-41.
+44.
 
 
 LaTeX Warning: Citation `[AuthorYear_RIDI]' on page 2 undefined on input line 2
-41.
+44.
 
 
 LaTeX Warning: Citation `[AuthorYear_ML_GNSS_outlier]' on page 2 undefined on i
-nput line 242.
+nput line 245.
 
 
 LaTeX Warning: Citation `[AuthorYear_ML_map_matching]' on page 2 undefined on i
-nput line 243.
+nput line 246.
 
 
 LaTeX Warning: Citation `[AuthorYear_RNN_pseudorange]' on page 2 undefined on i
-nput line 244.
+nput line 247.
 
 
 LaTeX Warning: Citation `[AuthorYear_UrbanNav_dataset]' on page 2 undefined on 
-input line 250.
+input line 253.
 
 
 LaTeX Warning: Citation `[AuthorYear_UrbanNav_GNSS]' on page 2 undefined on inp
-ut line 253.
+ut line 256.
 
 
 LaTeX Warning: Citation `[AuthorYear_UrbanNav_INS]' on page 2 undefined on inpu
-t line 254.
+t line 257.
 
 
 LaTeX Warning: Citation `[AuthorYear_UrbanNav_lidar]' on page 2 undefined on in
-put line 255.
+put line 258.
 
 
 LaTeX Warning: Citation `[AuthorYear_Paper_A_GPS_Solutions]' on page 2 undefine
-d on input line 263.
+d on input line 266.
 
 
-Overfull \hbox (14.0474pt too wide) detected at line 274
+Overfull \hbox (14.0474pt too wide) detected at line 277
 [][]\OT1/cmr/m/n/10 (\OML/cmm/m/it/10 t\OT1/cmr/m/n/10 ) = \OML/cmm/m/it/10 P [
 ][]t[]h \OMS/cmsy/m/n/10 j \OT1/cmr/bx/n/10 x[][]\OML/cmm/m/it/10 ;  h \OMS/cms
 y/m/n/10 2 f\OT1/cmr/m/n/10 5\OML/cmm/m/it/10 ; \OT1/cmr/m/n/10 15\OML/cmm/m/it
@@ -497,70 +496,95 @@ y/m/n/10 2 f\OT1/cmr/m/n/10 5\OML/cmm/m/it/10 ; \OT1/cmr/m/n/10 15\OML/cmm/m/it
 <figures/fig_calibration.pdf, id=107, 500.39171pt x 197.51491pt>
 File: figures/fig_calibration.pdf Graphic file (type pdf)
 <use figures/fig_calibration.pdf>
-Package pdftex.def Info: figures/fig_calibration.pdf  used on input line 300.
+Package pdftex.def Info: figures/fig_calibration.pdf  used on input line 307.
 (pdftex.def)             Requested size: 252.0pt x 99.47147pt.
 
 
 LaTeX Warning: Citation `[AuthorYear_NHC_GNSS]' on page 3 undefined on input li
-ne 340.
+ne 347.
+
+
+Overfull \hbox (55.14128pt too wide) detected at line 400
+[][]\OT1/cmr/m/n/10 (\OML/cmm/m/it/10 t\OT1/cmr/m/n/10 ) = [][][][] \OMS/cmsy/m
+/n/10 k\OT1/cmr/bx/n/10 z[] \OMS/cmsy/m/n/10 ^^@ \OT1/cmr/bx/n/10 H[]\OMS/cmsy/
+m/n/10 k \OT1/cmr/m/n/10 : \OML/cmm/m/it/10 ^^\ \OMS/cmsy/m/n/10 2 W[]\OML/cmm/
+m/it/10 ;  []\OT1/cmr/m/n/10 (\OML/cmm/m/it/10 ^^\\OT1/cmr/m/n/10 ) \OML/cmm/m/
+it/10 > \OT1/cmr/m/n/10 0\OML/cmm/m/it/10 :\OT1/cmr/m/n/10 1 []\OML/cmm/m/it/10
+ ;  \OT1/cmr/m/n/10 8\OML/cmm/m/it/10 ;  \OT1/cmr/m/n/10 80[]\OML/cmm/m/it/10 :
+
+ []
 
 <figures/fig_adaptive_r.pdf, id=108, 771.14644pt x 340.7534pt>
 File: figures/fig_adaptive_r.pdf Graphic file (type pdf)
 <use figures/fig_adaptive_r.pdf>
-Package pdftex.def Info: figures/fig_adaptive_r.pdf  used on input line 387.
+Package pdftex.def Info: figures/fig_adaptive_r.pdf  used on input line 408.
 (pdftex.def)             Requested size: 252.0pt x 111.35187pt.
-[3 <./figures/fig_calibration.pdf> <./figures/fig_adaptive_r.pdf>]
-Overfull \hbox (34.37114pt too wide) in paragraph at lines 449--460
+[3 <./figures/fig_calibration.pdf>]
+Overfull \hbox (34.37114pt too wide) in paragraph at lines 470--481
 [][] 
  []
 
 
-Overfull \hbox (2.1885pt too wide) in paragraph at lines 484--501
+Overfull \hbox (16.50024pt too wide) in paragraph at lines 505--528
 [][]
  []
 
 
-Underfull \hbox (badness 1694) in paragraph at lines 503--507
+Underfull \hbox (badness 1694) in paragraph at lines 530--534
 \OT1/ptm/m/n/10 and degraded-epoch RMSE from 47.40 m to 24.28 m
  []
 
-<figures/fig_tokyo_comparison.pdf, id=273, 512.66344pt x 278.10399pt>
-File: figures/fig_tokyo_comparison.pdf Graphic file (type pdf)
-<use figures/fig_tokyo_comparison.pdf>
-Package pdftex.def Info: figures/fig_tokyo_comparison.pdf  used on input line 5
-22.
-(pdftex.def)             Requested size: 252.0pt x 136.70073pt.
-[4 <./figures/fig_tokyo_comparison.pdf>]
-<figures/fig_tunnel.pdf, id=337, 420.1782pt x 357.18092pt>
-File: figures/fig_tunnel.pdf Graphic file (type pdf)
-<use figures/fig_tunnel.pdf>
-Package pdftex.def Info: figures/fig_tunnel.pdf  used on input line 593.
-(pdftex.def)             Requested size: 252.0pt x 214.21754pt.
-<figures/fig_hk_results.pdf, id=338, 505.27145pt x 242.8393pt>
-File: figures/fig_hk_results.pdf Graphic file (type pdf)
-<use figures/fig_hk_results.pdf>
-Package pdftex.def Info: figures/fig_hk_results.pdf  used on input line 604.
-(pdftex.def)             Requested size: 252.0pt x 121.11179pt.
 
-Overfull \hbox (12.46286pt too wide) in paragraph at lines 624--634
+Overfull \hbox (19.33505pt too wide) in paragraph at lines 566--578
 [][] 
  []
 
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
+[4 <./figures/fig_adaptive_r.pdf>]
+<figures/fig_error_cdf.pdf, id=276, 505.89pt x 303.534pt>
+File: figures/fig_error_cdf.pdf Graphic file (type pdf)
+<use figures/fig_error_cdf.pdf>
+Package pdftex.def Info: figures/fig_error_cdf.pdf  used on input line 598.
+(pdftex.def)             Requested size: 252.0pt x 151.20157pt.
+<figures/fig_tokyo_comparison.pdf, id=277, 520.34402pt x 289.08pt>
+File: figures/fig_tokyo_comparison.pdf Graphic file (type pdf)
+<use figures/fig_tokyo_comparison.pdf>
+Package pdftex.def Info: figures/fig_tokyo_comparison.pdf  used on input line 6
+08.
+(pdftex.def)             Requested size: 252.0pt x 140.00072pt.
+<figures/fig_tunnel.pdf, id=278, 420.1782pt x 357.18092pt>
+File: figures/fig_tunnel.pdf Graphic file (type pdf)
+<use figures/fig_tunnel.pdf>
+Package pdftex.def Info: figures/fig_tunnel.pdf  used on input line 684.
+(pdftex.def)             Requested size: 252.0pt x 214.21754pt.
+<figures/fig_hk_results.pdf, id=279, 505.27145pt x 242.8393pt>
+File: figures/fig_hk_results.pdf Graphic file (type pdf)
+<use figures/fig_hk_results.pdf>
+Package pdftex.def Info: figures/fig_hk_results.pdf  used on input line 695.
+(pdftex.def)             Requested size: 252.0pt x 121.11179pt.
 
-LaTeX Warning: Citation `[AuthorYear_V2I_GNSS_map]' on page 5 undefined on inpu
-t line 670.
-
-[5 <./figures/fig_tunnel.pdf> <./figures/fig_hk_results.pdf>]
-
-LaTeX Warning: Citation `[AuthorYear_Platt_scaling]' on page 6 undefined on inp
-ut line 685.
+Overfull \hbox (12.46286pt too wide) in paragraph at lines 715--725
+[][] 
+ []
 
 
-LaTeX Warning: Citation `[AuthorYear_online_noise_estimation]' on page 6 undefi
-ned on input line 700.
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+[5 <./figures/fig_error_cdf.pdf> <./figures/fig_tokyo_comparison.pdf>] [6 <./fi
+gures/fig_tunnel.pdf> <./figures/fig_hk_results.pdf>]
+
+LaTeX Warning: Citation `[AuthorYear_V2I_GNSS_map]' on page 7 undefined on inpu
+t line 803.
+
+
+LaTeX Warning: Citation `[AuthorYear_Platt_scaling]' on page 7 undefined on inp
+ut line 818.
+
+
+LaTeX Warning: Citation `[AuthorYear_online_noise_estimation]' on page 7 undefi
+ned on input line 836.
 
 (sentinel_tits.bbl
 
@@ -575,7 +599,7 @@ l.24 \end{thebibliography}
 Try typing  <return>  to proceed.
 If that doesn't work, type  X <return>  to quit.
 
-) [6] (sentinel_tits.aux)
+) [7] (sentinel_tits.aux)
  ***********
 LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-01-04>
@@ -586,10 +610,10 @@ LaTeX Warning: There were undefined references.
 
  ) 
 Here is how much of TeX's memory you used:
- 4790 strings out of 474486
- 77822 string characters out of 5744228
- 1950542 words of memory out of 5000000
- 26990 multiletter control sequences out of 15000+600000
+ 4800 strings out of 474486
+ 78124 string characters out of 5744228
+ 1952542 words of memory out of 5000000
+ 27000 multiletter control sequences out of 15000+600000
  601595 words of font info for 119 fonts, out of 8000000 for 9000
  1145 hyphenation exceptions out of 8191
  57i,12n,65p,563b,256s stack positions out of 10000i,1000n,20000p,200000b,200000s
@@ -607,15 +631,14 @@ Joel/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmr7.pfb><C:/
 Users/Joel/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmr8.pf
 b><C:/Users/Joel/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/c
 msy10.pfb><C:/Users/Joel/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfo
-nts/cm/cmsy7.pfb><C:/Users/Joel/AppData/Local/Programs/MiKTeX/fonts/type1/publi
-c/amsfonts/cm/cmsy8.pfb><C:/Users/Joel/AppData/Local/Programs/MiKTeX/fonts/type
-1/urw/times/utmb8a.pfb><C:/Users/Joel/AppData/Local/Programs/MiKTeX/fonts/type1
-/urw/times/utmbi8a.pfb><C:/Users/Joel/AppData/Local/Programs/MiKTeX/fonts/type1
-/urw/times/utmr8a.pfb><C:/Users/Joel/AppData/Local/Programs/MiKTeX/fonts/type1/
-urw/times/utmri8a.pfb>
-Output written on sentinel_tits.pdf (6 pages, 436070 bytes).
+nts/cm/cmsy7.pfb><C:/Users/Joel/AppData/Local/Programs/MiKTeX/fonts/type1/urw/t
+imes/utmb8a.pfb><C:/Users/Joel/AppData/Local/Programs/MiKTeX/fonts/type1/urw/ti
+mes/utmbi8a.pfb><C:/Users/Joel/AppData/Local/Programs/MiKTeX/fonts/type1/urw/ti
+mes/utmr8a.pfb><C:/Users/Joel/AppData/Local/Programs/MiKTeX/fonts/type1/urw/tim
+es/utmri8a.pfb>
+Output written on sentinel_tits.pdf (7 pages, 454955 bytes).
 PDF statistics:
- 577 PDF objects out of 1000 (max. 8388607)
+ 535 PDF objects out of 1000 (max. 8388607)
  0 named destinations out of 1000 (max. 500000)
- 31 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 36 words of extra memory for PDF output out of 10000 (max. 10000000)
 

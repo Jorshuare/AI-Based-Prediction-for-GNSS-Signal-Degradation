@@ -1,0 +1,24 @@
+{
+  "scenario": "Shinjuku",
+  "gnss_source": "trimble",
+  "calibration": "unsupervised floor: P_cal = clip((P - P5)/(1-P5), 0, 1)",
+  "p5_floor": 0.153,
+  "mean_p_raw": 0.203,
+  "mean_p_calibrated": 0.06,
+  "validation_reproduces_saved": true,
+  "rmse_overall": {
+    "gnss_raw": 27.761,
+    "aided_ekf_sent5s_calib": 21.404,
+    "aided_ekf_sent5s_calib_online": 19.877
+  },
+  "rmse_degraded_segment": {
+    "gnss_raw": 47.402,
+    "aided_ekf_sent5s_calib": 29.048,
+    "aided_ekf_sent5s_calib_online": 26.93
+  },
+  "degraded_gain_vs_raw": {
+    "aided_ekf_sent5s_calib": 38.7,
+    "aided_ekf_sent5s_calib_online": 43.2
+  },
+  "online_sigma_deg": "causal running median of innovations at elevated-P epochs, window=80, clamp [8,80] m, gate P_cal>0.10 (stable 43-44% gain across gate 0.05-0.15)"
+}

@@ -128,7 +128,7 @@ against which SENTINEL's advantages are argued.
         Importance plot \\
     3 & Paper Section~1 (Introduction): problem, limitations, contributions &
         800-word section \\
-    3 & Paper Section~2 (Related Work): 3 subsections, 25 citations &
+    3 & Paper Section~2 (Related Work): 3 subsections, 30 papers &
         1,000-word section \\
     4 & Paper revision: updating baseline table after Joel finalised SENTINEL results &
         Revised Section~5 \\
@@ -159,8 +159,8 @@ I conducted a systematic literature search using four query strings across three
   \end{tabular}
 \end{table}
 
-After removing duplicates (87 unique results), I screened all 87 titles and abstracts
-against two inclusion criteria:
+These queries returned 87 results in total across the three databases. After removing
+duplicates and screening titles and abstracts against two inclusion criteria:
 \begin{enumerate}
   \item Work must relate to GNSS signal quality in urban environments (not open-sky
     aviation RAIM or indoor positioning).
@@ -262,7 +262,7 @@ I included a careful citation of this paper in the Related Work section because:
 (3) their finding that PDOP $> 3$ correlates strongly with positioning error $> 5$\,m
   is consistent with our labelling criteria.
 
-\subsubsection{Angrisano et al.\ (2013) --- GPS/GLONASS + IMU Fusion \cite{angrisano2013imu}}
+\subsubsection{Angrisano et al.\ (2012) --- GPS/GLONASS + IMU Fusion \cite{angrisano2013imu}}
 
 Angrisano's study of loosely-coupled EKF fusion for vehicular navigation provided the
 foundational reference for Joel's EKF design.
@@ -401,23 +401,23 @@ Selected by maximum validation Macro-F1.
 
 \begin{table}[H]
   \centering
-  \caption{Random Forest per-class test results.}
-  \begin{tabular}{lcccc}
+  \caption{Random Forest per-class F1 on the held-out test set.}
+  \begin{tabular}{lcc}
     \toprule
-    \textbf{Class} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} & \textbf{Support} \\
+    \textbf{Class} & \textbf{F1} & \textbf{Support} \\
     \midrule
-    CLEAN    & 0.921 & 0.997 & 0.958 & 731 \\
-    WARNING  & 0.988 & 0.887 & 0.934 & 746 \\
-    DEGRADED & 0.879 & 0.883 & 0.881 & 209 \\
+    CLEAN    & 0.997 & 731 \\
+    WARNING  & 0.958 & 746 \\
+    DEGRADED & 0.823 & 209 \\
     \midrule
-    Macro-F1  & & & 0.924 & \\
-    MCC       & & & 0.889 & \\
-    Inference & & & 0.12\,ms & \\
+    Macro-F1  & 0.926    & \\
+    MCC       & 0.889    & \\
+    Inference & 0.12\,ms & \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-\textbf{Important observation}: RF achieves higher in-domain Macro-F1 (0.924) than
+\textbf{Important observation}: RF achieves higher in-domain Macro-F1 (0.926) than
 SENTINEL (0.821).
 I was responsible for documenting this result honestly.
 In an initial draft, I suggested framing it as ``SENTINEL is competitive with RF.''
@@ -492,8 +492,10 @@ study.optimize(objective, n_trials=50)
 \textbf{Best hyperparameters found:}
 \code{n\_estimators=800, max\_depth=6, eta=0.05, subsample=0.8, colsample\_bytree=0.75,
 min\_child\_weight=3, lambda=2.1}.
-Per-class weighting: \code{scale\_pos\_weight} set to
-$N_\mathrm{CLEAN}/N_\mathrm{DEGRADED} = 12.4$ for DEGRADED.
+Class imbalance is handled with per-sample weights (\code{sample\_weight}) inversely
+proportional to class frequency. The \code{scale\_pos\_weight} parameter is not used,
+because it applies only to binary objectives and is not defined for the multi-class
+\code{multi:softmax} objective used here.
 
 \subsubsection{XGBoost vs RF Comparison}
 
@@ -505,15 +507,15 @@ $N_\mathrm{CLEAN}/N_\mathrm{DEGRADED} = 12.4$ for DEGRADED.
     \textbf{Model} & \textbf{In-domain Macro-F1} & \textbf{In-domain DEG-F1} &
     \textbf{Tokyo Macro-F1} & \textbf{Tokyo DEG-F1} \\
     \midrule
-    Random Forest & \textbf{0.924} & \textbf{0.881} & 0.618 & 0.148 \\
-    XGBoost       & 0.919          & 0.871          & \textbf{0.669} & \textbf{0.621} \\
+    Random Forest & \textbf{0.926} & 0.823 & 0.618 & 0.148 \\
+    XGBoost       & 0.919          & 0.810 & \textbf{0.821} & \textbf{0.784} \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-This comparison reveals an interesting pattern: RF slightly outperforms XGBoost
-in-domain (0.924 vs 0.919) but XGBoost transfers much better to Tokyo
-(0.621 vs 0.148 DEGRADED F1).
+This comparison reveals a clear pattern: RF slightly outperforms XGBoost
+in-domain (0.926 vs 0.919) but XGBoost transfers much better to Tokyo
+(DEGRADED F1 0.784 vs 0.148).
 The XGBoost regularisation (L2 weight decay, subsampling) reduces overfitting on
 city-specific thresholds.
 RF, with deeper trees and no subsampling, memorises the Beihang feature distributions
@@ -535,8 +537,8 @@ I wrote this analysis into the paper's baseline comparison section.
     \midrule
     SNR Threshold         & 0.559 & 0.391 & 0.358 & $<0.01$ \\
     RAIM                  & 0.483 & 0.321 & 0.284 & 0.08 \\
-    Random Forest         & 0.924 & 0.889 & 0.881 & 0.12 \\
-    XGBoost               & 0.919 & 0.884 & 0.871 & 0.23 \\
+    Random Forest         & 0.926 & 0.889 & 0.823 & 0.12 \\
+    XGBoost               & 0.919 & 0.884 & 0.810 & 0.23 \\
     \midrule
     \textbf{SENTINEL (DL)} & \textbf{0.821} & \textbf{0.773} & \textbf{0.718} &
       \textbf{0.039} \\
@@ -584,26 +586,24 @@ signal blockage, not city-specific geometry statistics.
 
 \begin{table}[H]
   \centering
-  \caption{RF cross-city analysis: Beihang vs Tokyo per-class performance.}
-  \begin{tabular}{lcccccc}
+  \caption{Random Forest per-class F1: Beihang (in-domain) versus Tokyo (cross-city).}
+  \begin{tabular}{lcc}
     \toprule
-    & \multicolumn{3}{c}{\textbf{Beihang (in-domain)}} &
-      \multicolumn{3}{c}{\textbf{Tokyo (cross-city)}} \\
-    \cmidrule(lr){2-4}\cmidrule(lr){5-7}
-    \textbf{Class} & P & R & F1 & P & R & F1 \\
+    \textbf{Class} & \textbf{Beihang F1} & \textbf{Tokyo F1} \\
     \midrule
-    CLEAN    & 0.921 & 0.997 & 0.958 & 0.702 & 0.331 & 0.450 \\
-    WARNING  & 0.988 & 0.887 & 0.934 & 0.611 & 0.841 & 0.708 \\
-    DEGRADED & 0.879 & 0.883 & 0.881 & 0.091 & 0.273 & 0.136 \\
+    CLEAN    & 0.997 & 0.990 \\
+    WARNING  & 0.958 & 0.716 \\
+    DEGRADED & 0.823 & 0.148 \\
+    \midrule
+    Macro-F1 & 0.926 & 0.618 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-The collapse is specific to DEGRADED: WARNING F1 actually \emph{rises} in Tokyo (0.708
-vs 0.934) because many false-positive CLEAN predictions become WARNING predictions, and
-some true DEGRADED become WARNING --- partially accidentally correct.
-CLEAN precision collapses (0.702 vs 0.921) because the RF incorrectly flags many
-genuinely clean Tokyo epochs as WARNING.
+The collapse is specific to the DEGRADED class, whose F1 falls from 0.823 to 0.148.
+CLEAN F1 stays high (0.997 to 0.990) because most Tokyo epochs are clean and easy to
+classify, while WARNING F1 falls from 0.958 to 0.716. The model keeps the easy classes
+but fails on the safety-critical one, which is the class that matters for the vehicle.
 
 I wrote a full analysis of this pattern in the paper's cross-city discussion.
 
@@ -618,41 +618,16 @@ I document these here because they influenced the final design decisions.
 
 I applied SMOTE (Synthetic Minority Oversampling Technique) \cite{chawla2002smote}
 to the RF training data to address the class imbalance.
-Result: Macro-F1 dropped from 0.924 to 0.891 on the validation set.
+Result: SMOTE changes RF Macro-F1 negligibly, from 0.9103 without SMOTE to 0.9094 with
+SMOTE, a difference of 0.0009 on the held-out test set.
 
 Investigation: SMOTE creates synthetic DEGRADED samples by linear interpolation between
 nearest DEGRADED neighbours in feature space.
-For tree-based classifiers, these synthetic samples can create artificial DEGRADED
-regions that span feature combinations never observed in real data, leading to incorrect
-classification of genuine WARNING epochs near these synthetic regions.
+For tree-based classifiers, these synthetic samples add interpolation artefacts in the
+flattened feature space that offset any benefit from class balancing, so the net effect
+is negligible.
 Decision: SMOTE is not used for any baseline.
 For the DL model, Joel confirmed the same finding (Ablation E5).
-
-\subsection{Deeper Trees for RF}
-
-Setting \code{max\_depth=None} (unlimited) was selected as optimal by the
-hyperparameter search.
-I also tested \code{max\_depth=5} and \code{max\_depth=10} to see whether depth
-limitation reduces cross-city overfitting.
-Result: max\_depth=5 gives validation Macro-F1\,=\,0.891 and Tokyo DEGRADED F1\,=\,0.312.
-Depth limitation \emph{does} improve cross-city generalisation (0.312 vs 0.148) at the
-cost of in-domain performance (0.891 vs 0.924).
-
-I documented this trade-off in the paper and recommended that practitioners facing
-cross-city deployment scenarios use \code{max\_depth=5} rather than unlimited depth.
-However, since the paper's primary in-domain metric is Macro-F1, we report the
-unlimited-depth result as the official RF baseline.
-
-\subsection{Stacking RF and XGBoost}
-
-I attempted a stacking ensemble: train an RF and XGBoost, then train a logistic
-regression meta-classifier on the concatenated probability outputs.
-Validation Macro-F1: 0.931 (slight improvement over RF alone).
-Tokyo DEGRADED F1: 0.143 (marginally better than RF alone at 0.148 but worse than
-XGBoost at 0.621).
-The stacking ensemble inherits the RF's city-specific threshold memorisation problem.
-I discarded this result and did not include it in the paper --- it would not
-strengthen any argument.
 
 % ============================================================
 \section{Paper Writing: Introduction and Related Work}
@@ -688,7 +663,7 @@ Advance notice enables action.
 \textbf{Contributions list (5 items):}
 \begin{enumerate}
   \item Problem reformulation: predictive vs reactive
-  \item SENTINEL architecture: Transformer+BiLSTM, 1.46M parameters, 0.039ms
+  \item SENTINEL architecture: Transformer+LSTM, 1.46M parameters, 0.039ms
   \item Cross-city generalisation: 0.75 vs 0.15 Tokyo DEGRADED F1
   \item Prediction-informed sensor fusion: 48.8\,\% degraded-RMSE gain
   \item Open benchmark: 149,662 epochs, 4 cities, 9+ receiver types
@@ -706,7 +681,7 @@ Advance notice enables action.
 
 \subsection{Section 2: Related Work}
 
-I structured Related Work in three subsections covering 25 papers and approximately
+I structured Related Work in three subsections covering 30 papers and approximately
 1,000 words.
 
 \subsubsection{Subsection 2.1: GNSS Quality Monitoring (10 papers)}
@@ -748,7 +723,7 @@ for prediction-based over innovation-based R adaptation.
 
 The most important thing I did for the project was the \textbf{honest baseline evaluation}.
 
-When I produced the RF Macro-F1\,=\,0.924 vs SENTINEL\,=\,0.821 comparison,
+When I produced the RF Macro-F1\,=\,0.926 vs SENTINEL\,=\,0.821 comparison,
 the team had a choice: report only selective baselines that make SENTINEL look better,
 or disclose the full result and argue from generalisation rather than accuracy.
 I advocated for full disclosure, and I documented the argument (in-domain performance
@@ -782,19 +757,20 @@ The systematic taxonomy is what made this distinction rigorous rather than rheto
 
 I would implement a \textbf{GRU (Gated Recurrent Unit) baseline} alongside the RF and
 XGBoost.
-GRU is a lighter-weight alternative to BiLSTM with fewer parameters and sometimes
+GRU is a lighter-weight alternative to LSTM with fewer parameters and sometimes
 comparable sequential modelling performance.
-If GRU achieves similar Macro-F1 to the full Transformer+BiLSTM, it would suggest the
+If GRU achieves similar Macro-F1 to the full Transformer+LSTM, it would suggest the
 performance gain comes from the sequential modelling capacity, not specifically the
 Transformer attention.
 If GRU under-performs significantly, it confirms the Transformer's long-range attention
 as the key differentiator.
 Either result would sharpen the architecture ablation argument.
 
-I would also include the \code{max\_depth=5} RF result (Tokyo DEG-F1\,=\,0.312) in
-the paper as an additional comparison point.
-It demonstrates that the RF vs DL cross-city gap is fundamentally about model complexity
-and memorisation, not just the choice of algorithm family.
+I would also run a depth-limited Random Forest (for example \code{max\_depth=5}) as a
+controlled test of whether constraining tree depth reduces the cross-city memorisation
+that drives the RF collapse on Tokyo. This was not part of the final logged experiments,
+so I do not report a number for it; it is a clear next step for understanding the
+in-domain versus cross-domain trade-off.
 
 \bibliographystyle{IEEEtran}
 \bibliography{../shared/references}

@@ -19,7 +19,7 @@ Standard industry practice addresses this by inflating the GPS measurement noise
 We used the UrbanNav public dataset (Hong Kong Polytechnic University, 2020–2021), which provides synchronized GNSS NMEA logs, IMU data, and RTK ground truth across multiple drives in urban canyons. The dataset was pre-processed into 1-second epochs, each labeled CLEAN / WARNING / DEGRADED based on GPS positioning error vs. RTK ground truth.
 
 The classification task:
-- **Input**: sliding window of W=60 epochs (60 s) of GNSS features (pseudorange residuals, satellite count, PDOP, delta pseudorange, C/N₀, elevation angles)
+- **Input**: sliding window of W=30 epochs (30 s) of GNSS features (pseudorange residuals, satellite count, PDOP, delta pseudorange, C/N₀, elevation angles)
 - **Output**: predicted class at horizon h ∈ {5s, 15s, 30s} — i.e., predict what the GNSS quality will be 5, 15, or 30 seconds *after* the last observed epoch
 
 This is a causal, look-ahead prediction problem, not a detection problem. It is significantly harder because the model must anticipate building geometry effects before they manifest in the measurements.
@@ -29,34 +29,34 @@ This is a causal, look-ahead prediction problem, not a detection problem. It is 
 We evaluated several architectures, settling on a **Transformer encoder + LSTM decoder**:
 
 ```
-Input features (W×F)
+Input features (W×F) = (30 × 37)
      │
-Positional Encoding
+Linear projection 37 → 128  +  Sinusoidal Positional Encoding
      │
-TransformerEncoder (d_model=128, nhead=4, num_layers=2, dropout=0.1)
+TransformerEncoder (d_model=128, nhead=8, num_layers=2, d_ff=512, dropout=0.3)
      │
-LSTM (hidden=64, num_layers=1)
+LSTM (hidden=256, num_layers=2)   ← stacked, unidirectional
      │
-Fully Connected → 3 class logits
+3 parallel FC heads (+5s, +15s, +30s) + auxiliary head → 3 class logits each
 ```
 
-The Transformer captures long-range dependencies between epochs (e.g., satellite rising/setting patterns), while the LSTM captures sequential dynamics. This dual architecture outperformed pure LSTM (+3.1% MacroF1) and pure Transformer (+1.8% MacroF1) at the +5s horizon.
+The Transformer captures long-range dependencies between epochs (e.g., satellite rising/setting patterns), while the LSTM captures sequential dynamics. This dual architecture outperformed both single-component ablations (LSTM-only Macro-F1 0.7674, Transformer-only 0.7672) by ~5.3 points Macro-F1 at the +5s horizon (full model 0.8206). Parameter counts: full model 1,456,652; LSTM-only 1,026,569; Transformer-only 427,273.
 
 **Training details**:
-- Class-balanced cross-entropy (WARNING and DEGRADED are minority classes)
-- AdamW optimizer, lr=1e-3, weight decay=1e-4
-- Early stopping on validation MacroF1
-- Train/val/test split: 70/15/15 by drive segment (not random shuffle, to avoid temporal leakage)
+- Focal loss (γ=1.0), class weights [1.0, 2.0, 5.0] for CLEAN/WARNING/DEGRADED, label smoothing ε=0.1
+- AdamW optimizer, lr=1e-3, weight decay=1e-4, 5-epoch linear warm-up → cosine decay, gradient clip 1.0
+- Batch size 256, dropout 0.3, early stopping (patience=50, min epoch 15) on validation Macro-F1; best checkpoint epoch 10/65
+- Train/val/test split by drive segment (not random shuffle, to avoid temporal leakage)
 
 ### 2.3 Results
 
 | Horizon | Macro-F1 | CLEAN F1 | WARNING F1 | DEGRADED F1 |
 |---------|----------|-----------|------------|-------------|
-| +5s     | **0.8206** | 0.887 | 0.793 | 0.784 |
-| +15s    | 0.7841   | 0.861 | 0.749 | 0.743 |
-| +30s    | 0.7103   | 0.812 | 0.682 | 0.637 |
+| +5s     | **0.8206** | 0.927 | 0.817 | 0.718 |
+| +15s    | 0.7412   | 0.919 | 0.722 | 0.583 |
+| +30s    | 0.7825   | 0.911 | 0.807 | 0.629 |
 
-The +5s horizon achieves MacroF1=0.8206 — sufficient to provide actionable pre-emptive warning. The degradation in longer horizons is expected: building geometry effects become harder to predict further ahead.
+The +5s horizon achieves Macro-F1=0.8206 — sufficient to provide actionable pre-emptive warning, and is the horizon wired into the EKF for real-time fusion. The +15s dip (0.7412) reflects the difficulty of resolving an intermediate WARNING state mid-transition; the +30s horizon recovers somewhat (0.7825) because by 30 s many transitions have fully resolved into a stable CLEAN or DEGRADED state. DEGRADED recall stays high across horizons (0.847 / 0.843 / 0.734), which is the safety-critical property.
 
 ---
 
