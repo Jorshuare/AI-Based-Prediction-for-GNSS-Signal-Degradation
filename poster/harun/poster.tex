@@ -67,7 +67,7 @@
 I conducted the research foundation and baseline analysis:
 \begin{itemize}
   \item Systematic literature search: 87 papers screened, 31 read in full
-  \item 30-paper annotated spreadsheet with method/dataset/relevance
+  \item 30-paper annotated spreadsheet (method, dataset, relevance)
   \item \texttt{baseline\_threshold.py}: SNR rule-based classifier
   \item \texttt{baseline\_rf.py}: Random Forest with 37 features
   \item \texttt{baseline\_xgb.py}: XGBoost with Optuna hyperparameter search
@@ -111,8 +111,8 @@ In-domain (Beihang test set), Random Forest outperforms SENTINEL:
   \toprule
   Model & Macro-F1 & DEG F1 \\
   \midrule
-  Random Forest & \textbf{0.926} & 0.881 \\
-  XGBoost       & 0.919 & 0.871 \\
+  Random Forest & \textbf{0.926} & 0.823 \\
+  XGBoost       & 0.919 & 0.810 \\
   SENTINEL (DL) & 0.821 & 0.718 \\
   \bottomrule
 \end{tabular}

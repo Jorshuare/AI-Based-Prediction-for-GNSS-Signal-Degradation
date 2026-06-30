@@ -63,8 +63,8 @@
   \begin{tabular}{ll}
     \textbf{Name:}       & Rashid Md Harun Or \\
     \textbf{Student ID:} & LS2525219 \\
-    \textbf{Role:}       & Research Lead --- Literature Review, Baseline Models,
-                           Paper Writing (Introduction \& Related Work) \\
+    \textbf{Role:}       & Research Lead --- Literature Review, Baseline Models, \\
+                         & Paper Writing (Introduction \& Related Work) \\
     \textbf{Institution:}& Beihang University H3I, 2025 \\
   \end{tabular}
 \end{center}
@@ -147,7 +147,7 @@ I conducted a systematic literature search using four query strings across three
 \begin{table}[H]
   \centering
   \caption{Literature search queries and database results.}
-  \begin{tabular}{lll}
+  \begin{tabularx}{\textwidth}{Xll}
     \toprule
     \textbf{Query} & \textbf{Database} & \textbf{Results} \\
     \midrule
@@ -156,7 +156,7 @@ I conducted a systematic literature search using four query strings across three
     \texttt{"multipath detection" AND "urban" AND "neural"} & IEEE Xplore & 18 \\
     \texttt{"GNSS integrity monitoring" AND "machine learning"} & ION GNSS+ & 14 \\
     \bottomrule
-  \end{tabular}
+  \end{tabularx}
 \end{table}
 
 These queries returned 87 results in total across the three databases. After removing
@@ -504,8 +504,9 @@ because it applies only to binary objectives and is not defined for the multi-cl
   \caption{XGBoost vs Random Forest comparison on in-domain test and Tokyo cross-city.}
   \begin{tabular}{lcccc}
     \toprule
-    \textbf{Model} & \textbf{In-domain Macro-F1} & \textbf{In-domain DEG-F1} &
-    \textbf{Tokyo Macro-F1} & \textbf{Tokyo DEG-F1} \\
+    & \multicolumn{2}{c}{\textbf{In-domain}} & \multicolumn{2}{c}{\textbf{Tokyo}} \\
+    \cmidrule(lr){2-3}\cmidrule(lr){4-5}
+    \textbf{Model} & Macro-F1 & DEG-F1 & Macro-F1 & DEG-F1 \\
     \midrule
     Random Forest & \textbf{0.926} & 0.823 & 0.618 & 0.148 \\
     XGBoost       & 0.919          & 0.810 & \textbf{0.821} & \textbf{0.784} \\
