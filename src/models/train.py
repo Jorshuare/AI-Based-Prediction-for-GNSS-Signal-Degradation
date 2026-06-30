@@ -434,7 +434,7 @@ def train(
     log.info("Loading windows …")
     windows = load_windows(window_dir)
     # Auto-infer n_features from data so config stays correct when feature_prep changes.
-    # delta features (pdop_delta, hdop_delta) bump F from 34→36; this avoids a hard-coded mismatch.
+    # Production value is 37 (33 signal + cnr_available + pdop_delta + hdop_delta + receiver_tier).
     config = dict(config)   # don't mutate caller's dict
     config["n_features"] = int(windows["train"]["X"].shape[2])
     log.info(

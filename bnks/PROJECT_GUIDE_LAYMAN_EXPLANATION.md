@@ -80,7 +80,15 @@ Expected improvement: **15–30% real-world RMSE gain** during actual blockage e
 
 ---
 
-**What is left:** finish real-data EKF validation on UrbanNav Tokyo, build the web dashboard app (real-time inference + EKF visualization), and refine per-receiver tuning.
+**Phase 2a is COMPLETE.** Real-data EKF validation on UrbanNav Tokyo Shinjuku is done. The web dashboard (FastAPI + Next.js) is built and running. The final real-data result:
+
+| Scenario | Raw GNSS (blocked) | SENTINEL EKF (blocked) | Improvement |
+|----------|--------------------|------------------------|-------------|
+| Trimble Shinjuku | 47.4 m | **24.3 m (fixed-R)** | **+48.8%** |
+| u-blox Shinjuku | 78.4 m | 61.8 m (fixed-R) | +21.1% |
+| Odaiba | 59.1 m | 35.4 m (Student-t PF) | +40.1% |
+
+**Key finding:** On the hardest real-data test — Tokyo Shinjuku with a Trimble dual-frequency receiver, cm-level ground truth, a city the model was never trained on — the filter cuts blocked-segment position error from 47.4 m to 24.3 m. Nearly in half.
 
 > The sections below are the **original field-collection notes** (route testing, phone A/B
 > scouting) kept for historical reference. The numbers above supersede any modelling figures

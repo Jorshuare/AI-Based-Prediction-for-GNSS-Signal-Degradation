@@ -61,8 +61,9 @@ RIGHT node — "SENTINEL OUTPUT" (amber fill #FFF8E1, border #F57F17):
   • Arrow from this node to BOTTOM is orange, labelled "P̂_calib(t)"
 
 BOTTOM node — "ADAPTIVE R(t)" (red fill #FDECEA, border #C62828):
-  • R(t) = σ²_base + (σ²_deg − σ²_base) × P̂_calib(t)
-  • "P̂=0 → R=9 m²   |   P̂=1 → R=10,000 m²"
+  • σ(t) = σ_base + (σ_deg − σ_base) × P̂_calib(t)
+  • R(t) = σ(t)² · I₂    [interpolate in σ-space, then square]
+  • "P̂=0 → σ=3m → R=9 m²   |   P̂=1 → σ=100m → R=10,000 m²"
   • Arrow from this node to LEFT is red, labelled "measurement noise"
 
 LEFT node — "UPDATE" (green fill #E8F5E9, border #1B873A):
@@ -97,7 +98,11 @@ Create a slide-ready annotated equation diagram on a white background.
 
 Centre equation (large, LaTeX-style font, dark navy #003366):
 
-  R(t)  =  σ²_base  +  ( σ²_deg − σ²_base )  ×  P̂_calib(t)
+  σ(t)  =  σ_base  +  ( σ_deg − σ_base )  ×  P̂_calib(t)
+  R(t)  =  σ(t)²  ·  I₂
+
+Note: interpolation is in STANDARD-DEVIATION space (sigma), then squared.
+This gives more aggressive R-inflation at intermediate P than variance-space interpolation.
 
 Below it, smaller:
   P̂_calib(t)  =  clip( ( P̂(t) − P₅ ) / ( 1 − P₅ ),   0,   1 )
@@ -109,29 +114,29 @@ Use this exact color-coding:
        "Measurement noise covariance fed to Kalman filter at time t.
         Controls how much weight the filter gives to GNSS vs motion model."
 
-  ▶  "σ²_base"          →  box (green border #1B873A, fill #E8F5E9):
-       "σ²_base = 9 m²
+  ▶  "σ_base"           →  box (green border #1B873A, fill #E8F5E9):
+       "σ_base = 3 m  (standard deviation)
         Baseline noise when signal is CLEAN.
-        Filter trusts GNSS tightly."
+        R_base = 9 m².  Filter trusts GNSS tightly."
 
-  ▶  "σ²_deg"           →  box (red border #C62828, fill #FDECEA):
-       "σ²_deg = 10,000 m²
+  ▶  "σ_deg"            →  box (red border #C62828, fill #FDECEA):
+       "σ_deg = 100 m  (standard deviation)
         Noise under full degradation.
-        Filter ignores GNSS, dead-reckons on IMU."
+        R_deg = 10,000 m².  Filter ignores GNSS, dead-reckons on IMU."
 
-  ▶  "(σ²_deg − σ²_base)" →  box (grey border):
-       "Dynamic range of R.
-        How much trust can change end-to-end."
+  ▶  "(σ_deg − σ_base)" →  box (grey border):
+       "Dynamic range in σ-space: 97 m.
+        Squaring gives the variance range: 10,000 − 9 = 9,991 m²."
 
   ▶  "P̂_calib(t)"      →  box (amber border #F57F17, fill #FFF8E1):
        "Calibrated P(DEGRADED) from SENTINEL.
         0 = signal is clean.  1 = signal fully degraded.
-        P₅ = 0.153 floor removed (cross-receiver bias correction)."
+        P₅ = 0.153 floor removed (cross-receiver bias correction, unsupervised)."
 
 Three pills at the bottom:
-  🟢  "P̂ = 0  →  R = 9 m²  →  Trust GNSS fully"
-  🟡  "P̂ = 0.5  →  R ≈ 500 m²  →  Caution"
-  🔴  "P̂ = 1  →  R = 10,000 m²  →  Dead-reckon only"
+  🟢  "P̂ = 0   →  σ = 3 m   →  R = 9 m²       →  Trust GNSS fully"
+  🟡  "P̂ = 0.5 →  σ = 51.5 m →  R ≈ 2,652 m²  →  Significant caution"
+  🔴  "P̂ = 1   →  σ = 100 m  →  R = 10,000 m² →  Dead-reckon only"
 
 Font: Inter or Helvetica. Background: white. Width: 900 px × 650 px.
 ```

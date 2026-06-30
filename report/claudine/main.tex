@@ -1,5 +1,5 @@
 % ============================================================
-%  SENTINEL-GNSS --- Individual Report: Ingeriyinkindi Claudine (LS2525236)
+%  SENTINEL-GNSS - Individual Report: Ingeriyinkindi Claudine (LS2525236)
 %  Beihang University H3I  ·  Team Pilot Project  ·  2025
 %
 %  Compile: pdflatex -> bibtex -> pdflatex -> pdflatex
@@ -17,6 +17,7 @@
 \setlength{\headheight}{14pt}
 \usepackage{amsmath,amssymb}
 \usepackage{graphicx}
+\graphicspath{{../../results/figures/}{../../results/paper_figures/}{./}}
 \usepackage{booktabs}
 \usepackage{array}
 \usepackage{tabularx}
@@ -37,11 +38,11 @@
 \titleformat{\section}{\large\bfseries\color{buaaNavy}}{{\thesection}}{0.8em}{}[\color{buaaBlue}\titlerule]
 \titleformat{\subsection}{\normalsize\bfseries\color{buaaBlue}}{{\thesubsection}}{0.8em}{}
 \titleformat{\subsubsection}{\normalsize\itshape\color{buaaNavy}}{{\thesubsubsection}}{0.8em}{}
-\pagestyle{fancy}
-\fancyhf{}
-\fancyhead[L]{\small\color{buaaBlue}\textbf{SENTINEL-GNSS} --- Claudine Ingeriyinkindi}
-\fancyhead[R]{\small\color{buaaNavy}LS2525236 $\cdot$ Field Operations \& Validation}
-\fancyfoot[C]{\small\thepage}
+%\pagestyle{fancy}
+%\fancyhf{}
+%\fancyhead[L]{\small\color{buaaBlue}\textbf{SENTINEL-GNSS} - Claudine Ingeriyinkindi}
+%\fancyhead[R]{\small\color{buaaNavy}LS2525236 $\cdot$ Field Operations \& Validation}
+%\fancyfoot[C]{\small\thepage}
 \renewcommand{\headrulewidth}{0.4pt}
 \newcommand{\code}[1]{\texttt{#1}}
 \newcommand{\clean}[1]{\textcolor{cleanGreen}{\textbf{#1}}}
@@ -53,18 +54,20 @@
 % ============================================================
 
 \begin{center}
-  {\color{buaaNavy}\rule{\linewidth}{2pt}}\\[0.5cm]
-  {\LARGE\bfseries\color{buaaNavy} SENTINEL-GNSS}\\[0.3cm]
+ 
+  {\normalsize\color{buaaBlue} SENTINEL-GNSS}\\[0.25cm]
+  {\LARGE\bfseries\color{buaaNavy} AI-Based Proactive Prediction of GNSS\\[0.1cm]
+   Signal Degradation for Autonomous Vehicle Navigation}\\[0.45cm]
   {\large\color{buaaBlue} Individual Contribution Report}\\[0.5cm]
   {\color{buaaNavy}\rule{\linewidth}{2pt}}\\[0.8cm]
 
-  \begin{tabular}{ll}
+ 
+\begin{tabularx}{\textwidth}{l X}
     \textbf{Name:}       & Ingeriyinkindi Claudine \\
     \textbf{Student ID:} & LS2525236 \\
-    \textbf{Role:}       & Field Operations \& Validation --- Data Collection Lead,
-                           Cross-City Generalisation Testing, Results Figures \\
+    \textbf{Role:}       & Field Operations \& Validation - Data Collection Lead, Cross-City Generalisation Testing, Results Figures \\
     \textbf{Institution:}& Beihang University H3I, Hangzhou, 2026 \\
-  \end{tabular}
+\end{tabularx}
 \end{center}
 \vspace{0.8cm}
 
@@ -76,7 +79,7 @@ For field operations, I designed all five Beihang campus collection scenarios (A
 walked and GPS-mapped each site before collection, executed all 34 data collection runs,
 maintained a field logbook documenting each blockage event, and coordinated with Joshua
 for real-time data quality checks.
-This collection produced the 50,000+ epoch Beihang campus component of the training
+This collection produced the 10690 epoch Beihang campus component of the training
 dataset.
 
 For cross-city generalisation, I designed and executed the full evaluation methodology:
@@ -90,6 +93,7 @@ Additionally, I produced all 13 publication-quality results figures and formatte
 results tables for Section~5 of the team paper.
 \end{abstract}
 
+\newpage
 \tableofcontents
 \newpage
 
@@ -155,15 +159,15 @@ My selection criteria for each scenario type were:
     \textbf{Scenario} & \textbf{Selection criteria} & \textbf{GPS coordinates} \\
     \midrule
     A (blockage) & $\geq 100$\,m open-sky approach; full building overhang at end &
-      40.008°N, 116.344°E \\
+      30.4276° N, 119.9648° E \\
     B (canyon)   & Parallel building faces within 6--10\,m; $\geq 200$\,m run length &
-      40.009°N, 116.343°E \\
+      30.4276° N, 119.9648° E \\
     C (canopy)   & Dense tree canopy with $\geq 50$\,\% sky obscuration &
-      40.010°N, 116.345°E \\
+      30.4276° N, 119.9648° E \\
     D (open sky) & $360°$ unobstructed horizon; no buildings within 50\,m &
-      40.006°N, 116.342°E \\
+      30.4276° N, 119.9648° E \\
     E (gradual)  & Large planar building face; $\geq 150$\,m approach &
-      40.008°N, 116.346°E \\
+      30.4276° N, 119.9648° E \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -182,8 +186,8 @@ session started with:
 \begin{enumerate}
   \item Septentrio Mosaic-X5C: firmware version confirmed, battery charged, serial number
     logged.
-  \item GNSS antenna: SMA connector tightened (torque-checked by hand, not over-tightened);
-    cable visually inspected for kinks.
+  \item GNSS antenna: SMA connector hand-tightened without over-torquing;
+    cable inspected for kinks.
   \item Recording laptop (Joshua): RTKLIB installed and quick-check mode tested.
   \item Field logbook: blank pages for run-by-run notes.
   \item Digital stopwatch: for pace control during Scenario E.
@@ -209,16 +213,16 @@ For every run I followed a standardised five-step protocol:
     start point (open sky) to establish a clean baseline at the beginning of the
     recording. This ensures each run begins with CLEAN-labelled epochs for reference.
   \item \textbf{Recording start}: begin Septentrio recording before moving.
-    I always started recording while still stationary --- never while moving ---
+    I always started recording while still stationary - never while moving - 
     to avoid missing the clean-to-degraded transition.
   \item \textbf{Controlled pace}: walk at 1.0--1.2\,m/s (measured by timing myself
     over a 20\,m marked stretch). Consistent pace is critical for Scenario E where
     the signal degradation rate is speed-dependent.
-  \item \textbf{Event logging}: note the exact time (from my digital watch) of entering
-    and exiting the blockage zone in the field logbook. These timestamps are later
-    used to validate the RTKLIB-derived labels.
-  \item \textbf{Quality check}: wait for Joshua's thumbs-up/thumbs-down before leaving
-    the site.
+  \item \textbf{Event logging}: record the time of entering and exiting the blockage
+    zone in the field logbook. These timestamps are later used to validate the
+    RTKLIB-derived labels.
+  \item \textbf{Quality check}: wait for Joshua's data-quality confirmation before
+    leaving the site.
 \end{enumerate}
 
 \subsection{Scenario A: Instantaneous Signal Blockage}
@@ -232,7 +236,7 @@ into the library main entrance, which is sheltered by a 3\,m overhang.
 Inside the entrance, the GNSS signal drops to 2--4 tracked satellites
 (from 8--12 outside).
 
-\textbf{Challenge encountered}: the first 4 Scenario~A runs were too short --- I turned
+\textbf{Challenge encountered}: the first 4 Scenario~A runs were too short - I turned
 around at the entrance lobby rather than proceeding to a clear DEGRADED stabilisation
 period.
 RTKLIB showed only 2--3 DEGRADED epochs per run, insufficient for training.
@@ -287,8 +291,8 @@ C/N$_0$ profiles across repeated runs.
 Early runs showed high variability in the DEGRADED onset time (standard deviation of
 $\pm 4$ epochs across runs from the same building face) due to inconsistent pace.
 
-I solved this by implementing a counting protocol: ``one step per heartbeat'' with a
-target of 110--120 steps per minute, verified by a pocket metronome.
+I solved this by enforcing a fixed walking cadence of 110 to 120 steps per minute,
+set by a metronome.
 After introducing this protocol (run 5 onward), the onset variability dropped to
 $\pm 1$ epoch.
 
@@ -304,19 +308,19 @@ This structural diversity is exactly what SENTINEL needs to learn the mapping fr
 \begin{table}[H]
   \centering
   \caption{Beihang campus collection statistics by scenario.}
-  \begin{tabular}{lccccl}
+  \begin{tabular}{lcccc}
     \toprule
     \textbf{Scenario} & \textbf{Runs} & \textbf{Duration (min)} &
-    \textbf{DEG epochs} & \textbf{CLEAN epochs} & \textbf{Key characteristic} \\
+    \textbf{DEG epochs} & \textbf{CLEAN epochs} \\
     \midrule
-    A (blockage)   & 10 & $\approx$60 & 820  & 1,240 & Sharp onset, stable blockage \\
-    B (canyon)     &  5 & $\approx$50 & 480  & 380   & Sustained 280\,m degradation \\
-    C (canopy)     &  3 & $\approx$55 & 260  & 2,100 & Soft, variable attenuation \\
-    D (open sky)   &  1 & 32 min      & 0    & 1,920 & Clean reference \\
-    E (gradual)    & 15 & $\approx$75 & 1,140& 2,350 & Graded onset, 3 profiles \\
+    A (blockage)   & 10 & $\approx$60 & 820  & 1,240\\
+    B (canyon)     &  5 & $\approx$50 & 480  & 380\\
+    C (canopy)     &  3 & $\approx$55 & 260  & 2,100\\
+    D (open sky)   &  1 & 32 min      & 0    & 1,920 \\
+    E (gradual)    & 15 & $\approx$75 & 1,140& 2,350\\
     \midrule
     \textbf{Total} & \textbf{34} & \textbf{$\approx$272 min} &
-    \textbf{2,700} & \textbf{7,990} & --- \\
+    \textbf{2,700} & \textbf{7,990} \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -426,7 +430,7 @@ GNSS receiver (Novatel OEM6), and constellation (GPS + GLONASS + Galileo).
     \textbf{Evaluation Set} & \textbf{City} & \textbf{Macro-F1} &
     \textbf{DEG-F1} & \textbf{Notes} \\
     \midrule
-    In-domain (Beihang test)    & Beijing    & 0.822 & 0.718 & Reference \\
+    In-domain (Beihang test)    & Hangzhou    & 0.822 & 0.718 & Reference \\
     UrbanNav HK Medium         & Hong Kong   & 0.791 & 0.703 & In training set \\
     UrbanNav HK Deep           & Hong Kong   & 0.772 & 0.689 & In training set \\
     UrbanNav HK Harsh          & Hong Kong   & 0.756 & 0.687 & Validation only \\
@@ -458,6 +462,7 @@ The Tokyo result (Macro-F1\,=\,0.649 without any normalisation adjustment) demon
 that SENTINEL \emph{does} generalise in this harder, more realistic setting.
 
 % ============================================================
+\newpage
 \section{Results Figure Production}
 % ============================================================
 
@@ -546,7 +551,7 @@ the same style baseline.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.88\textwidth]{../../results/figures/pr_curves_test.pdf}
+  \includegraphics[width=0.88\textwidth]{pr_curves_test.pdf}
   \caption{Precision-recall curves for all three classes at the $+5$\,s prediction
            horizon. DEGRADED AUC-PR demonstrates high precision at moderate recall,
            consistent with the conservative threshold policy for AV safety alerts.}
@@ -554,7 +559,7 @@ the same style baseline.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.80\textwidth]{../../results/figures/attention_heatmap_degraded.pdf}
+  \includegraphics[width=0.80\textwidth]{attention_heatmap_degraded.pdf}
   \caption{Transformer self-attention weights for a correctly-predicted DEGRADED example.
            The model attends most strongly to epochs 45--55 (15--5\,s before the
            prediction point), capturing the final signal approach phase that
@@ -563,7 +568,7 @@ the same style baseline.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.72\textwidth]{../../results/paper_figures/fig05_crosscity_degraded.pdf}
+  \includegraphics[width=0.72\textwidth]{fig05_crosscity_degraded.pdf}
   \caption{Cross-city DEGRADED-class F1: SENTINEL vs RandomForest across all evaluation
            environments. The 5$\times$ performance gap in Tokyo (0.75 vs 0.15) is the
            central generalisation result. This figure was designed to make the gap as
@@ -593,7 +598,7 @@ The pattern ``C/N$_0$ mean has declined by $> 2.5$\,dB-Hz over the past 10 secon
 while PDOP has risen'' is physically meaningful independent of the absolute C/N$_0$
 level.
 This pattern appears the same way in Beihang, Hong Kong, and Tokyo because it reflects
-the physics of approaching a building --- not the distributional properties of any
+the physics of approaching a building - not the distributional properties of any
 specific city's receiver or environment.
 
 \subsection{The Tokyo Surprise: Structured vs Irregular NLOS}
@@ -608,8 +613,8 @@ regular rectangular footprints, spacing of 20--40\,m).
 When a vehicle passes into a Shinjuku building shadow, the entire sky sector at that
 azimuth range is blocked simultaneously, producing a sharp step-function change in C/N$_0$
 and SV count.
-This sharp onset pattern --- which SENTINEL learned during training from the Scenario~A
-and Scenario~B Beihang data --- is \emph{easier} to detect than the irregular attenuation
+This sharp onset pattern - which SENTINEL learned during training from the Scenario~A
+and Scenario~B Beihang data - is \emph{easier} to detect than the irregular attenuation
 patterns of mixed-height HK buildings.
 
 In HK Harsh, the irregular building heights (4--35 storeys mixed) produce partial
@@ -628,30 +633,30 @@ shift, but on the \emph{geometric regularity} of the new environment.
 I formatted all five results tables for Section~5 of the team paper:
 
 \begin{enumerate}
-  \item \textbf{Table 1: Multi-horizon performance} --- Accuracy, Macro-F1, MCC, 95\,\%
+  \item \textbf{Table 1: Multi-horizon performance} - Accuracy, Macro-F1, MCC, 95\,\%
     CI for all three horizons.
     I computed 95\,\% confidence intervals using 1,000 bootstrap iterations on the test
     set, sampling with replacement.
     This was my initiative: the initial draft had only point estimates.
 
-  \item \textbf{Table 2: Per-class metrics at $+5$\,s} --- Precision, recall, F1 per class.
+  \item \textbf{Table 2: Per-class metrics at $+5$\,s} - Precision, recall, F1 per class.
     The table highlights DEGRADED recall (0.847) as the safety-critical metric.
 
-  \item \textbf{Table 3: Ablation study} --- Transformer-only, LSTM-only, Full model.
+  \item \textbf{Table 3: Ablation study} - Transformer-only, LSTM-only, Full model.
     Cross-checked against Joel's \code{ablation\_results.json} before inserting.
 
-  \item \textbf{Table 4: Cross-city generalisation} --- My experiment; directly transcribed
+  \item \textbf{Table 4: Cross-city generalisation} - My experiment; directly transcribed
     from my \code{crosscity\_results.json}.
 
-  \item \textbf{Table 5: EKF/PF fusion RMSE} --- Joel's experiments; I formatted the
+  \item \textbf{Table 5: EKF/PF fusion RMSE} - I formatted the
     table and verified numbers against \code{ekf\_results.json}.
 \end{enumerate}
 
 All numbers were cross-checked against source JSON files before inserting into LaTeX.
-I ran the JSON-to-table check twice (on two separate days) to catch any transcription
-errors.
+I ran the JSON-to-table check twice to catch any transcription errors.
 
 % ============================================================
+\newpage
 \section{Self-Reflection}
 % ============================================================
 
@@ -663,7 +668,7 @@ no retraining, same normalisation, no fine-tuning.
 Relaxing any one of these constraints would inflate the result and weaken the argument.
 
 The decision not to refit the normaliser was the most defensible and also the most
-unusual --- many published cross-domain experiments refit normalisation to the test domain.
+unusual - many published cross-domain experiments refit normalisation to the test domain.
 By not refitting, I ensured that the 0.649 Tokyo Macro-F1 represents genuine zero-shot
 generalisation, not assisted generalisation.
 This made the result more conservative but more scientifically honest.
@@ -677,18 +682,18 @@ signal pattern rather than run-specific noise.
 The first 4 runs had high DEGRADED onset variability ($\pm 4$ epochs) due to inconsistent
 walking pace.
 A standard deviation of 4 epochs is equivalent to $\pm 4$\,s of label uncertainty
-at the $+5$\,s prediction horizon --- which is larger than the entire horizon we are
+at the $+5$\,s prediction horizon - which is larger than the entire horizon we are
 trying to predict.
 A model trained on noisy-onset data will struggle to distinguish ``approaching degradation
 in 5 seconds'' from ``already degraded.''
 
-The counting protocol (metronome pace, verified by timed runs over a marked distance)
+The fixed metronome cadence, verified by timed runs over a marked distance,
 reduced onset variability to $\pm 1$ epoch.
 This is a small but critical quality improvement that directly affects the quality of the
 most challenging training examples.
 
 
 \bibliographystyle{IEEEtran}
-\bibliography{../shared/references}
+\bibliography{references}
 
 \end{document}

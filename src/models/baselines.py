@@ -73,17 +73,19 @@ CLASS_LABELS = ["CLEAN", "WARNING", "DEGRADED"]
 
 # Feature names in the order they appear in the saved windows (alphabetically
 # sorted by feature_prep._get_feature_cols).  Used to derive MEAN_CNR_IDX.
+# 37 features: 33 original signal + cnr_available + pdop_delta + hdop_delta + receiver_tier
+# (pdop_delta/hdop_delta added Run 6; receiver_tier added Run 7)
 _FEATURE_NAMES_SORTED = [
     "alt", "baseline_sats", "clock_bias", "cnr_trend", "cnr_variance",
     "cycle_slips", "dop_ratio", "elevation_violations", "fix_continuity",
-    "fix_transitions", "gdop", "hdop", "iono_delay", "lat_std", "lon_std",
+    "fix_transitions", "gdop", "hdop", "hdop_delta", "iono_delay", "lat_std", "lon_std",
     "max_cnr", "mean_cnr", "min_cnr", "multipath", "num_satellites",
-    "pdop", "position_variance", "residual_mean", "residual_std",
+    "pdop", "pdop_delta", "position_variance", "receiver_tier", "residual_mean", "residual_std",
     "sat_drop_rate", "sat_mean", "sat_min", "sat_visibility",
     "solution_age", "solution_status", "std_cnr", "tropo_delay",
     "vdop", "cnr_available",
 ]
-MEAN_CNR_IDX = _FEATURE_NAMES_SORTED.index("mean_cnr")  # 16
+MEAN_CNR_IDX = _FEATURE_NAMES_SORTED.index("mean_cnr")  # 17
 
 # C/N₀ thresholds (dB-Hz) from GNSS signal quality literature
 CNR_DEGRADED_THRESHOLD = 30.0   # < 30  → DEGRADED

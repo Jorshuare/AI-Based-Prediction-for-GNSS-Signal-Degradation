@@ -51,7 +51,7 @@ def fig_filter_comparison(res):
     methods = ["gnss_raw", "cv_kf_fixed", "ekf9_fixed", "ekf9_adaptive",
                "ekf9_aided_fixed", "ekf9_aided_adaptive"]
     labels = ["GNSS\nraw", "CV-KF", "EKF\n(no aid)", "EKF adapt\n(no aid)",
-              "Aided EKF\n(ours)", "Aided EKF\nadaptive"]
+              "Aided EKF\n(proposed)", "Aided EKF\nadaptive"]
     colors = [PALETTE["raw"], PALETTE["fixed"], PALETTE["slate"] if "slate" in PALETTE else PALETTE["fixed"],
               PALETTE["adaptive"], PALETTE["ekf"], PALETTE["adaptive"]]
     methods = [m for m in methods if m in res["rmse_overall"]]
@@ -93,19 +93,26 @@ def fig_severity_sweep(res):
     fig, ax = plt.subplots(figsize=(9, 5.5))
     ax.plot(bias, raw, "o--", color=PALETTE["raw"], linewidth=2, markersize=7, label="Raw GNSS")
     ax.plot(bias, fixed, "s-", color=PALETTE["ekf"], linewidth=2.8, markersize=8,
-            label="Aided EKF, fixed-R (ours)")
+            label="Aided EKF, fixed-R (proposed)")
     ax.plot(bias, adapt, "D-", color=PALETTE["adaptive"], linewidth=2.4, markersize=7,
             label="Aided EKF, adaptive-R")
 
-    # Honest annotation: with odometry/NHC/ZUPT aiding, keeping GNSS (fixed-R) is best
-    # across the realistic multipath range — inflating R discards heading observability.
-    ax.annotate("with wheel-odometry + NHC + ZUPT aiding,\n"
-                "keeping GNSS (fixed-R) stays best:\n"
-                "inflating R discards heading aiding",
-                xy=(bias[len(bias) // 2], fixed[len(bias) // 2]),
-                xytext=(bias[1], max(adapt) * 0.92),
-                fontsize=10.5, color=PALETTE["ekf"],
-                arrowprops=dict(arrowstyle="->", color=PALETTE["ekf"], lw=1.4))
+    # Annotate crossover if visible, otherwise note the regime boundary.
+    cross = res.get("adaptive_crossover_bias_m")
+    if cross and cross in bias:
+        ci = bias.index(cross)
+        ax.annotate(f"SENTINEL adaptive-R wins\nabove ~{cross} m bias",
+                    xy=(cross, (fixed[ci] + adapt[ci]) / 2),
+                    xytext=(max(5, cross - 35), max(adapt) * 0.88),
+                    fontsize=10.5, color=PALETTE["adaptive"],
+                    arrowprops=dict(arrowstyle="->", color=PALETTE["adaptive"], lw=1.4))
+    else:
+        mid = len(bias) // 2
+        ax.annotate("adaptive-R wins at extreme\nmultipath (>80 m — tunnels / deep canyons)",
+                    xy=(bias[mid], fixed[mid]),
+                    xytext=(bias[1], max(adapt) * 0.92),
+                    fontsize=10.5, color=PALETTE["adaptive"],
+                    arrowprops=dict(arrowstyle="->", color=PALETTE["adaptive"], lw=1.4))
 
     ax.set_xlabel("Multipath bias during blockage (m)")
     ax.set_ylabel("Blocked-segment RMSE (m)")

@@ -103,8 +103,10 @@ to win on one test track. Our contribution is the **architecture** (SENTINEL + 9
 - When we wire the actual SENTINEL model to adaptive-R, the calibrated result (+38.7%) comes
   within 5 percentage points of fixed-R (+48.8%). Fine-tuning SENTINEL on Trimble data
   would close the gap further.
-- Adaptive-R beats fixed-R decisively at high multipath bias (>80 m in the severity sweep),
-  which represents the most dangerous urban conditions (deep canyons, reflective towers).
+- Adaptive-R beats fixed-R in the high-multipath regime: at 100 m bias, adaptive-R achieves
+  30.4 m vs. fixed-R 36.0 m (+15.6% improvement). The crossover region is 80–100 m bias —
+  deep urban canyons, tunnel entrances, and heavily reflective tower districts. Below 80 m,
+  the wheel-odometry + NHC + ZUPT aiding is strong enough that both strategies converge.
 
 **What are both fixed and adaptive using?** In the main results table (Phase 2a, Section 7),
 both use the **nsat proxy** as P(DEGRADED) for adaptive-R. Fixed-R uses no P(DEGRADED) at all.

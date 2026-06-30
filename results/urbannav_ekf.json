@@ -84,6 +84,20 @@
       "fixed_R": 30.21,
       "adaptive_R": 29.62,
       "adaptive_vs_fixed_pct": 1.9
+    },
+    {
+      "bias_max_m": 90,
+      "raw": 81.61,
+      "fixed_R": 29.17,
+      "adaptive_R": 30.76,
+      "adaptive_vs_fixed_pct": -5.5
+    },
+    {
+      "bias_max_m": 100,
+      "raw": 96.14,
+      "fixed_R": 35.99,
+      "adaptive_R": 30.37,
+      "adaptive_vs_fixed_pct": 15.6
     }
   ],
   "adaptive_crossover_bias_m": 80,

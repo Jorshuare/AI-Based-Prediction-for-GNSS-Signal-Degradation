@@ -206,32 +206,38 @@ Output: (batch, 30, 128)
 - 4 layers: overfits to training data (signals are smooth, don't need deep reasoning)
 - 2 layers: Goldilocks (observed in ablations: 2 wins, 3 slightly worse)
 
-### **BiLSTM (2 layers, 256 hidden)**
+### **LSTM (unidirectional, 2 layers, 256 hidden)**
+
+> **Canonical architecture:** The model uses a standard unidirectional LSTM (`bidirectional=False`
+> in PyTorch). Earlier drafts of this document incorrectly described a LSTM. All trained
+> checkpoints, ablation results, and reported metrics use unidirectional LSTM.
 
 ```
 Transformer output: (batch, 30, 128)
   ↓
-BiLSTM Layer 1: 128 → 256 (both directions)
-  - Forward LSTM: reads left-to-right
-  - Backward LSTM: reads right-to-left
-  → (batch, 30, 512) [concatenate forward + backward]
+LSTM Layer 1: 128 → 256 (unidirectional, causal — left-to-right)
+  → (batch, 30, 256)
   ↓
-BiLSTM Layer 2: 512 → 256
-  → (batch, 30, 512)
+LSTM Layer 2: 256 → 256 (unidirectional)
+  → (batch, 30, 256)
   ↓
-Take last timestep: (batch, 512)
-  - Why last? Causality: most recent info is most predictive
+Take last timestep: (batch, 256)
+  - Why last? Causality: most recent state encodes the full 30-epoch history
 ```
 
-#### **Why BiLSTM?**
+#### **Why unidirectional LSTM (not LSTM)?**
 
-- Bidirectional: can see future context within the window (helps detect trends)
-- LSTM cells: long short-term memory (not just RNN, which has vanishing gradient)
-- Captures _causality_: "signal has been fading for 5 seconds → will degrade"
+- This is a **causal, real-time** prediction task. At inference, the model only has access to
+  the last 30 seconds. There is no "future" to read backwards from.
+- Bidirectional LSTM would read backwards within the window — useful for offline sequence
+  labelling, but for live navigation predictions the model must be strictly causal.
+- LSTM cells handle long short-term memory correctly across the 30-epoch window without
+  vanishing gradient issues.
+- Captures the trend: "signal has been fading for 5 seconds → will degrade in 5 more"
 
-#### **Why 256 hidden units (per direction)?**
+#### **Why 256 hidden units?**
 
-- Per direction: 256 forward + 256 backward = 512 total
+- 256 units: sufficient capacity to encode 30 × 37 features into a discriminative representation
 - Large enough to model complex temporal patterns
 - Not so large that it overfits (we have 1.46M params total, manageable)
 
@@ -258,7 +264,7 @@ Head +30s: Dense(512 → 3) → [P(CLEAN), P(WARNING), P(DEGRADED)]
 - +30s is harder (more uncertainty)
 - Separate heads learn per-horizon confidence
 
-#### **Why shared trunk (Transformer + BiLSTM)?**
+#### **Why shared trunk (Transformer + LSTM)?**
 
 - Shared features save parameters (1.46M instead of 3M)
 - Regularization: forces model to learn common degradation signals
@@ -673,8 +679,8 @@ Transformer Layer 1:          33,280 (per layer × 2)
 Transformer Layer 2:          33,280
 Transformer FeedForward:      263,680 (per layer × 2)
 
-BiLSTM Layer 1 (128 → 256):   330,752 (both directions)
-BiLSTM Layer 2 (512 → 256):   1,050,624
+LSTM Layer 1 (128 → 256):   330,752 (both directions)
+LSTM Layer 2 (512 → 256):   1,050,624
 
 Output Heads (3 × 512 → 3):   4,611 (per head × 3)
 Aux Head (512 → 3):           1,539
@@ -697,7 +703,7 @@ Total: 1,456,652 parameters
 | **Input**         | 37 features                 | Domain-grounded (GNSS knowledge), not raw        |
 | **Window size**   | 30 epochs                   | Captures trends, predicts 5s accurately          |
 | **Transformer**   | 2 layers, 8 heads, d_ff=512 | Sees long-range patterns, not too deep           |
-| **BiLSTM**        | 2 layers, 256 hidden        | Captures directional degradation trends          |
+| **LSTM**        | 2 layers, 256 hidden        | Captures directional degradation trends          |
 | **3 heads**       | +5s, +15s, +30s             | Different horizons, different thresholds         |
 | **Loss**          | Focal + class weights       | Handles imbalance, focuses on minority class     |
 | **Optimizer**     | AdamW                       | SOTA, stable, better generalization than Adam    |
@@ -738,7 +744,7 @@ Total: 1,456,652 parameters
 Every choice is **not arbitrary**:
 
 - **Data:** 37 features designed by GNSS engineers, not ML researchers
-- **Architecture:** Transformer + BiLSTM is hybrid for pattern + causality
+- **Architecture:** Transformer + LSTM is hybrid for pattern + causality
 - **Training:** Focal loss targets imbalance; AdamW is SOTA
 - **Validation:** Cross-city is the real test; bootstrap CIs are honest
 - **Calibration:** Temperature scaling makes EKF reliable
@@ -845,7 +851,7 @@ When P(DEGRADED) is high, GNSS is unreliable → inflate R → Kalman gain K shr
 
 1. **Data:** GNSS observations (RINEX) + IMU (accelerometer, gyro) + inertial reference truth
 2. **Feature engineering:** 37 hand-crafted GNSS features (not learned)
-3. **Prediction model:** Transformer + BiLSTM → P(DEGRADED) at +5/15/30s
+3. **Prediction model:** Transformer + LSTM → P(DEGRADED) at +5/15/30s
 4. **Calibration:** Temperature scaling for reliable probabilities
 5. **Sensor fusion:** 9-state EKF with adaptive measurement noise
 6. **Integration:** Probabilities feed R-adaptation in real time

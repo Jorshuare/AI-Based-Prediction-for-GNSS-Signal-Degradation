@@ -62,7 +62,7 @@ SCALER_PATH = ROOT / "data" / "processed" / "scaler.pkl"
 WINDOW_SIZE = 30   # seconds (1 Hz → 30 time steps)
 HORIZONS = {"5s": 5, "15s": 15, "30s": 30}   # look-ahead after window end
 
-# ─── Feature columns (33 signal features + 1 added flag = 34 total) ──────────
+# ─── Feature columns (33 signal + cnr_available + pdop_delta + hdop_delta + receiver_tier = 37 total) ───
 METADATA_COLS = ["timestamp", "source", "scenario",
                  "lat", "lon",          # excluded: geographic overfitting
                  "label", "label_name", "split"]
@@ -640,8 +640,8 @@ def apply_smote(
 ) -> dict:
     """Apply SMOTE to TRAINING windows only.
 
-    SMOTE is applied to the flattened (N, 30×34) representation, then
-    reshaped back to (N, 30, 34).  This treats each window as a sample
+    SMOTE is applied to the flattened (N, 30×37) representation, then
+    reshaped back to (N, 30, 37).  This treats each window as a sample
     and interpolates in the high-dimensional feature space.
 
     IMPORTANT: SMOTE is NEVER applied to validation or test sets.  Applying

@@ -3,12 +3,12 @@ transformer_lstm.py — SENTINEL-GNSS multi-horizon prediction model.
 
 Architecture
 ------------
-  Input  : (B, T=30, F=34)  — batch × time-steps × features
+  Input  : (B, T=30, F=37)  — batch × time-steps × features
 
-  1. Linear input projection    F → d_model
+  1. Linear input projection    F=37 → d_model=128
   2. Sinusoidal positional encoding
-  3. Transformer Encoder        n_layers=2, n_heads=4, d_ff=256, dropout=0.1
-  4. 2-layer stacked LSTM       hidden=128, dropout=0.1
+  3. Transformer Encoder        n_layers=2, n_heads=8, d_ff=256, dropout=0.1
+  4. 2-layer stacked LSTM       hidden=256, dropout=0.1  (unidirectional)
   5. Three parallel output heads (5 s, 15 s, 30 s) → logits (B, 3)
 
 Design rationale
@@ -157,31 +157,31 @@ class SentinelGNSS(nn.Module):
 
     Parameters
     ----------
-    n_features  : Number of input features per time step (default 34).
-    d_model     : Token embedding dimension for the Transformer.
-    n_heads     : Number of attention heads  (d_model must be divisible by n_heads).
+    n_features  : Number of input features per time step (default 37).
+    d_model     : Token embedding dimension for the Transformer (default 128).
+    n_heads     : Number of attention heads (default 8; d_model must be divisible by n_heads).
     n_tf_layers : Number of Transformer encoder layers.
     d_ff        : Feed-forward sub-layer hidden dimension inside Transformer.
-    lstm_hidden : LSTM hidden state size.
+    lstm_hidden : LSTM hidden state size (default 256, unidirectional).
     n_lstm_layers: Number of stacked LSTM layers.
     n_classes   : Output classes (3: CLEAN / WARNING / DEGRADED).
     dropout     : Dropout probability (applied in Transformer, LSTM, and heads).
 
     Notes
     -----
-    d_model=64 and lstm_hidden=128 are deliberately modest.  With 66 K training
-    samples, larger models overfit.  The chosen dimensions give ~250 K parameters
-    which is appropriate for this dataset size.
+    Canonical production architecture: d_model=128, n_heads=8, lstm_hidden=256,
+    37 input features, ~1.46 M parameters.  Trained on 149,662 windows across
+    4 cities; focal loss handles class imbalance without SMOTE for DL.
     """
 
     def __init__(
         self,
-        n_features:    int = 34,
-        d_model:       int = 64,
-        n_heads:       int = 4,
+        n_features:    int = 37,
+        d_model:       int = 128,
+        n_heads:       int = 8,
         n_tf_layers:   int = 2,
         d_ff:          int = 256,
-        lstm_hidden:   int = 128,
+        lstm_hidden:   int = 256,
         n_lstm_layers: int = 2,
         n_classes:     int = 3,
         dropout:       float = 0.1,
@@ -356,12 +356,12 @@ def build_model(config: dict | None = None) -> SentinelGNSS:
     Override individual keys to run ablation studies.
     """
     default = dict(
-        n_features=34,
-        d_model=64,
-        n_heads=4,
+        n_features=37,
+        d_model=128,
+        n_heads=8,
         n_tf_layers=2,
         d_ff=256,
-        lstm_hidden=128,
+        lstm_hidden=256,
         n_lstm_layers=2,
         n_classes=3,
         dropout=0.1,
@@ -420,9 +420,9 @@ class LSTMOnlyModel(nn.Module):
 
     def __init__(
         self,
-        n_features:    int = 34,
-        d_model:       int = 64,
-        lstm_hidden:   int = 128,
+        n_features:    int = 37,
+        d_model:       int = 128,
+        lstm_hidden:   int = 256,
         n_lstm_layers: int = 2,
         n_classes:     int = 3,
         dropout:       float = 0.1,
@@ -493,9 +493,9 @@ class TransformerOnlyModel(nn.Module):
 
     def __init__(
         self,
-        n_features:  int = 34,
-        d_model:     int = 64,
-        n_heads:     int = 4,
+        n_features:  int = 37,
+        d_model:     int = 128,
+        n_heads:     int = 8,
         n_tf_layers: int = 2,
         d_ff:        int = 256,
         n_classes:   int = 3,
@@ -555,7 +555,7 @@ class TransformerOnlyModel(nn.Module):
 if __name__ == "__main__":
     torch.manual_seed(42)
     model = build_model()
-    x = torch.randn(8, 30, 34)          # batch=8, T=30, F=34
+    x = torch.randn(8, 30, 37)          # batch=8, T=30, F=37
     out = model(x)
     for k, v in out.items():
         print(f"  {k}: {v.shape}")      # expected (8, 3) for each head

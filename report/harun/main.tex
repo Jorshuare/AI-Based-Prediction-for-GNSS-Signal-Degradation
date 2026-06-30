@@ -1,5 +1,5 @@
 % ============================================================
-%  SENTINEL-GNSS --- Individual Report: Rashid Md Harun Or (LS2525219)
+%  SENTINEL-GNSS - Individual Report: Rashid Md Harun Or (LS2525219)
 %  Beihang University H3I  ·  Team Pilot Project  ·  2025
 %
 %  Compile: pdflatex -> bibtex -> pdflatex -> pdflatex
@@ -41,7 +41,7 @@
 \titleformat{\subsubsection}{\normalsize\itshape\color{buaaNavy}}{{\thesubsubsection}}{0.8em}{}
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[L]{\small\color{buaaBlue}\textbf{SENTINEL-GNSS} --- Md Harun Or Rashid}
+\fancyhead[L]{\small\color{buaaBlue}\textbf{SENTINEL-GNSS} - Md Harun Or Rashid}
 \fancyhead[R]{\small\color{buaaNavy}LS2525219 $\cdot$ Research \& Baselines}
 \fancyfoot[C]{\small\thepage}
 \renewcommand{\headrulewidth}{0.4pt}
@@ -56,14 +56,16 @@
 
 \begin{center}
   {\color{buaaNavy}\rule{\linewidth}{2pt}}\\[0.5cm]
-  {\LARGE\bfseries\color{buaaNavy} SENTINEL-GNSS}\\[0.3cm]
+  {\normalsize\color{buaaBlue} SENTINEL-GNSS}\\[0.25cm]
+  {\LARGE\bfseries\color{buaaNavy} AI-Based Proactive Prediction of GNSS\\[0.1cm]
+   Signal Degradation for Autonomous Vehicle Navigation}\\[0.45cm]
   {\large\color{buaaBlue} Individual Contribution Report}\\[0.5cm]
   {\color{buaaNavy}\rule{\linewidth}{2pt}}\\[0.8cm]
 
   \begin{tabular}{ll}
     \textbf{Name:}       & Rashid Md Harun Or \\
     \textbf{Student ID:} & LS2525219 \\
-    \textbf{Role:}       & Research Lead --- Literature Review, Baseline Models, \\
+    \textbf{Role:}       & Research Lead - Literature Review, Baseline Models, \\
                          & Paper Writing (Introduction \& Related Work) \\
     \textbf{Institution:}& Beihang University H3I, Hangzhou, 2026 \\
   \end{tabular}
@@ -194,7 +196,7 @@ Organising 31 papers along two axes produced the taxonomy in Table~\ref{tab:taxo
     LSTM classification (current) & No & No & Chen (2019) \cite{chen2019gps} \\
     Boosted trees (in-domain) & No & No & Chen/XGB (2016) applied \\
     \midrule
-    \textbf{Predictive (future epoch)} & \textbf{Yes} & \textbf{---} &
+    \textbf{Predictive (future epoch)} & \textbf{Yes} & \textbf{ - } &
       \textbf{SENTINEL (this work)} \\
     Predictive + cross-city & Yes & Yes & \textbf{SENTINEL only} \\
     \bottomrule
@@ -219,7 +221,7 @@ simultaneously (a common urban canyon scenario) because consistent NLOS biases c
 in the residual computation, making the chi-squared statistic appear nominal.
 This is the ``silent failure'' mode that motivates the SENTINEL project.
 
-\subsubsection{Zhu et al.\ (2018) --- Urban GNSS Integrity Review \cite{zhu2018gnss}}
+\subsubsection{Zhu et al.\ (2018) - Urban GNSS Integrity Review \cite{zhu2018gnss}}
 
 Zhu provides a comprehensive survey of GNSS integrity in urban environments.
 The key finding I used in the Related Work section:
@@ -229,7 +231,7 @@ This strengthens the case for a learning-based approach that can detect the
 \emph{statistical signature} of impending NLOS rather than relying on inter-satellite
 consistency alone.
 
-\subsubsection{Chen et al.\ (2019) --- LSTM for GPS Classification \cite{chen2019gps}}
+\subsubsection{Chen et al.\ (2019) - LSTM for GPS Classification \cite{chen2019gps}}
 
 Chen demonstrates that LSTM networks can classify current-epoch GPS quality from C/N$_0$
 time series with $> 90$\,\% accuracy on \emph{simulated} data.
@@ -241,7 +243,7 @@ Three critical limitations I identified:
 SENTINEL addresses all three: real multi-receiver data, future-epoch prediction,
 and Tokyo held-out evaluation.
 
-\subsubsection{Liu et al.\ (2023) --- Gradient-Boosted Trees for GNSS \cite{liu2023gnss}}
+\subsubsection{Liu et al.\ (2023) - Gradient-Boosted Trees for GNSS \cite{liu2023gnss}}
 
 Liu applies XGBoost to multi-feature GNSS classification in Hong Kong, reporting
 in-domain Macro-F1 above 0.92.
@@ -252,7 +254,7 @@ Their paper does not include a cross-city experiment.
 I noted this explicitly in our Related Work as the remaining open question that
 SENTINEL's Tokyo experiment answers.
 
-\subsubsection{Hsu et al.\ (2021) --- UrbanNav Dataset \cite{hsu2021urbannav}}
+\subsubsection{Hsu et al.\ (2021) - UrbanNav Dataset \cite{hsu2021urbannav}}
 
 Hsu introduces the UrbanNav Hong Kong dataset that forms a key part of the SENTINEL
 training and cross-geography evaluation data.
@@ -263,7 +265,7 @@ I included a careful citation of this paper in the Related Work section because:
 (3) their finding that PDOP $> 3$ correlates strongly with positioning error $> 5$\,m
   is consistent with our labelling criteria.
 
-\subsubsection{Angrisano et al.\ (2012) --- GPS/GLONASS + IMU Fusion \cite{angrisano2013imu}}
+\subsubsection{Angrisano et al.\ (2012) - GPS/GLONASS + IMU Fusion \cite{angrisano2013imu}}
 
 Angrisano's study of loosely-coupled EKF fusion for vehicular navigation provided the
 foundational reference for Joel's EKF design.
@@ -272,7 +274,7 @@ conservative lower-bound expectation for the SENTINEL-wired EKF performance.
 The actual 48.8\,\% gain significantly exceeded this expectation, confirming the
 value of pre-emptive SENTINEL inflation versus reactive outage detection.
 
-\subsubsection{Mehra (1970) --- Innovation-Based Adaptive R \cite{mehra1970}}
+\subsubsection{Mehra (1970) - Innovation-Based Adaptive R \cite{mehra1970}}
 
 Mehra's innovation-based adaptive measurement noise estimator is the classical reference
 for adaptive Kalman filtering.
@@ -281,7 +283,7 @@ design is contrasted.
 The key technical distinction I wrote:
 
 \begin{quote}
-\textit{``Mehra's estimator identifies R from the innovation covariance sequence ---
+\textit{``Mehra's estimator identifies R from the innovation covariance sequence - 
 a statistically elegant approach that fails in urban NLOS because GPS and filter
 co-drift to the same biased position, shrinking innovations regardless of actual GPS error,
 causing the estimator to lower R and increase Kalman gain precisely when it should do
@@ -290,8 +292,8 @@ SENTINEL sidesteps this identification problem by conditioning R on a learned cl
 output rather than the innovation history.''}
 \end{quote}
 
-This framing --- Mehra's problem is not numerical instability but the wrong information
-source --- was Joel's insight, which I formalised into the Related Work argument.
+This framing - Mehra's problem is not numerical instability but the wrong information
+source - was Joel's insight, which I formalised into the Related Work argument.
 
 % ============================================================
 \section{Baseline Model Implementation}
@@ -393,10 +395,8 @@ over the following hyperparameter grid:
 \end{table}
 
 Grid size: $4 \times 3 \times 3 \times 3 \times 2 = 216$ configurations,
-each evaluated via 5-fold CV.
-Total training runs: 1,080.
-Wall time: 4.2 hours on an i7 laptop.
-Selected by maximum validation Macro-F1.
+each evaluated via 5-fold CV, for 1,080 training runs in total.
+The configuration with the highest validation Macro-F1 was selected.
 
 \subsubsection{Test Results and Per-Class Analysis}
 
@@ -530,7 +530,7 @@ I wrote this analysis into the paper's baseline comparison section.
 \begin{table}[H]
   \centering
   \caption{Complete baseline comparison on held-out test set at the +5\,s prediction task.
-           Note that RF and XGBoost outperform SENTINEL in-domain --- this is disclosed
+           Note that RF and XGBoost outperform SENTINEL in-domain - this is disclosed
            honestly in the paper.}
   \begin{tabular}{lcccc}
     \toprule
@@ -548,6 +548,16 @@ I wrote this analysis into the paper's baseline comparison section.
   \end{tabular}
 \end{table}
 
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.86\textwidth]{../../results/paper_figures/fig03_model_comparison.pdf}
+  \caption{Baseline comparison on the held-out in-domain test set (Macro-F1 at the
+           $+5$\,s horizon). The classical and ablation baselines I implemented are shown
+           against the full SENTINEL model. The tree baselines lead in-domain, a result we
+           report openly; the cross-city test in the next section reverses this ranking.}
+  \label{fig:baselinecompare}
+\end{figure}
+
 % ============================================================
 \section{Cross-City Random Forest Evaluation (Tokyo)}
 % ============================================================
@@ -561,7 +571,7 @@ Protocol:
 \begin{enumerate}
   \item Load the RF checkpoint trained on Beihang + HK training data.
   \item Apply the \emph{same scaler.pkl} used for SENTINEL (fit on Beihang training only).
-  \item Run inference on the Tokyo test windows --- no retraining, no fine-tuning.
+  \item Run inference on the Tokyo test windows - no retraining, no fine-tuning.
   \item Compute per-class metrics and compare against SENTINEL's Tokyo results.
 \end{enumerate}
 
@@ -576,12 +586,12 @@ The RF learned that PDOP $> 3.1$ predicts DEGRADED in Beihang/HK (where the trai
 PDOP distribution has mean 2.2 and std 0.8).
 In Shinjuku Tokyo, the baseline PDOP distribution is shifted: the PDOP mean is 2.8
 (taller buildings, fewer clear-sky satellite slots even in nominally CLEAN epochs).
-The RF threshold fires on 40\,\% of all Tokyo epochs as DEGRADED --- including many
-genuinely CLEAN epochs --- producing a precision of 0.09 for DEGRADED while still
+The RF threshold fires on 40\,\% of all Tokyo epochs as DEGRADED - including many
+genuinely CLEAN epochs - producing a precision of 0.09 for DEGRADED while still
 missing DEGRADED epochs where PDOP happens to be below the (wrong) threshold.
 
 SENTINEL, by contrast, learned to detect the \emph{temporal pattern} of approaching
-degradation --- C/N$_0$ declining over 10 seconds, pseudorange residuals growing ---
+degradation - C/N$_0$ declining over 10 seconds, pseudorange residuals growing - 
 rather than absolute feature thresholds.
 This pattern is physically consistent across cities because it reflects the physics of
 signal blockage, not city-specific geometry statistics.
@@ -608,6 +618,15 @@ classify, while WARNING F1 falls from 0.958 to 0.716. The model keeps the easy c
 but fails on the safety-critical one, which is the class that matters for the vehicle.
 
 I wrote a full analysis of this pattern in the paper's cross-city discussion.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.72\textwidth]{../../results/paper_figures/fig05_crosscity_degraded.pdf}
+  \caption{Cross-city DEGRADED-class F1 on unseen Tokyo. The Random Forest I evaluated
+           collapses to 0.15 while SENTINEL holds 0.75. This is the central evidence in our
+           argument that in-domain accuracy is the wrong metric for cross-city deployment.}
+  \label{fig:crosscityrf}
+\end{figure}
 
 % ============================================================
 \section{Failed Experiments}
@@ -639,26 +658,26 @@ For the DL model, Joel confirmed the same finding (Ablation E5).
 
 I wrote the Introduction following the classical four-paragraph structure:
 
-\textbf{Paragraph 1 --- Importance.}
+\textbf{Paragraph 1 - Importance.}
 Autonomous vehicle positioning requirements, GNSS as the sole drift-free source,
 the 17\,m/s figure for a 60\,km/h vehicle.
 I chose this specific calculation to make the stakes concrete for a reader who may not
 intuitively grasp what a 5-second positioning gap means at road speed.
 
-\textbf{Paragraph 2 --- The Problem: Silent Failure.}
+\textbf{Paragraph 2 - The Problem: Silent Failure.}
 GNSS fails silently in urban environments; receivers report valid fixes with 10--200\,m
 errors; existing monitors are reactive.
-I used the phrase ``silent failure'' deliberately --- it is technically accurate
+I used the phrase ``silent failure'' deliberately - it is technically accurate
 (the receiver continues to output a position) and intuitively evocative.
 Joel suggested this framing and I formalised it in the Introduction.
 
-\textbf{Paragraph 3 --- Prior Work Limitation.}
+\textbf{Paragraph 3 - Prior Work Limitation.}
 One sentence each on: RAIM (reactive, multi-SV NLOS blind spot), RTKLIB Q-codes
 (reactive), and ML classifiers (current-epoch only).
-I chose to name Liu~(2023) and Chen~(2019) specifically here --- not just cite them ---
+I chose to name Liu~(2023) and Chen~(2019) specifically here - not just cite them - 
 because naming them makes the contribution gap concrete.
 
-\textbf{Paragraph 4 --- Our Approach.}
+\textbf{Paragraph 4 - Our Approach.}
 SENTINEL as a forecasting problem, not a monitoring problem.
 Advance notice enables action.
 
@@ -673,12 +692,12 @@ Advance notice enables action.
 
 \textbf{Key wording decisions I made:}
 \begin{itemize}
-  \item ``To our knowledge, after a systematic search'' rather than ``first ever'' ---
+  \item ``To our knowledge, after a systematic search'' rather than ``first ever'' - 
     avoids a claim that could be falsified by an undiscovered parallel publication.
-  \item ``Hardware-aware'' rather than ``receiver-agnostic'' --- the model uses
+  \item ``Hardware-aware'' rather than ``receiver-agnostic'' - the model uses
     \code{receiver\_tier} so it is aware of hardware, not agnostic to it.
   \item Disclosure of tree-beats-DL in-domain result in the Introduction, not buried
-    in the results --- this ``honest narrative'' was a deliberate positioning choice.
+    in the results - this ``honest narrative'' was a deliberate positioning choice.
 \end{itemize}
 
 \subsection{Section 2: Related Work}

@@ -197,7 +197,7 @@ Full RTKLIB usage documentation: `data/README.md` → section "RTKLIB Explained"
 
 ## Feature Engineering
 
-The model uses **34 standardized features** extracted from each 1-second epoch of a `.pos` file (33 signal features + 1 `cnr_available` availability flag). Features are grouped into 7 categories:
+The model uses **37 standardized features** extracted from each 1-second epoch of a `.pos` file. Features are grouped into 7 categories:
 
 | Category               | Features                                                                      |
 | ---------------------- | ----------------------------------------------------------------------------- |
@@ -208,6 +208,7 @@ The model uses **34 standardized features** extracted from each 1-second epoch o
 | Receiver Status        | solution_status, baseline_sats, solution_age, fix_continuity, fix_transitions |
 | Temporal Patterns      | position_variance, cnr_variance, elevation_violations, multipath, clock_bias  |
 | Atmospheric Effects    | iono_delay, tropo_delay, cycle_slips, residual_mean, residual_std             |
+| Added features         | cnr_available (flag), pdop_delta, hdop_delta (Run 6), receiver_tier (Run 7)   |
 
 See `src/features/feature_extractor.py` for exact computation logic.
 
@@ -237,7 +238,7 @@ Random shuffling is explicitly forbidden. GNSS data is sequential — shuffling 
 
 **Run 12 — Transformer-LSTM (checkpoint_best.pt, epoch 16 of 73)** ← Current best
 
-Architecture: TransformerEncoder (2 layers, 8 heads, d_model=128) → BiLSTM (2 layers, hidden=256) → 3 output heads + 1 aux head. Input: 37 features × 30-step sliding window. Temperature calibration T=0.4442.
+Architecture: TransformerEncoder (2 layers, 8 heads, d_model=128) → LSTM (2 layers, hidden=256, unidirectional) → 3 output heads + 1 aux head. Input: 37 features × 30-step sliding window. Temperature calibration T=0.4442.
 
 | Horizon | Accuracy | Macro-F1   | MCC    | 95% CI (MacroF1) |
 | ------- | -------- | ---------- | ------ | ---------------- |
