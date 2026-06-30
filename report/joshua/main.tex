@@ -685,7 +685,7 @@ Remedy: clipped all PDOP values to a minimum of 1.0 (the theoretical minimum DOP
 perfect geometry is slightly above 1).
 
 \textbf{Issue 3: Delta-Pseudorange Boundary Spikes.}
-Described in Section~5.4.
+Described in Section~5.5 (Groups 4--7).
 Remedy: 3-point median filter plus NaN-at-boundary, with forward-fill imputation.
 
 After all three remediations: \textbf{zero NaN rows} in training, validation, and test
