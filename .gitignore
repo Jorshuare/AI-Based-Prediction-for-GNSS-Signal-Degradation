@@ -70,6 +70,8 @@ THESIS_DIRECTIONS.md
 
 # ─── Reports kept local for now (not pushed) ─────────────────────────────────
 report/joel/
+report/joshua/
+report/mustapha/
 
 # ─── Always track these regardless of above rules ────────────────────────────
 !**/.gitkeep

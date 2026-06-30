@@ -71,13 +71,14 @@
 \begin{titlepage}
   \centering
   \vspace*{1cm}
-  {\color{buaaNavy}\rule{\linewidth}{2pt}}\\[0.4cm]
-  {\huge\bfseries\color{buaaNavy} SENTINEL-GNSS}\\[0.3cm]
-  {\Large\color{buaaBlue} Proactive Multi-Horizon Prediction of GNSS Signal\\[0.2cm]
-  Degradation for Autonomous Vehicle Navigation}\\[0.4cm]
+  {\color{buaaNavy}\rule{\linewidth}{2pt}}\\[0.5cm]
+  {\large\color{buaaBlue} SENTINEL-GNSS}\\[0.35cm]
+  {\Huge\bfseries\color{buaaNavy} AI-Based Proactive Prediction of\\[0.15cm]
+   GNSS Signal Degradation for\\[0.15cm] Autonomous Vehicle Navigation}\\[0.6cm]
+  {\Large\color{buaaBlue} Group Report}\\[0.7cm]
   {\color{buaaNavy}\rule{\linewidth}{2pt}}\\[1.5cm]
 
-  {\large\bfseries Team Pilot Project: General Report}\\[0.5cm]
+  {\large\bfseries Team Pilot Project}\\[0.5cm]
 
   \begin{tabular}{ll}
     \toprule
@@ -408,14 +409,6 @@ A shared auxiliary head over the LSTM output regularises against dataset shift.
   \label{fig:arch}
 \end{figure}
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.97\textwidth]{../methodology.png}
-  \caption{Processing flow from the GNSS receiver to the planner. Raw RINEX and NMEA become
-           35 features in 7 groups, a 30 second sliding window forms a 30 by 35 tensor, the
-           model produces the three horizon forecasts, and the planner consumes them.}
-  \label{fig:method}
-\end{figure}
 
 \begin{figure}[H]
   \centering
