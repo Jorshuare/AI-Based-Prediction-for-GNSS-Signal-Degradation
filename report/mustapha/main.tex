@@ -73,7 +73,7 @@
     \textbf{Student ID:}  & LS2525238 \\
     \textbf{Role:}        & Systems Engineer --- EKF Implementation, Real-Time Dashboard,
                             Live Receiver Integration \\
-    \textbf{Institution:} & Beihang University H3I, 2025 \\
+    \textbf{Institution:} & Beihang University H3I, Hangzhou, 2026 \\
   \end{tabular}
 \end{center}
 \vspace{0.8cm}
@@ -158,33 +158,15 @@ project, later extended by Joel to the production Next.js/FastAPI stack.
 \section{Extended Kalman Filter --- Background Study}
 % ============================================================
 
-\subsection{Week 1 Literature Study}
-
-In Week~1, before writing any EKF code, I studied the mathematical foundations
-required to implement it correctly.
-My primary reference was Groves~\cite{groves2013gnss} (Chapters~3 and~14), supplemented
-by Kalman's original 1960 paper~\cite{kalman1960} and the EKF derivation in
-Angrisano~\emph{et al.}~\cite{angrisano2013imu}.
-
-Key concepts I had to understand before starting:
-\begin{itemize}
-  \item Why the Kalman filter is the minimum-variance linear estimator (Theorem 1.1 in
-    Groves): to understand what ``optimal'' means in the context of Gaussian noise.
-  \item Why linearisation is needed for nonlinear systems (EKF vs.\ KF): the IMU
-    strapdown model has a nonlinear heading term $v \cdot \sin(\psi)$ that requires
-    Jacobian linearisation.
-  \item Why the Joseph-form covariance update $(I - KH)P(I-KH)^\top + KRK^\top$
-    is numerically superior to the simplified form $(I-KH)P$: the simplified form
-    can produce a non-positive-definite covariance matrix with finite-precision
-    arithmetic, which later causes the filter to diverge.
-    Joel had specified Joseph form in the design; after studying the numerics I
-    implemented it as specified.
-  \item What the measurement noise covariance $R$ physically means: it encodes
-    our \emph{trust} in the GPS measurement.
-    Inflating $R$ reduces the Kalman gain, making the filter rely more on IMU
-    prediction and less on GPS correction.
-    This is exactly what the adaptive SENTINEL-wired $R$ does.
-\end{itemize}
+Before writing any EKF code I studied Groves~\cite{groves2013gnss} (Chapters~3 and~14),
+Kalman~\cite{kalman1960}, and Angrisano~\emph{et al.}~\cite{angrisano2013imu}.
+The three concepts most relevant to the implementation were: (1) why the Joseph-form
+covariance update $(I - KH)P(I-KH)^\top + KRK^\top$ avoids the non-positive-definite
+covariance failure of the simplified form $(I-KH)P$; (2) why Jacobian linearisation is
+needed for the nonlinear heading term $v \cdot \sin(\psi)$ in the IMU strapdown model;
+and (3) what inflating $R$ means physically --- it reduces the Kalman gain and shifts
+reliance from GPS correction to IMU dead-reckoning, which is exactly what the
+SENTINEL-adaptive $R$ achieves.
 
 % ============================================================
 \section{EKF Implementation: \texttt{ekf.py}}
@@ -677,24 +659,9 @@ The 1\,Hz update rate remains fully achievable within the 1000\,ms budget even a
 
 \subsection{USB Serial Connection}
 
-I connected the Septentrio Mosaic-X5C receiver in Room~3058 to my laptop via USB.
-On Windows 11, the receiver appeared as a virtual COM port (COM8) in Device Manager.
-I used \code{pyserial} at 115200 baud, 8N1:
-
-\begin{lstlisting}
-import serial
-ser = serial.Serial('COM8', 115200, timeout=1.0)
-\end{lstlisting}
-
-The Septentrio outputs a mix of NMEA sentences and proprietary SBF (Septentrio Binary
-Format) packets.
-I configured the receiver via its WebUI (port 28785) to output NMEA-only on COM8:
-
-\begin{lstlisting}
-# Receiver WebUI command (executed once via web terminal):
-# setSNTFOutput, COM8, NMEA1, sec0.2
-# This sets: 5 Hz NMEA output on COM8
-\end{lstlisting}
+I connected the Septentrio Mosaic-X5C receiver in Room~3058 to my laptop via USB
+(\code{pyserial}, 115200 baud, 8N1) and configured it via the WebUI to output NMEA-only
+at 5\,Hz on the virtual COM port.
 
 \subsection{NMEA Sentence Parsing}
 
@@ -722,30 +689,9 @@ I implemented a parser for four NMEA sentence types:
 The \code{\$GPGSV} sentence is particularly involved: each sentence carries data for
 up to 4 satellites, and a complete epoch may require 3--4 GSV sentences before all
 visible satellites are described.
-I implemented a state machine that accumulates GSV sentences until the total SV count
-is reached (indicated by the sentence field \code{total\_messages}), then flushes the
-accumulated satellite data as a single epoch:
-
-\begin{lstlisting}
-class GSVAccumulator:
-    def __init__(self):
-        self.sv_list = []
-        self.expected_total = None
-
-    def add_sentence(self, sentence):
-        fields = sentence.split(',')
-        self.expected_total = int(fields[1]) * 4
-        # parse up to 4 SVs from this sentence
-        for i in range(4):
-            if 4 + 4*i + 3 < len(fields):
-                self.sv_list.append({
-                    'prn':  fields[4 + 4*i],
-                    'elev': fields[5 + 4*i],
-                    'azim': fields[6 + 4*i],
-                    'snr':  fields[7 + 4*i]
-                })
-        return len(self.sv_list) >= self.expected_total
-\end{lstlisting}
+I implemented a \code{GSVAccumulator} state machine that collects GSV sentences (up to
+4 satellites per sentence) until \code{total\_messages} is reached, then flushes the
+complete per-satellite data as a single epoch.
 
 \subsection{Live Feature Extraction Verification}
 
@@ -818,29 +764,6 @@ The demonstration confirmed the full system working end-to-end in real time.
 The 5-second early warning was visible as the CAUTION/ALERT transition on the $+5$\,s
 gauge preceding the actual signal quality drop on Panel~2 by 5 epochs.
 
-% ============================================================
-\section{Paper Section 6: System Demonstration}
-% ============================================================
-
-I authored Section~6 of the team paper, covering:
-
-\begin{enumerate}
-  \item \textbf{Dashboard architecture}: Plotly Dash prototype and the production
-    Next.js/FastAPI stack built by Joel.
-    I explicitly compared the two: Dash runs at 82\,ms total latency with 1\,Hz polling;
-    the Next.js/WebSocket stack achieves $< 30$\,ms event-driven push.
-  \item \textbf{Panel descriptions}: functionality, data sources, and visual design
-    rationale for all five panels.
-  \item \textbf{Measured latency table}: reproduced from my profiling experiment
-    (Table~6 in this report).
-  \item \textbf{Live test narrative}: the Scenario~A approach described above,
-    including the 5-second early-warning timeline.
-  \item \textbf{Demo video summary}: 90-second recording of the live campus demonstration
-    showing the sky plot colour changes and gauge transitions.
-  \item \textbf{Integration testing}: how I verified that the NMEA parser, feature
-    extractor, and SENTINEL inference pipeline produce consistent outputs relative to
-    the RTKLIB-processed offline data.
-\end{enumerate}
 
 % ============================================================
 \section{Architecture Comparison: Prototype vs.\ Production}
@@ -904,41 +827,6 @@ the Dash architecture documentation.
 The fix (single Store writer + multiple Store readers) is now a pattern I would apply
 from the start in any multi-panel reactive dashboard.
 
-\subsection{What I Would Do Differently}
-
-I would implement the dashboard in \textbf{FastAPI + WebSocket} from the start.
-The primary limitation of my Dash prototype is the 48\,ms figure serialisation cost,
-which is structural to how Dash sends updates to the browser.
-WebSocket push eliminates this: the server pushes a small JSON delta (only the changed
-values, not the entire Plotly figure) at each epoch, and the browser applies the delta
-in-place.
-This would reduce average latency from 82\,ms to below 30\,ms and enable smooth
-updates at 5\,Hz rather than 1\,Hz --- matching the receiver's native output rate.
-
-I would also add a \textbf{trajectory replay mode} in the prototype.
-Joel had to build this from scratch in Next.js because my Dash version only supported
-forward-only playback from the start of the file.
-A seek-anywhere replay mode requires only a slider widget and an epoch-index Store ---
-a few hours of additional work that would have saved Joel a week of rebuilding the same
-feature in a new stack.
-
-\subsection{Lessons Learned}
-
-\begin{enumerate}
-  \item \textbf{Read before implementing.}
-    Understanding the EKF's Joseph-form stability requirement before writing \code{ekf.py}
-    saved me from a divergence bug that would have appeared only under specific covariance
-    magnitudes.
-    Kalman filter stability bugs are notoriously hard to debug post-hoc.
-  \item \textbf{Architecture matters more than algorithm for dashboard latency.}
-    Switching from 5 Interval callbacks to 1 Store writer + 5 Store readers (the race
-    condition fix) produced a larger latency improvement than any algorithmic optimisation
-    I could apply within a single callback.
-  \item \textbf{Prototype fast; measure before optimising.}
-    I built Panel~1 in one day and measured its latency before touching Panels 2--5.
-    This revealed that Plotly serialisation was the bottleneck, not feature extraction,
-    guiding where I spent my optimisation effort.
-\end{enumerate}
 
 \bibliographystyle{IEEEtran}
 \bibliography{../shared/references}

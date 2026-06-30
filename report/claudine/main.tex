@@ -63,7 +63,7 @@
     \textbf{Student ID:} & LS2525236 \\
     \textbf{Role:}       & Field Operations \& Validation --- Data Collection Lead,
                            Cross-City Generalisation Testing, Results Figures \\
-    \textbf{Institution:}& Beihang University H3I, 2025 \\
+    \textbf{Institution:}& Beihang University H3I, Hangzhou, 2026 \\
   \end{tabular}
 \end{center}
 \vspace{0.8cm}
@@ -687,36 +687,6 @@ reduced onset variability to $\pm 1$ epoch.
 This is a small but critical quality improvement that directly affects the quality of the
 most challenging training examples.
 
-\subsection{What I Would Do Differently}
-
-I would establish a \textbf{real-time SNR display on a tablet} during field collection.
-Several Scenario~C runs had to be post-hoc evaluated as ``borderline WARNING''
-(C/N$_0$ dropped from 42 to 38\,dB-Hz but not below 30\,dB-Hz) because the canopy
-was less dense than I expected based on visual inspection.
-A live C/N$_0$ display would have allowed me to adjust the collection route in real time
-to seek denser canopy, producing clearer DEGRADED examples.
-
-I would also include \textbf{RTK differential GPS} during campus collection to provide
-centimetre-accurate ground truth positioning.
-All Beihang labelling uses PDOP + C/N$_0$ proxies because we did not have an RTK
-reference station.
-The UrbanNav HK dataset provides RTK ground truth, making its labelling more precise.
-With RTK truth, the Beihang training labels would be improved from proxy-quality to
-RTK-quality, likely improving the model's ability to detect the threshold between WARNING
-and DEGRADED.
-
-\subsection{Broader Impact of the Cross-City Finding}
-
-The cross-city result has implications beyond the SENTINEL project.
-It demonstrates that temporal GNSS signal patterns --- not absolute feature values ---
-are the transferable signal for degradation prediction.
-This suggests that future GNSS ML work should prioritise:
-(1) temporal feature representations (rolling statistics, sequence models);
-(2) cross-city evaluation as the standard rather than in-domain evaluation;
-(3) honest normalisation design that does not leak test-city statistics.
-
-These methodological lessons apply to any machine-learning approach to environmental
-signal quality prediction --- not just GNSS.
 
 \bibliographystyle{IEEEtran}
 \bibliography{../shared/references}
