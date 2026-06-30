@@ -231,7 +231,7 @@ def plot_confusion_matrices(
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     fig, axes = plt.subplots(2, 3, figsize=(
-        FIG_WIDE[0] * 1.3, FIG_WIDE[1] * 1.6))
+        FIG_WIDE[0] * 1.5, FIG_WIDE[1] * 1.8))
 
     for col, h in enumerate(HORIZONS):
         y_true = results[h]["y_true"]
@@ -251,13 +251,18 @@ def plot_confusion_matrices(
             panel = chr(ord('a') + row * len(HORIZONS) + col)
             ax.text(0.03, 0.97, f'({panel})', transform=ax.transAxes,
                     fontsize=FONT_TITLE, fontweight='bold', va='top')
-            ax.set_xlabel("Predicted label", fontsize=FONT_AXIS_LABEL)
-            ax.set_ylabel("True label", fontsize=FONT_AXIS_LABEL)
+            ax.set_xlabel("Predicted label", fontsize=FONT_AXIS_LABEL, fontweight="bold")
+            ax.set_ylabel("True label", fontsize=FONT_AXIS_LABEL, fontweight="bold")
+            # Rotate x-axis tick labels 45° to prevent "WARNINGDEGRADED" overlap
+            plt.setp(ax.get_xticklabels(), rotation=45, ha='right',
+                     fontsize=FONT_TICK, fontweight='bold')
+            plt.setp(ax.get_yticklabels(), fontsize=FONT_TICK, fontweight='bold')
             ax.tick_params(labelsize=FONT_TICK)
-            # Bold tick labels for the class names
+            # Bold cell-value annotations
             for text in ax.texts:
                 text.set_fontsize(FONT_ANNOTATION + 1)
-    plt.tight_layout()
+                text.set_fontweight("bold")
+    plt.tight_layout(pad=1.5)
     save_figure(fig, str(out_dir / f"confusion_matrices_{split}"))
     plt.close(fig)
 
@@ -488,7 +493,8 @@ def plot_roc_curves(
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     hcols = horizon_colors()
-    fig, axes = plt.subplots(1, N_CLASSES, figsize=FIG_WIDE)
+    fig, axes = plt.subplots(1, N_CLASSES, figsize=(13.0, 4.5),
+                             constrained_layout=True)
 
     for c_idx, cls in enumerate(CLASS_LABELS):
         ax = axes[c_idx]
@@ -515,13 +521,16 @@ def plot_roc_curves(
         ax.set_ylim(0, 1.02)
         ax.text(0.03, 0.97, f'({chr(ord("a") + c_idx)})', transform=ax.transAxes,
                 fontsize=FONT_TITLE, fontweight='bold', va='top')
-        ax.set_xlabel("False Positive Rate", fontsize=FONT_AXIS_LABEL)
-        ax.set_ylabel("True Positive Rate",  fontsize=FONT_AXIS_LABEL)
+        ax.set_xlabel("False Positive Rate", fontsize=FONT_AXIS_LABEL,
+                      fontweight="bold")
+        ax.set_ylabel("True Positive Rate", fontsize=FONT_AXIS_LABEL,
+                      fontweight="bold")
         ax.tick_params(labelsize=FONT_TICK)
-        leg = ax.legend(fontsize=FONT_LEGEND,
-                        framealpha=0.9, loc="lower right")
+        # Lower right is empty for high-AUC curves; legend safe there
+        leg = ax.legend(fontsize=FONT_LEGEND, framealpha=0.9, loc="lower right")
         leg.get_title().set_fontweight("bold")
-    plt.tight_layout()
+        for ltext in leg.get_texts():
+            ltext.set_fontweight("bold")
     save_figure(fig, str(out_dir / f"roc_curves_{split}"))
     plt.close(fig)
 
@@ -595,7 +604,9 @@ def plot_calibration_curves(
     A perfect model has Brier Score = 0; random classifier ≈ 0.67 (3 classes).
     """
     out_dir.mkdir(parents=True, exist_ok=True)
-    fig, axes = plt.subplots(1, N_CLASSES, figsize=FIG_WIDE)
+    # Use constrained_layout so panel (c) x-axis label is never clipped
+    fig, axes = plt.subplots(1, N_CLASSES, figsize=(13.0, 4.5),
+                             constrained_layout=True)
 
     for c_idx, cls in enumerate(CLASS_LABELS):
         ax = axes[c_idx]
@@ -624,11 +635,15 @@ def plot_calibration_curves(
         ax.set_ylim(0, 1)
         ax.text(0.03, 0.97, f'({chr(ord("a") + c_idx)})', transform=ax.transAxes,
                 fontsize=FONT_TITLE, fontweight='bold', va='top')
-        ax.set_xlabel("Mean predicted probability", fontsize=FONT_AXIS_LABEL)
-        ax.set_ylabel("Fraction of positives",      fontsize=FONT_AXIS_LABEL)
+        ax.set_xlabel("Mean predicted probability", fontsize=FONT_AXIS_LABEL,
+                      fontweight="bold")
+        ax.set_ylabel("Fraction of positives", fontsize=FONT_AXIS_LABEL,
+                      fontweight="bold")
         ax.tick_params(labelsize=FONT_TICK)
-        ax.legend(fontsize=FONT_LEGEND)
-    plt.tight_layout()
+        # Place legend in upper-left — always empty there (curve starts at 0,0)
+        leg = ax.legend(fontsize=FONT_LEGEND, loc="upper left")
+        for ltext in leg.get_texts():
+            ltext.set_fontweight("bold")
     save_figure(fig, str(out_dir / f"calibration_curves_{split}"))
     plt.close(fig)
 

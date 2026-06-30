@@ -140,7 +140,7 @@ artifacts. Fixed with 3-point median filter. Affected $\approx$60 windows/sessio
   \item \textbf{WARNING}: all other epochs
 \end{itemize}
 
-\textbf{Sliding window}: $(t-59, \ldots, t) \to$ predict at $t+5, t+15, t+30$
+\textbf{Sliding window}: $(t-29, \ldots, t) \to$ predict at $t+5, t+15, t+30$
 
 \textbf{Session-level split (70/15/15)} — prevents temporal leakage:
 no epoch from a test drive appears in any training window.

@@ -122,7 +122,7 @@ Three scrolling Plotly time-series at 1\,Hz:
 \begin{poblock}
 Three semicircular probability gauges ($+5$s, $+15$s, $+30$s):
 \begin{itemize}
-  \item Gauge sweep shows $P(\text{CLEAN})$/$P(\text{WARNING})$/$P(\text{DEGRADED})$
+  \item Gauge sweep shows the three class probabilities
   \item Status banner: \textcolor{cleanGreen}{\textbf{NOMINAL}} / \textcolor{warnOrange}{\textbf{CAUTION}} / \textcolor{degradRed}{\textbf{ALERT}}
   \item Visual ``fuel-gauge'' representation for non-technical users
 \end{itemize}
@@ -144,8 +144,10 @@ entered the building shadow, immediately before the ALERT fired.
 \begin{poblock}
 Stacked horizontal bar showing real-time GNSS/IMU weighting:
 \[
-  \text{GNSS\%} = 100 \cdot (1 - P_\mathrm{DEGRADED}), \quad
-  \text{IMU\%} = 100 \cdot P_\mathrm{DEGRADED}
+  \begin{aligned}
+    \text{GNSS\%} &= 100\,(1 - P_\mathrm{DEGRADED}) \\
+    \text{IMU\%}  &= 100\,P_\mathrm{DEGRADED}
+  \end{aligned}
 \]
 Makes the prediction tangible: bar shifts visually from green-GNSS to
 blue-IMU as the vehicle enters the building shadow.

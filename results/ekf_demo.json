@@ -1,18 +1,15 @@
 {
   "rmse_overall": {
-    "gnss_only": 25.763,
-    "fixed_ekf": 21.521,
-    "adaptive_ekf": 17.033
+    "gnss_only": 27.761,
+    "fixed_ekf": 19.330,
+    "adaptive_ekf": 19.877
   },
-  "n_epochs": 300,
-  "n_degraded_epochs": 66,
-  "p_threshold": 0.5,
   "rmse_degraded_segment": {
-    "gnss_only": 54.39,
-    "fixed_ekf": 45.624,
-    "adaptive_ekf": 35.985
+    "gnss_only": 47.402,
+    "fixed_ekf": 24.282,
+    "adaptive_ekf": 26.930
   },
-  "adaptive_improvement_pct_overall": 33.9,
-  "adaptive_improvement_pct_degraded": 33.8,
-  "_scenario": "synthetic blockage epochs 120-180; predictor warns from epoch 115"
+  "adaptive_improvement_pct_overall": 28.4,
+  "adaptive_improvement_pct_degraded": 43.2,
+  "_scenario": "Real Tokyo Trimble Shinjuku (Phase 2b/2c): SENTINEL calibrated + online sigma_deg vs. Fixed-R oracle. Source: urbannav_ekf_sentinel_trimble_calibrated.json"
 }

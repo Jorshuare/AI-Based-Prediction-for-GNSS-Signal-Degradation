@@ -73,7 +73,7 @@
     \textbf{Student ID:}  & LS2525237 \\
     \textbf{Role:}        & Data Engineer --- ROSBAG Extraction, RTKLIB Automation,
                             Feature Engineering, Dataset Assembly \& QA \\
-    \textbf{Institution:} & Beihang University H3I, 2025 \\
+    \textbf{Institution:} & Beihang University H3I, Hangzhou, 2026 \\
   \end{tabular}
 \end{center}
 \vspace{0.8cm}
@@ -302,38 +302,15 @@ The pipeline automates four sequential operations per recording:
 \subsubsection{Stage 1 --- Format Conversion (RTKCONV)}
 
 Raw UBX binary or NMEA output is converted to RINEX~3.x observation and navigation
-files:
-
-\begin{lstlisting}
-subprocess.run([
-    'rtkconv',
-    '-r', '3',          # output RINEX 3.x (not 2.x)
-    '-f', '5',          # include all signal codes (L1, L2, L5)
-    '-o', rinex_obs_path,
-    input_ubx_path
-], check=True)
-\end{lstlisting}
-
-The \code{-r 3} flag is critical: RINEX~2.x does not carry the GLONASS pseudorange
-bias correction offset required for accurate multi-constellation SPP.
-All Trimble datasets (GPS + GLONASS dual-constellation) would have a systematic $\sim$5\,m
-north-south offset in RINEX~2.x due to missing GLONASS inter-system bias.
+files using \code{rtkconv -r 3}. The \code{-r 3} flag is critical: RINEX~2.x lacks the
+GLONASS pseudorange bias correction, causing a systematic $\sim$5\,m north-south offset
+for dual-constellation Trimble datasets.
 
 \subsubsection{Stage 2 --- Precise Orbit and Clock Download}
 
-For consistent post-processing accuracy, I download IGS Final SP3 and CLK files from
-the NASA CDDIS archive for the exact recording date.
-The GPS week number is computed from the recording timestamp:
-
-\begin{lstlisting}
-gps_week = (int(gps_seconds) // 604800)
-sp3_file = f"igs{gps_week:04d}{day_of_week}.sp3"
-sp3_url  = f"https://cddis.nasa.gov/archive/gnss/products/"
-           f"{gps_week}/{sp3_file}.Z"
-\end{lstlisting}
-
-The script handles \code{.Z} (Unix compress) decompression and caches files locally to
-avoid redundant downloads when processing multiple recordings from the same GPS week.
+IGS Final SP3 and CLK files are downloaded from NASA CDDIS for the recording date and
+cached locally to avoid redundant downloads when processing multiple recordings from
+the same GPS week.
 
 \subsubsection{Stage 3 --- SPP Computation (RTKPOST)}
 
@@ -476,99 +453,43 @@ Low azimuth standard deviation (all satellites on one side) indicates a building
 blocking half the sky --- associated with DEGRADED.
 This feature captures the \emph{geometric} aspect of NLOS that C/N$_0$ alone cannot.
 
-\subsection{Group 4: Pseudorange Residuals (7 features)}
+\subsection{Groups 4--7: Residuals, Temporal, Atmospheric, Receiver (19 features)}
 
 \begin{table}[H]
   \centering
-  \caption{Pseudorange features and physical interpretation.}
-  \begin{tabular}{lll}
+  \caption{Feature groups 4--7 summary.}
+  \begin{tabular}{lp{6cm}l}
     \toprule
-    \textbf{Feature} & \textbf{Description} & \textbf{Degradation indicator} \\
+    \textbf{Group} & \textbf{Key features} & \textbf{Degradation signal} \\
     \midrule
-    \code{prange\_res\_rms} & $\sqrt{\frac{1}{N}\sum_i r_i^2}$ (SPP residuals) &
-      High $\Rightarrow$ multipath \\
-    \code{prange\_res\_max} & $\max_i |r_i|$ & Spike $\Rightarrow$ NLOS \\
-    \code{prange\_res\_std} & std of $\{r_i\}$ & High $\Rightarrow$ inconsistent signals \\
-    \code{delta\_prange}    & Median-filtered epoch-to-epoch pseudorange change &
-      Large $\Rightarrow$ cycle slip \\
-    \code{multipath\_idx}   & $(|\bar{r}| - \sigma_\mathrm{noise})/\sigma_\mathrm{noise}$ &
-      $> 1 \Rightarrow$ multipath \\
-    \code{lock\_time\_min}  & Minimum satellite lock time (seconds) &
-      Low $\Rightarrow$ reacquisition \\
-    \code{cycle\_slip\_cnt} & Number of cycle slips this epoch &
-      $> 0 \Rightarrow$ disruption \\
+    Pseudorange (7) &
+      \code{prange\_res\_rms}, \code{prange\_res\_max}, \code{multipath\_idx},
+      \code{cycle\_slip\_cnt}, \code{delta\_prange} &
+      High RMS / spike $\Rightarrow$ NLOS \\
+    Temporal (5) &
+      \code{cn0\_delta\_10s} (C/N$_0$ slope), \code{pdop\_trend} (PDOP slope),
+      10s rolling means &
+      Decline $\Rightarrow$ approaching blockage \\
+    Atmospheric (4) &
+      Saastamoinen tropospheric delay, Klobuchar TEC estimate, gradient components &
+      Distinguishes weather vs geometry degradation \\
+    Receiver (3) &
+      \code{receiver\_tier} (hardware class), \code{lock\_time\_avg},
+      \code{cycle\_slip\_rate} &
+      Prevents hardware-specific misclassification \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-\textbf{Bug found and fixed (delta-pseudorange boundary artifact).}
-The \code{delta\_prange} feature computes the difference between consecutive-epoch
-pseudorange measurements.
-At the start and end of each drive session, this difference spans a time gap of hours
-(between sessions) rather than 1 second, producing values of $\pm$500\,m --- physically
-impossible for a stationary or slowly-moving vehicle.
-I discovered this by plotting the feature histogram annotated with session boundaries:
-the two extreme histogram modes exactly coincided with session-start and session-end
-epochs.
-Fix: (1) applied a 3-point median filter on \code{delta\_prange} to suppress isolated
-spikes, and (2) explicitly set \code{delta\_prange} to \code{NaN} at the first and last
-epoch of each session where the previous/next epoch belongs to a different drive.
-This affected approximately 60 windows per session; they are imputed by forward-filling
-from the third epoch.
+\textbf{Key bug fixed (delta-pseudorange boundary artifact).}
+At session boundaries, \code{delta\_prange} spanned a multi-hour gap rather than 1\,s,
+producing $\pm$500\,m values. Fix: 3-point median filter plus \code{NaN} at boundary
+epochs, forward-fill imputed from the third epoch ($\approx$60 windows per session).
 
-\subsection{Group 5: Temporal Patterns (5 features)}
-
-These rolling statistics capture the \emph{direction} of signal change, which is
-essential for the prediction task:
-
-\begin{align}
-  \code{cn0\_mean\_10s}  &= \frac{1}{10}\sum_{t'=t-9}^{t} \text{CN0\_mean}_{t'} \\
-  \code{cn0\_delta\_10s} &= \text{CN0\_mean}_t - \text{CN0\_mean}_{t-10}
-    \quad\text{(negative = degrading)} \\
-  \code{pdop\_ma10}      &= \frac{1}{10}\sum_{t'=t-9}^{t} \text{PDOP}_{t'} \\
-  \code{pdop\_trend}     &= \text{PDOP}_t - \text{PDOP}_{t-10}
-    \quad\text{(positive = worsening)} \\
-  \code{err\_trend}      &= \text{pos\_error}_t - \text{pos\_error}_{t-10}
-    \quad\text{(UrbanNav HK only)}
-\end{align}
-
-These temporal features directly enable the prediction task.
-A model that sees \code{cn0\_delta\_10s}~$< -3$\,dB-Hz/s can predict DEGRADED at $+5$\,s
-more reliably than one that sees only the current \code{cn0\_mean}.
-The feature saliency analysis confirms that \code{cn0\_delta\_10s} is the third-most
-important feature at the $+5$\,s horizon.
-
-\subsection{Group 6: Atmospheric Delays (4 features)}
-
-\begin{itemize}
-  \item \code{tropo\_zenith}: tropospheric zenith delay estimate (Saastamoinen model),
-    extracted from RTKLIB solution metadata.
-  \item \code{iono\_tec}: ionospheric total electron content estimate (Klobuchar model),
-    computed per RTKLIB internal calculation.
-  \item \code{tropo\_grad\_n}, \code{tropo\_grad\_e}: north and east tropospheric delay
-    gradient components.
-\end{itemize}
-
-These features are used to distinguish weather-related signal degradation from geometry
-or multipath degradation.
-
-\subsection{Group 7: Receiver Status (3 features)}
-
-\begin{itemize}
-  \item \code{receiver\_tier}: manually assigned: 0 = Septentrio Mosaic (professional),
-    1 = Trimble R10 (survey grade), 2 = u-blox F9P (geodetic), 3 = u-blox M8 (consumer).
-  \item \code{lock\_time\_avg}: mean satellite lock time in seconds across all tracked SVs.
-  \item \code{cycle\_slip\_rate}: cycle slips per second over a 30-second rolling window.
-\end{itemize}
-
-The \code{receiver\_tier} feature was suggested by Joel and is among the most practically
-significant design decisions in the feature set.
-Without it, the model trained on Septentrio data (typical C/N$_0 \approx 48$\,dB-Hz)
-would systematically mis-classify u-blox F9P epochs (typical C/N$_0 \approx 38$\,dB-Hz)
-as DEGRADED simply due to the hardware sensitivity difference.
-With \code{receiver\_tier}, the model learns hardware-relative thresholds.
-The ablation experiment (E4 in the paper) confirms: removing \code{receiver\_tier}
-reduces Macro-F1 by 0.037 points and reduces DEGRADED recall by 0.062.
+The \code{receiver\_tier} feature prevents the model from misclassifying u-blox
+F9P epochs (typical C/N$_0 \approx 38$\,dB-Hz) as DEGRADED when trained on
+Septentrio data (typical C/N$_0 \approx 48$\,dB-Hz). Ablation E4 confirms removing it
+reduces Macro-F1 by 0.037 and DEGRADED recall by 0.062.
 
 % ============================================================
 \section{Dataset Assembly: \texttt{assemble\_dataset.py}}
@@ -713,50 +634,12 @@ training window and any test window from the same physical location is $> 24$ ho
 \section{Normalisation Pipeline: \texttt{fit\_scaler.py}}
 % ============================================================
 
-\subsection{Design Constraints}
-
-Feature normalisation is frequently underspecified in published work, leading to
-inadvertent data leakage.
-I designed the normalisation pipeline with two hard constraints:
-
-\begin{enumerate}
-  \item \textbf{Fit on training data only.} The scaler sees only the 104,763 training
-    windows during fitting.
-    Fitting on the full dataset would inject test-set distributional information into the
-    normalisation parameters, artificially reducing the apparent test error.
-
-  \item \textbf{Fixed parameters for all downstream datasets.} The same scaler is applied
-    to validation, test, cross-city, and Tokyo evaluation sets without refitting.
-    This matches real-world deployment: normalisation parameters are determined at
-    training time and frozen.
-\end{enumerate}
-
-I implemented StandardScaler (zero-mean, unit-variance) per feature:
-
-\begin{equation}
-  \hat{f}_{j,t} = \frac{f_{j,t} - \mu_j}{\sigma_j},
-  \quad j = 1, \ldots, 37,\quad t \in \text{training set}
-\end{equation}
-
-The fit scaler is serialised to \code{results/scaler.pkl} and committed to the
-repository with its SHA-256 checksum.
-Any downstream script that needs normalised features loads this file directly.
-
-\subsection{Handling Out-of-Distribution Values}
-
-For the cross-city evaluation (especially Tokyo Shinjuku), some feature values fall
-outside the Beihang training distribution.
-For example, Shinjuku urban canyons produce lower mean C/N$_0$ than Beihang canyons due
-to taller buildings and higher building density.
-After StandardScaler normalisation, these values appear as $z > 3$ or $z < -3$, which
-can cause numerical instability in the Transformer's attention weights.
-
-I applied \textbf{soft clipping} after normalisation: values beyond $\pm 5\sigma$ are
-clipped to $\pm 5$.
-This prevents extreme outliers from dominating the attention computation while preserving
-the distributional information within the training range.
-Clipping threshold choice: $\pm 5\sigma$ retains 99.9999\,\% of training-set values
-while providing a hard bound for out-of-distribution inputs.
+StandardScaler (zero-mean, unit-variance) is fit on the 104,763 training windows only
+and frozen for all downstream datasets --- validation, test, cross-city, and Tokyo.
+The scaler is serialised to \code{results/scaler.pkl} with a SHA-256 checksum.
+For cross-city evaluation, out-of-distribution values ($|z| > 5$) are soft-clipped to
+$\pm 5$ to prevent attention instability on Tokyo feature values that fall outside
+the Beihang training distribution.
 
 % ============================================================
 \section{Dataset Quality Assurance}
@@ -915,28 +798,6 @@ introducing approximately 480 incorrectly labelled DEGRADED epochs from hardware
 --- data that would teach the model to classify ``antenna in bag'' as equivalent to
 ``urban canyon NLOS.''
 
-% ============================================================
-\section{Paper Section 3: Dataset and Features}
-% ============================================================
-
-I authored Section~3 of the team paper, covering:
-
-\begin{enumerate}
-  \item \textbf{Data collection methodology}: Scenarios A--E physical environments,
-    UrbanNav HK inclusion, and the rationale for Tokyo as a strictly held-out city
-    (collected independently and never used during any training or validation decision).
-  \item \textbf{RTKLIB pipeline settings}: SPP mode justification, Saastamoinen/Klobuchar
-    model choice, and why we do not use RTK mode.
-  \item \textbf{Feature group descriptions}: physical interpretation of each group's
-    relevance to degradation, with emphasis on \code{receiver\_tier} and temporal
-    features.
-  \item \textbf{Labelling criteria}: three-class threshold calibration process on
-    UrbanNav HK, consistency check against field logbook labels.
-  \item \textbf{Session-level split rationale}: explicit comparison between naive random
-    split (inflated performance) and our session-level approach (correct generalisation).
-  \item \textbf{Dataset statistics table}: class distribution per split, city/environment
-    breakdown, receiver type distribution.
-\end{enumerate}
 
 % ============================================================
 \section{Self-Reflection}
@@ -975,34 +836,6 @@ aggregate distributions.
 I added a permanent session-stratified histogram check to the QA pipeline after finding
 this bug.
 
-\subsection{What I Would Do Differently}
-
-I would implement a \textbf{real-time data quality display} during field collection
-rather than running RTKLIB in batch after each run.
-A live RTKPOST feed at 1\,Hz during collection --- streaming from the Septentrio's USB
-NMEA output to a laptop running RTKPOST in kinematic mode --- would display the position
-track and Q-flag in real time.
-Equipment failures (loose antenna cable, receiver lock loss) would be visible within
-seconds rather than requiring a 45-second post-run processing check.
-
-This is achievable with the project's existing equipment.
-Setting it up would have saved approximately 2 hours of re-collection time across all
-sessions.
-
-\subsection{Impact on Project Outcomes}
-
-The 149,662-window dataset I assembled directly enables every quantitative result in this
-project:
-\begin{itemize}
-  \item SENTINEL's Macro-F1\,=\,0.821 at $+5$\,s (trained on 104,763 windows)
-  \item The Tokyo cross-city result (0.75 DL vs 0.15 RF DEGRADED F1) --- impossible
-    without UrbanNav HK processing giving a comparable out-of-domain test set
-  \item The EKF 48.8\,\% degraded-RMSE reduction --- requires the same labelled windows
-    to evaluate navigation improvement
-  \item The honest confidence intervals (1,686 test windows, zero leakage)
-\end{itemize}
-All of these trace directly to the quality and rigour of the data pipeline described
-in this report.
 
 \bibliographystyle{IEEEtran}
 \bibliography{../shared/references}

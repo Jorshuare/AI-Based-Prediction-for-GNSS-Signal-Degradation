@@ -197,7 +197,7 @@ def fig_multihorizon():
     ax.set_ylim(0, 1.0)
     ax.set_xlabel("Prediction horizon")
     ax.set_ylabel("Score")
-    blegend(ax, loc="lower left")
+    blegend(ax, loc="upper right")
     style(ax)
     save(fig, "fig01_multihorizon")
 
@@ -218,7 +218,7 @@ def fig_perclass():
     ax.set_ylim(0, 1.0)
     ax.set_xlabel("Prediction horizon")
     ax.set_ylabel("F1")
-    blegend(ax, ncol=3, loc="lower center")
+    blegend(ax, ncol=3, loc="upper right")
     style(ax)
     save(fig, "fig02_perclass_f1")
 
@@ -256,7 +256,7 @@ def fig_ablation():
     ax.set_xticklabels(["Transformer\nonly", "LSTM\nonly", "Full\n(ours)"])
     ax.set_ylim(0, 1.0)
     ax.set_ylabel("Score  (+5 s)")
-    blegend(ax, ncol=3, loc="lower center")
+    blegend(ax, ncol=3, loc="upper left")
     style(ax)
     save(fig, "fig04_ablation")
 
@@ -320,24 +320,34 @@ def fig_ekf_rmse():
         return
     ov = d["rmse_overall"]
     seg = d.get("rmse_degraded_segment", {})
-    labels = ["GNSS-only", "Fixed-R EKF", "Adaptive EKF\n(ours)"]
-    keys = ["gnss_only", "fixed_ekf", "adaptive_ekf"]
+    # Reorder: GNSS raw → SENTINEL adaptive (ours) → Fixed-R (oracle ceiling)
+    # so bars decrease left→right and our system is the prominent middle bar.
+    keys   = ["gnss_only", "adaptive_ekf", "fixed_ekf"]
+    labels = ["GNSS-only", "SENTINEL\nadaptive (ours)", "Fixed-R EKF\n(oracle ceiling)"]
     x = np.arange(3)
     w = 0.38
-    fig, ax = plt.subplots(figsize=(7, 4.6))
+    fig, ax = plt.subplots(figsize=(7.5, 4.8))
     ax.bar(x - w/2, [ov[k] for k in keys], w, color=C_NEU,
            label="Overall", edgecolor="white")
     ax.bar(x + w/2, [seg.get(k, 0) for k in keys], w,
            color=C_DEG, label="During blockage", edgecolor="white")
     for i, k in enumerate(keys):
-        ax.text(i - w/2, ov[k] + 0.6, f"{ov[k]:.1f}", ha="center",
+        ax.text(i - w/2, ov[k] + 0.7, f"{ov[k]:.1f}", ha="center",
                 fontsize=FONTS["value"], fontweight="bold")
         if seg:
-            ax.text(i + w/2, seg[k] + 0.6, f"{seg[k]:.1f}",
+            ax.text(i + w/2, seg[k] + 0.7, f"{seg[k]:.1f}",
                     ha="center", fontsize=FONTS["value"], fontweight="bold")
+    # Annotate % gain vs raw GPS on the blockage bars
+    gnss_seg = seg["gnss_only"]
+    for i, k in enumerate(keys[1:], start=1):
+        gain = 100.0 * (gnss_seg - seg[k]) / gnss_seg
+        ax.text(i + w/2, seg[k] / 2,
+                f"−{gain:.1f}%", ha="center", va="center",
+                fontsize=FONTS["annot"] - 1, fontweight="bold", color="white")
     ax.set_xticks(x)
-    ax.set_xticklabels(labels)
+    ax.set_xticklabels(labels, fontsize=FONTS["tick"])
     ax.set_ylabel("Position RMSE (m)")
+    ax.set_ylim(0, max(seg.values()) * 1.18)
     blegend(ax, loc="upper right")
     style(ax)
     save(fig, "fig07_ekf_rmse")
@@ -480,24 +490,25 @@ def fig_reactive_vs_proactive():
 
 
 def fig_architecture():
-    fig, ax = plt.subplots(figsize=(10, 3.2))
+    fig, ax = plt.subplots(figsize=(13, 3.5))
     ax.axis("off")
-    ax.set_xlim(0, 12)
+    ax.set_xlim(0, 14)
     ax.set_ylim(0, 3)
-    blocks = [("Input\n30x37", "#E8EEF5"), ("Linear\nProj.", "#D7E6F5"), ("Positional\nEncoding", "#D7E6F5"),
-              ("Transformer\nx2 (8 heads)", C_BASE), ("BiLSTM\nx2 (h=256)", C_OURS),
+    blocks = [("Input\n30×37", "#E8EEF5"), ("Linear\nProj.", "#D7E6F5"), ("Positional\nEncoding", "#D7E6F5"),
+              ("Transformer\n×2 (8 heads)", C_BASE), ("LSTM\n×2 (h=256)", C_OURS),
               ("3 Heads\n+5/+15/+30s", PALETTE["black"])]
-    xs = np.linspace(0.5, 10.0, len(blocks))
+    xs = np.linspace(0.4, 11.6, len(blocks))
+    bw = 1.9  # block width — wide enough for wrapped text without clipping
     for i, (txt, col) in enumerate(blocks):
         tc = "white" if col in (
             C_BASE, C_OURS, PALETTE["black"]) else PALETTE["black"]
         ax.add_patch(FancyBboxPatch(
-            (xs[i], 1.0), 1.42, 1.0, boxstyle="round,pad=0.06", fc=col, ec=PALETTE["black"], lw=1.2))
-        ax.text(xs[i] + 0.71, 1.5, txt, ha="center", va="center",
-                color=tc, fontsize=FONTS["value"], fontweight="bold")
+            (xs[i], 0.85), bw, 1.3, boxstyle="round,pad=0.06", fc=col, ec=PALETTE["black"], lw=1.2))
+        ax.text(xs[i] + bw / 2, 1.5, txt, ha="center", va="center",
+                color=tc, fontsize=FONTS["value"] + 1, fontweight="bold")
         if i < len(blocks) - 1:
             ax.add_patch(FancyArrowPatch(
-                (xs[i] + 1.42, 1.5), (xs[i + 1], 1.5), arrowstyle="-|>", mutation_scale=15, color=C_NEU, lw=2))
+                (xs[i] + bw, 1.5), (xs[i + 1], 1.5), arrowstyle="-|>", mutation_scale=15, color=C_NEU, lw=2))
     save(fig, "fig14_architecture")
 
 
@@ -712,7 +723,7 @@ def fig_ensemble():
     ax.set_ylabel("Macro-F1 (+5 s)")
     ax.annotate("ensemble best\ncross-city", xy=(3 + w/2, cro["Soft-vote"]), xytext=(2.4, 0.42),
                 arrowprops=dict(arrowstyle="->", color=C_MARK, lw=2), color=C_MARK, fontsize=FONTS["annot"], fontweight="bold")
-    blegend(ax, loc="lower left")
+    blegend(ax, loc="upper left")
     style(ax)
     save(fig, "fig16_ensemble")
 
@@ -751,7 +762,7 @@ def fig_persistence():
     ax.set_ylim(0.6, 1.0)
     ax.set_xlabel("Horizon  (label-change rate)")
     ax.set_ylabel("Macro-F1")
-    blegend(ax, loc="lower left")
+    blegend(ax, loc="upper right")
     style(ax)
     save(fig, "fig17_persistence")
 
