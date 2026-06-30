@@ -131,7 +131,7 @@ COMPARISON = {
 ABLATION = {
     "Transformer-only": {"macro": 0.7672, "mcc": 0.7248, "deg": 0.571},
     "LSTM-only":        {"macro": 0.7674, "mcc": 0.7018, "deg": 0.645},
-    "Full (ours)":      {"macro": 0.8206, "mcc": 0.7729, "deg": 0.718},
+    "Full (Proposed)":  {"macro": 0.8206, "mcc": 0.7729, "deg": 0.718},
 }
 CROSS = {
     "DL": {"Hangzhou": 0.8218, "tokyo": 0.6489, "tok_CLEAN": 0.9256, "tok_WARNING": 0.2683, "tok_DEGRADED": 0.7528},
@@ -253,7 +253,7 @@ def fig_ablation():
         ax.bar(x + (k - 1) * w, vals, w, color=col,
                label=lbl, edgecolor="white")
     ax.set_xticks(x)
-    ax.set_xticklabels(["Transformer\nonly", "LSTM\nonly", "Full\n(ours)"])
+    ax.set_xticklabels(["Transformer\nonly", "LSTM\nonly", "Full\n(Proposed)"])
     ax.set_ylim(0, 1.0)
     ax.set_ylabel("Score  (+5 s)")
     blegend(ax, ncol=3, loc="upper left")
@@ -323,7 +323,7 @@ def fig_ekf_rmse():
     # Reorder: GNSS raw → SENTINEL adaptive (ours) → Fixed-R (oracle ceiling)
     # so bars decrease left→right and our system is the prominent middle bar.
     keys   = ["gnss_only", "adaptive_ekf", "fixed_ekf"]
-    labels = ["GNSS-only", "SENTINEL\nadaptive (ours)", "Fixed-R EKF\n(oracle ceiling)"]
+    labels = ["GNSS-only", "SENTINEL\n(Proposed)", "Fixed-R EKF\n(oracle ceiling)"]
     x = np.arange(3)
     w = 0.38
     fig, ax = plt.subplots(figsize=(7.5, 4.8))
@@ -375,15 +375,19 @@ def fig_ekf_trajectory():
         fixed = ekf.run(gnss, p, adaptive=False)
         adapt = ekf.run(gnss, p, adaptive=True)
         fig, ax = plt.subplots(figsize=(8, 5))
+        # GNSS raw: tiny, faint — background context only
+        ax.scatter(gnss[:, 0], gnss[:, 1], s=5,
+                   color=C_NEU, alpha=0.20, zorder=1, label="GNSS (raw)")
+        # Fixed-R: thin dashed gray — clearly secondary
+        ax.plot(fixed[:, 0], fixed[:, 1], color="#999999",
+                lw=1.2, ls="--", zorder=2, label="Fixed-R EKF")
+        # Ground truth: bold black — reference
         ax.plot(truth[:, 0], truth[:, 1], color=PALETTE["black"],
-                lw=2.5, label="Ground truth")
-        ax.scatter(gnss[:, 0], gnss[:, 1], s=9,
-                   color=C_NEU, label="GNSS (raw)")
-        ax.plot(fixed[:, 0], fixed[:, 1], color=C_WARN,
-                lw=1.8, ls="--", label="Fixed-R EKF")
+                lw=2.8, zorder=4, label="Ground truth")
+        # SENTINEL: hero line — prominent blue, drawn last on top
         ax.plot(adapt[:, 0], adapt[:, 1], color=C_OURS,
-                lw=2.2, label="Adaptive EKF (ours)")
-        ax.axvspan(2 * 120, 2 * 180, color=C_DEG, alpha=0.10)
+                lw=2.5, zorder=5, label="SENTINEL Adaptive EKF")
+        ax.axvspan(2 * 120, 2 * 180, color=C_DEG, alpha=0.08, zorder=0)
         ax.text(2 * 150, truth[:, 1].max() * 0.95, "GNSS blockage",
                 color=C_MARK, ha="center", fontsize=FONTS["annot"], fontweight="bold")
         ax.set_xlabel("East (m)")
@@ -468,47 +472,158 @@ def fig_latency():
 
 
 def fig_reactive_vs_proactive():
-    fig, ax = plt.subplots(figsize=(9, 3.6))
+    """fig13 — Proactive vs reactive GNSS quality prediction timeline.
+
+    Two rows on a shared time axis:
+      Top row  (SENTINEL) — predictions arrive 30/15/5 s before blockage.
+      Bottom row (Reactive) — detection happens only when blockage occurs (t=0).
+    """
+    fig, ax = plt.subplots(figsize=(11, 4.2))
     ax.axis("off")
-    ax.set_xlim(0, 10)
-    ax.set_ylim(0, 3)
-    ax.plot([0.5, 9.5], [1, 1], color=C_NEU, lw=2.2)
-    for s, lbl in [(3, "t-30s"), (5, "t-15s"), (6.5, "t-5s"), (8, "blockage\nt=0")]:
-        ax.plot([s, s], [0.9, 1.1], color=C_NEU, lw=2)
-        ax.text(s, 0.5, lbl, ha="center", fontsize=12,
-                color=C_NEU, fontweight="bold")
-    ax.add_patch(FancyBboxPatch((7.6, 1.4), 0.85, 0.5,
-                 boxstyle="round,pad=0.05", fc=C_DEG, ec="none"))
-    ax.text(8.02, 1.65, "REACTIVE", ha="center", va="center",
-            color=PALETTE["black"], fontsize=FONTS["value"], fontweight="bold")
-    for s, c in [(3, C_CLEAN), (5, C_WARN), (6.5, C_DEG)]:
-        ax.add_patch(FancyBboxPatch((s - 0.42, 1.4), 0.85, 0.5,
-                     boxstyle="round,pad=0.05", fc=c, ec="none"))
-    ax.text(4.8, 2.55, "SENTINEL-GNSS: proactive warnings before the event",
-            ha="center", color=C_OURS, fontsize=FONTS["big"], fontweight="bold")
+    ax.set_xlim(0, 11)
+    ax.set_ylim(0, 4.5)
+
+    ticks = [(2.5, "t−30 s"), (4.5, "t−15 s"), (6.5, "t−5 s"), (8.5, "blockage\nt = 0")]
+
+    # ── Shared time axis ─────────────────────────────────────────────────
+    for y_line in (1.6, 3.0):
+        ax.plot([1.5, 10.5], [y_line, y_line], color=C_NEU, lw=2.0)
+        for s, _ in ticks:
+            ax.plot([s, s], [y_line - 0.12, y_line + 0.12], color=C_NEU, lw=1.8)
+
+    # Tick labels (shared, drawn once between rows)
+    for s, lbl in ticks:
+        ax.text(s, 1.05, lbl, ha="center", va="top", fontsize=11,
+                color=C_NEU, fontweight="bold", linespacing=1.3)
+
+    # Row labels
+    ax.text(0.2, 3.0, "SENTINEL\n(proactive)", ha="left", va="center",
+            fontsize=12, fontweight="bold", color=C_OURS, linespacing=1.4)
+    ax.text(0.2, 1.6, "Reactive\nsystem", ha="left", va="center",
+            fontsize=12, fontweight="bold", color=C_NEU, linespacing=1.4)
+
+    # ── SENTINEL row — predictions arrive early ───────────────────────────
+    proactive = [(2.5, C_CLEAN, "CLEAN"), (4.5, C_WARN, "WARNING"), (6.5, C_DEG, "DEGRADED")]
+    for s, col, lbl in proactive:
+        ax.add_patch(FancyBboxPatch((s - 0.55, 3.18), 1.1, 0.62,
+                     boxstyle="round,pad=0.06", fc=col, ec="none", zorder=3))
+        tc = PALETTE["black"] if col in (C_WARN,) else "white"
+        ax.text(s, 3.49, lbl, ha="center", va="center",
+                fontsize=10, fontweight="bold", color=tc)
+
+    # ── Reactive row — detection only at t=0 ─────────────────────────────
+    ax.add_patch(FancyBboxPatch((7.95, 1.78), 1.1, 0.62,
+                 boxstyle="round,pad=0.06", fc=C_DEG, ec="none", zorder=3))
+    ax.text(8.5, 2.09, "DEGRADED\ndetected", ha="center", va="center",
+            fontsize=10, fontweight="bold", color="white", linespacing=1.3)
+
+    # Dashed vertical line at blockage event
+    ax.plot([8.5, 8.5], [0.8, 4.2], color=C_DEG, lw=1.6, ls="--", zorder=1, alpha=0.7)
+
     save(fig, "fig13_reactive_vs_proactive")
 
 
+def fig_confusion_matrices():
+    """fig13b — 3-panel normalised confusion matrices for +5s / +15s / +30s.
+
+    Derived from metrics_test.json precision/recall/support.
+    Normalised by true-class totals (row-normalised) so each row sums to 1.
+    """
+    import matplotlib.ticker as mticker
+
+    # Approximate integer confusion matrices derived from precision/recall/support
+    # (see paper appendix for derivation from Run-14 metrics_test.json)
+    CMS = {
+        "+5s":  np.array([[726,   3,   2],
+                          [105, 536, 105],
+                          [  5,  27, 177]], dtype=float),
+        "+15s": np.array([[718,   3,  11],
+                          [107, 440, 203],
+                          [  6,  26, 172]], dtype=float),
+        "+30s": np.array([[710,   8,  14],
+                          [102, 541, 108],
+                          [ 14,  40, 149]], dtype=float),
+    }
+    labels = ["CLEAN", "WARN", "DEG"]
+
+    fig, axs = plt.subplots(1, 3, figsize=(14, 4.2),
+                            gridspec_kw={"wspace": 0.38})
+    _cmap = _mpl.colormaps["cividis"]
+    im = None
+
+    for ax, (hz, cm_raw) in zip(axs, CMS.items()):
+        cm_norm = cm_raw / cm_raw.sum(axis=1, keepdims=True)
+        im = ax.imshow(cm_norm, cmap=_cmap, vmin=0, vmax=1, aspect="auto")
+        for r in range(3):
+            for c in range(3):
+                val = cm_norm[r, c]
+                col = "white" if val < 0.5 else PALETTE["black"]
+                ax.text(c, r, f"{val:.2f}", ha="center", va="center",
+                        fontsize=FONTS["value"], fontweight="bold", color=col)
+        ax.set_xticks(range(3))
+        ax.set_yticks(range(3))
+        ax.set_xticklabels(labels, fontsize=FONTS["tick"], fontweight="bold")
+        ax.set_yticklabels(labels, fontsize=FONTS["tick"], fontweight="bold")
+        ax.set_xlabel("Predicted", fontsize=FONTS["label"], fontweight="bold")
+        if ax is axs[0]:
+            ax.set_ylabel("True", fontsize=FONTS["label"], fontweight="bold")
+        ax.set_title(hz, fontsize=FONTS["label"], fontweight="bold", pad=6)
+
+    # Colorbar anchored to the right of the figure, not to any individual Axes
+    cbar = fig.colorbar(im, ax=axs.ravel().tolist(), shrink=0.78,
+                        pad=0.03, fraction=0.025)
+    cbar.set_label("Fraction of true class", fontsize=FONTS["tick"],
+                   fontweight="bold")
+    save(fig, "fig13b_confusion_matrices")
+
+
 def fig_architecture():
-    fig, ax = plt.subplots(figsize=(13, 3.5))
+    """fig14 — End-to-end SENTINEL-GNSS methodology pipeline (horizontal flow).
+
+    Six boxes: GNSS Receiver → Raw Signals → Feature Engineering →
+    Sliding Window → SENTINEL-GNSS (Transformer-LSTM) → Multi-horizon Output.
+    Intentionally matches the layout of the project's methodology diagram.
+    """
+    _BG   = "#EBF3FB"  # light blue background box
+    _NAVY = "#003366"  # Beihang navy (header/end boxes)
+    _BLUE = "#005BAC"  # Beihang blue (mid boxes)
+    _SKY  = "#00A0E9"  # arrow colour
+
+    stages = [
+        ("GNSS\nReceiver",                   _NAVY),
+        ("Raw Signals\nRINEX + NMEA",        _BLUE),
+        ("Feature Eng.\n37 features · 7 grp",_BLUE),
+        ("Sliding Window\n30 s → (30 × 37)", _BLUE),
+        ("SENTINEL-GNSS\nTransformer-LSTM",  _NAVY),
+        ("Multi-horizon\n+5 s · +15 s · +30 s", _BLUE),
+        ("AV Planner\n(consumer)",            _NAVY),
+    ]
+
+    fig, ax = plt.subplots(figsize=(16, 3.6))
     ax.axis("off")
-    ax.set_xlim(0, 14)
+    ax.set_xlim(0, 16)
     ax.set_ylim(0, 3)
-    blocks = [("Input\n30×37", "#E8EEF5"), ("Linear\nProj.", "#D7E6F5"), ("Positional\nEncoding", "#D7E6F5"),
-              ("Transformer\n×2 (8 heads)", C_BASE), ("LSTM\n×2 (h=256)", C_OURS),
-              ("3 Heads\n+5/+15/+30s", PALETTE["black"])]
-    xs = np.linspace(0.4, 11.6, len(blocks))
-    bw = 1.9  # block width — wide enough for wrapped text without clipping
-    for i, (txt, col) in enumerate(blocks):
-        tc = "white" if col in (
-            C_BASE, C_OURS, PALETTE["black"]) else PALETTE["black"]
+    fig.patch.set_facecolor("white")
+
+    bw, bh = 1.85, 1.40
+    gap = (16.0 - len(stages) * bw) / (len(stages) + 1)
+    xs = [gap + i * (bw + gap) for i in range(len(stages))]
+
+    for i, (txt, col) in enumerate(stages):
         ax.add_patch(FancyBboxPatch(
-            (xs[i], 0.85), bw, 1.3, boxstyle="round,pad=0.06", fc=col, ec=PALETTE["black"], lw=1.2))
-        ax.text(xs[i] + bw / 2, 1.5, txt, ha="center", va="center",
-                color=tc, fontsize=FONTS["value"] + 1, fontweight="bold")
-        if i < len(blocks) - 1:
+            (xs[i], 0.80), bw, bh, boxstyle="round,pad=0.10",
+            fc=col, ec="#001F3F", lw=1.4))
+        ax.text(xs[i] + bw / 2, 0.80 + bh / 2, txt,
+                ha="center", va="center", color="white",
+                fontsize=9.5, fontweight="bold", linespacing=1.35)
+        if i < len(stages) - 1:
             ax.add_patch(FancyArrowPatch(
-                (xs[i] + bw, 1.5), (xs[i + 1], 1.5), arrowstyle="-|>", mutation_scale=15, color=C_NEU, lw=2))
+                (xs[i] + bw, 0.80 + bh / 2),
+                (xs[i + 1], 0.80 + bh / 2),
+                arrowstyle="-|>", mutation_scale=16,
+                color=_SKY, lw=2.2))
+
+    fig.tight_layout(pad=0.2)
     save(fig, "fig14_architecture")
 
 
@@ -795,7 +910,7 @@ def fig_ekf_realdata():
     ax0.plot(g[:, 0], g[:, 1], "-", color=C_NEU,
              lw=1.3, alpha=0.7, label="Raw GNSS")
     ax0.plot(a[:, 0], a[:, 1], "-", color=C_OURS,
-             lw=2.2, label="Adaptive EKF (ours)")
+             lw=2.2, label="SENTINEL Adaptive EKF")
     ax0.scatter(g[deg, 0], g[deg, 1], s=16, color=C_DEG, edgecolor=C_MARK, lw=0.3,
                 zorder=5, label="Predicted DEGRADED")
     ax0.set_xlabel("East (m)")
@@ -869,7 +984,6 @@ def fig_robust_comparison():
         ax.set_xticks(x)
         ax.set_xticklabels(method_names, fontsize=9, fontweight="bold", rotation=30, ha="right")
         ax.set_ylabel("Position RMSE (m)")
-        ax.set_title(title, fontsize=13, fontweight="bold", pad=6)
 
         # Mark best performer (lowest degraded RMSE) with a star
         best_idx = int(np.argmin(bars_deg))
@@ -914,25 +1028,24 @@ def fig_robust_trajectories():
         pf        = d["aided_pf"]
         is_deg    = d["is_degraded"]
 
-        ax.plot(truth[:, 0],  truth[:, 1],  color=PALETTE["black"], lw=2.4,
+        ax.plot(truth[:, 0],  truth[:, 1],  color="#111111", lw=2.4,
                 label="Ground truth", zorder=5)
-        ax.scatter(gnss[mask, 0], gnss[mask, 1], s=4, color=C_NEU,
+        ax.scatter(gnss[mask, 0], gnss[mask, 1], s=4, color="#888888",
                    alpha=0.35, label="GNSS raw", zorder=2)
-        ax.plot(fixed[:, 0],  fixed[:, 1],  color=C_WARN, lw=1.6, ls="--",
+        ax.plot(fixed[:, 0],  fixed[:, 1],  color="#1565C0", lw=1.6, ls="--",
                 label="EKF fixed-R", zorder=3)
-        ax.plot(huber[:, 0],  huber[:, 1],  color=civ(0.35), lw=1.8, ls="-.",
+        ax.plot(huber[:, 0],  huber[:, 1],  color="#2E7D32", lw=1.8, ls="-.",
                 label="EKF Huber", zorder=4)
-        ax.plot(pf[:, 0],     pf[:, 1],     color=civ(0.62), lw=2.0,
+        ax.plot(pf[:, 0],     pf[:, 1],     color="#C62828", lw=2.0,
                 label="PF Student-t", zorder=4)
 
-        # Shade degraded epochs on trajectory (use scatter with red marker)
+        # Shade degraded epochs on trajectory (use scatter with orange marker)
         if is_deg.any():
             ax.scatter(truth[is_deg, 0], truth[is_deg, 1], s=6,
-                       color=C_DEG, alpha=0.6, zorder=3, label="Degraded")
+                       color="#FF6F00", alpha=0.6, zorder=3, label="Degraded")
 
         ax.set_xlabel("East (m)")
         ax.set_ylabel("North (m)")
-        ax.set_title(title, fontsize=13, fontweight="bold", pad=6)
         blegend(ax, loc="best", fontsize=10)
         style(ax)
 
@@ -949,7 +1062,8 @@ def main():
         f"Full-model numbers source: {src}  | palette: cividis (colour-blind safe)")
     figs = [fig_multihorizon, fig_perclass, fig_comparison, fig_ablation, fig_crosscity_degraded,
             fig_crosscity_gap, fig_ekf_rmse, fig_ekf_trajectory, fig_deg_progress, fig_dataset,
-            fig_splits, fig_latency, fig_reactive_vs_proactive, fig_architecture, fig_pipeline,
+            fig_splits, fig_latency, fig_reactive_vs_proactive, fig_confusion_matrices,
+            fig_architecture, fig_pipeline,
             fig_ensemble, fig_persistence, fig_ekf_realdata,
             fig_main_results, fig_crosscity_panel, fig_ekf_panel,
             fig_robust_comparison, fig_robust_trajectories]
