@@ -72,10 +72,11 @@
   \centering
   \vspace*{1cm}
   {\color{buaaNavy}\rule{\linewidth}{2pt}}\\[0.5cm]
-  {\large\color{buaaBlue} SENTINEL-GNSS}\\[0.35cm]
-  {\Huge\bfseries\color{buaaNavy} AI-Based Proactive Prediction of\\[0.15cm]
-   GNSS Signal Degradation for\\[0.15cm] Autonomous Vehicle Navigation}\\[0.6cm]
-  {\Large\color{buaaBlue} Group Report}\\[0.7cm]
+  {\normalsize\color{buaaBlue} SENTINEL-GNSS}\\[0.25cm]
+  {\LARGE\bfseries\color{buaaNavy} AI-Based Proactive Prediction of GNSS\\[0.2cm]
+   Signal Degradation for Autonomous\\[0.2cm]
+   Vehicle Navigation}\\[0.45cm]
+  {\large\color{buaaBlue} Group Report}\\[0.5cm]
   {\color{buaaNavy}\rule{\linewidth}{2pt}}\\[1.5cm]
 
   {\large\bfseries Team Pilot Project}\\[0.5cm]
@@ -400,23 +401,16 @@ A shared auxiliary head over the LSTM output regularises against dataset shift.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.98\textwidth]{../sentinel_gnss_inside.png}
+  \includegraphics[width=0.98\textwidth]{../inside_gnss.png}
   \caption{SENTINEL-GNSS architecture. A linear projection and positional encoding map the
-           30 by 35 input window to dimension 128. A two layer Transformer encoder reads the
-           window, a two layer recurrent encoder with 256 hidden units summarises the
+           30 by 37 input window to dimension 128. A two-layer Transformer encoder reads the
+           window, a two-layer recurrent encoder with 256 hidden units summarises the
            sequence, and three heads output the class probabilities at the 5, 15, and 30
            second horizons. The model has 1.46 million parameters.}
   \label{fig:arch}
 \end{figure}
 
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.7\textwidth]{../../results/figures/learning_curves.pdf}
-  \caption{Training and validation loss/F1 curves. Validation F1 stabilises by epoch 30;
-           early stopping terminates at epoch 65.}
-  \label{fig:learning}
-\end{figure}
 
 % ============================================================
 \section{Results}
@@ -525,7 +519,7 @@ captures the longer-range satellite geometry changes that precede degradation.
            (entirely excluded from training). The DL model retains safety-critical
            DEGRADED-class F1 that the RF model cannot.}
   \label{tab:crosscity}
-  \begin{tabular}{lcccc}
+  \begin{tabularx}{\textwidth}{l>{\centering\arraybackslash}X>{\centering\arraybackslash}X>{\centering\arraybackslash}c>{\centering\arraybackslash}X}
     \toprule
     \textbf{Model} & \textbf{Beihang Macro-F1} & \textbf{Tokyo Macro-F1} &
     \textbf{Gap} & \textbf{Tokyo DEGRADED F1} \\
@@ -535,7 +529,7 @@ captures the longer-range satellite geometry changes that precede degradation.
     RandomForest           & 0.926 & 0.618 & $-0.308$ &
       \textbf{\textcolor{degradRed}{0.15}} \\
     \bottomrule
-  \end{tabular}
+  \end{tabularx}
 \end{table}
 
 The 5$\times$ difference in Tokyo DEGRADED F1 (0.75 vs 0.15) is the central result.
@@ -950,46 +944,48 @@ direction.
 \label{app:features}
 
 \begin{longtable}{cllp{4.5cm}}
-  \caption{All 35 GNSS features used as SENTINEL model inputs.} \\
+  \caption{All 37 GNSS features used as SENTINEL model inputs (33 signal features + \code{cnr\_available} + \code{pdop\_delta} + \code{hdop\_delta} + \code{receiver\_tier}).} \\
   \toprule
   \textbf{\#} & \textbf{Feature} & \textbf{Group} & \textbf{Description} \\
   \midrule
   \endhead
-  1  & \code{lat}                   & Position              & Latitude from RTKLIB solution \\
-  2  & \code{lon}                   & Position              & Longitude from RTKLIB solution \\
-  3  & \code{alt}                   & Position              & Altitude above ellipsoid (m) \\
-  4  & \code{lat\_std}              & Position              & Mean north position std dev over window (\code{sdn}) \\
-  5  & \code{lon\_std}              & Position              & Mean east position std dev over window (\code{sde}) \\
-  6  & \code{mean\_cnr}             & Signal strength / C/N$_0$ & Mean C/N$_0$ across all tracked satellites \\
-  7  & \code{min\_cnr}              & Signal strength / C/N$_0$ & Minimum C/N$_0$ \\
-  8  & \code{max\_cnr}              & Signal strength / C/N$_0$ & Maximum C/N$_0$ \\
-  9  & \code{std\_cnr}              & Signal strength / C/N$_0$ & Standard deviation of C/N$_0$ \\
-  10 & \code{cnr\_trend}            & Signal strength / C/N$_0$ & Linear slope of mean C/N$_0$ over 30-s window (dB-Hz/s) \\
-  11 & \code{num\_satellites}       & Satellite count       & Number of satellites used in current SPP solution \\
-  12 & \code{sat\_mean}             & Satellite count       & Mean satellite count over 30-s window \\
-  13 & \code{sat\_min}              & Satellite count       & Minimum satellite count over 30-s window \\
-  14 & \code{sat\_visibility}       & Satellite count       & Ratio of used satellites to estimated maximum \\
-  15 & \code{sat\_drop\_rate}       & Satellite count       & Mean of negative satellite-count changes over window \\
-  16 & \code{pdop}                  & DOP                   & Position Dilution of Precision (3D) \\
+  1  & \code{alt}                   & Position              & Altitude above ellipsoid (m) \\
+  2  & \code{lat\_std}              & Position              & Mean north position std dev over window (\code{sdn}) \\
+  3  & \code{lon\_std}              & Position              & Mean east position std dev over window (\code{sde}) \\
+  4  & \code{mean\_cnr}             & Signal / C/N$_0$      & Mean C/N$_0$ across all tracked satellites \\
+  5  & \code{min\_cnr}              & Signal / C/N$_0$      & Minimum C/N$_0$ \\
+  6  & \code{max\_cnr}              & Signal / C/N$_0$      & Maximum C/N$_0$ \\
+  7  & \code{std\_cnr}              & Signal / C/N$_0$      & Standard deviation of C/N$_0$ \\
+  8  & \code{cnr\_trend}            & Signal / C/N$_0$      & Linear slope of mean C/N$_0$ over 30-s window (dB-Hz/s) \\
+  9  & \code{cnr\_available}        & Signal / C/N$_0$      & Binary flag: 1 if receiver outputs C/N$_0$, 0 for RINEX-only sources (NCLT, Oxford) \\
+  10 & \code{num\_satellites}       & Satellite count       & Number of satellites used in current SPP solution \\
+  11 & \code{sat\_mean}             & Satellite count       & Mean satellite count over 30-s window \\
+  12 & \code{sat\_min}              & Satellite count       & Minimum satellite count over 30-s window \\
+  13 & \code{sat\_visibility}       & Satellite count       & Ratio of used satellites to estimated maximum \\
+  14 & \code{sat\_drop\_rate}       & Satellite count       & Mean of negative satellite-count changes over window \\
+  15 & \code{pdop}                  & DOP                   & Position Dilution of Precision (3D) \\
+  16 & \code{pdop\_delta}           & DOP                   & First difference of PDOP (rate of change; leading degradation signal) \\
   17 & \code{hdop}                  & DOP                   & Horizontal DOP \\
-  18 & \code{vdop}                  & DOP                   & Vertical DOP \\
-  19 & \code{gdop}                  & DOP                   & Geometric DOP \\
-  20 & \code{dop\_ratio}            & DOP                   & Horizontal-to-vertical DOP ratio (hdop / vdop) \\
-  21 & \code{solution\_status}      & Receiver status       & Normalised solution quality (1=Fix, 0=Single SPP) \\
-  22 & \code{baseline\_sats}        & Receiver status       & Number of satellites in baseline solution \\
-  23 & \code{solution\_age}         & Receiver status       & Age of differential solution (s) \\
-  24 & \code{fix\_continuity}       & Receiver status       & Fraction of window epochs with Fix-quality solution \\
-  25 & \code{fix\_transitions}      & Receiver status       & Number of solution-quality transitions in window \\
-  26 & \code{position\_variance}    & Temporal patterns     & Variance of position error over 30-s window \\
-  27 & \code{cnr\_variance}         & Temporal patterns     & Variance of mean C/N$_0$ over 30-s window \\
-  28 & \code{elevation\_violations} & Temporal patterns     & Fraction of epochs with low-elevation satellites \\
-  29 & \code{multipath}             & Temporal patterns     & Multipath proxy derived from position-C/N$_0$ discrepancy \\
-  30 & \code{clock\_bias}           & Temporal patterns     & Mean receiver clock bias over window \\
-  31 & \code{iono\_delay}           & Atmospheric effects   & Ionospheric delay estimate (Klobuchar model) \\
-  32 & \code{tropo\_delay}          & Atmospheric effects   & Tropospheric delay estimate (Saastamoinen model) \\
-  33 & \code{cycle\_slips}          & Atmospheric effects   & Cycle slip count over 30-s window \\
-  34 & \code{residual\_mean}        & Atmospheric effects   & Mean pseudorange residual \\
-  35 & \code{residual\_std}         & Atmospheric effects   & Standard deviation of pseudorange residuals \\
+  18 & \code{hdop\_delta}           & DOP                   & First difference of HDOP (rate of change; leading degradation signal) \\
+  19 & \code{vdop}                  & DOP                   & Vertical DOP \\
+  20 & \code{gdop}                  & DOP                   & Geometric DOP \\
+  21 & \code{dop\_ratio}            & DOP                   & Horizontal-to-vertical DOP ratio (\code{hdop} / \code{vdop}) \\
+  22 & \code{solution\_status}      & Receiver status       & Normalised solution quality (1\,=\,Fix, 0\,=\,Single SPP) \\
+  23 & \code{baseline\_sats}        & Receiver status       & Number of satellites in baseline solution \\
+  24 & \code{solution\_age}         & Receiver status       & Age of differential solution (s) \\
+  25 & \code{fix\_continuity}       & Receiver status       & Fraction of window epochs with Fix-quality solution \\
+  26 & \code{fix\_transitions}      & Receiver status       & Number of solution-quality transitions in window \\
+  27 & \code{receiver\_tier}        & Receiver status       & Receiver hardware quality tier (0\,=\,survey-grade to 4\,=\,RTK reference) \\
+  28 & \code{position\_variance}    & Temporal patterns     & Variance of position error over 30-s window \\
+  29 & \code{cnr\_variance}         & Temporal patterns     & Variance of mean C/N$_0$ over 30-s window \\
+  30 & \code{elevation\_violations} & Temporal patterns     & Fraction of epochs with low-elevation satellites \\
+  31 & \code{multipath}             & Temporal patterns     & Multipath proxy derived from position--C/N$_0$ discrepancy \\
+  32 & \code{clock\_bias}           & Temporal patterns     & Mean receiver clock bias over window \\
+  33 & \code{iono\_delay}           & Atmospheric effects   & Ionospheric delay estimate (Klobuchar model) \\
+  34 & \code{tropo\_delay}          & Atmospheric effects   & Tropospheric delay estimate (Saastamoinen model) \\
+  35 & \code{cycle\_slips}          & Atmospheric effects   & Cycle slip count over 30-s window \\
+  36 & \code{residual\_mean}        & Atmospheric effects   & Mean pseudorange residual \\
+  37 & \code{residual\_std}         & Atmospheric effects   & Standard deviation of pseudorange residuals \\
   \bottomrule
 \end{longtable}
 
