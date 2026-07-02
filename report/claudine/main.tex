@@ -550,17 +550,18 @@ the same style baseline.
   \bottomrule
 \end{longtable}
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.88\textwidth]{pr_curves_test.pdf}
-  \caption{Precision-recall curves for all three classes at the $+5$\,s prediction
-           horizon. DEGRADED AUC-PR demonstrates high precision at moderate recall,
-           consistent with the conservative threshold policy for AV safety alerts.}
-\end{figure}
+% TODO: generate pr_curves_test.pdf (precision-recall curves, +5s horizon)
+% \begin{figure}[H]
+%   \centering
+%   \includegraphics[width=0.88\textwidth]{pr_curves_test.pdf}
+%   \caption{Precision-recall curves for all three classes at the $+5$\,s prediction
+%            horizon. DEGRADED AUC-PR demonstrates high precision at moderate recall,
+%            consistent with the conservative threshold policy for AV safety alerts.}
+% \end{figure}
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.80\textwidth]{attention_heatmap_degraded.pdf}
+  \includegraphics[width=0.80\textwidth]{../../results/paper_figures/attention_heatmap_degraded.pdf}
   \caption{Transformer self-attention weights for a correctly-predicted DEGRADED example.
            The model attends most strongly to epochs 45--55 (15--5\,s before the
            prediction point), capturing the final signal approach phase that
@@ -569,7 +570,7 @@ the same style baseline.
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.72\textwidth]{fig05_crosscity_degraded.pdf}
+  \includegraphics[width=0.72\textwidth]{../../results/paper_figures/fig05_crosscity_degraded.pdf}
   \caption{Cross-city DEGRADED-class F1: SENTINEL vs RandomForest across all evaluation
            environments. The 5$\times$ performance gap in Tokyo (0.753 vs 0.148) is the
            central generalisation result. This figure was designed to make the gap as
