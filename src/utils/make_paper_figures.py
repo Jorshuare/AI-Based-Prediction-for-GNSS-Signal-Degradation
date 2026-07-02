@@ -137,7 +137,7 @@ CROSS = {
     "DL": {"Hangzhou": 0.8218, "tokyo": 0.6489, "tok_CLEAN": 0.9256, "tok_WARNING": 0.2683, "tok_DEGRADED": 0.7528},
     "RF": {"Hangzhou": 0.9260, "tokyo": 0.6178, "tok_CLEAN": 0.9896, "tok_WARNING": 0.7159, "tok_DEGRADED": 0.1478},
 }
-LAT = {"DL": 0.0389, "RF": 0.4090}
+LAT = {"DL": 0.0449, "RF": 0.4248}
 DEG_PROG = {"Run 10": 0.274, "Run 11": 0.274, "Run 12": 0.307, "Run 14": 0.718}
 DATASET = {
     "Scenarios A-E\n(Beihang/Hangzhou)": 7193, "Supervisor Veh.\n(Hangzhou)": 3401,

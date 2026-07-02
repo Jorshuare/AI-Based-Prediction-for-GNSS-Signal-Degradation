@@ -741,7 +741,7 @@ def rebuild_validation_slide(slide):
          "MCC = 0.773 ± 0.035.",
          BLUE_DARK),
         ("E4", "Inference Latency (Tesla T4 GPU)",
-         "SENTINEL-GNSS: 0.0449 ms/sample vs 3 tree models: 0.409 ms — 9.46× speedup. "
+         "SENTINEL-GNSS: 0.0449 ms/sample vs 3 tree models: 0.4248 ms — 9.46× speedup. "
          "17.8 MB checkpoint. <0.04% of CPU budget at 10 Hz.",
          GREEN),
         ("E6", "Cross-City Zero-Shot — Tokyo Shinjuku",
