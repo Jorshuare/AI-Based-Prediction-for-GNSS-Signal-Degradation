@@ -591,14 +591,14 @@ def compute_features(
     window_sec: int = WINDOW_SECONDS,
 ) -> pd.DataFrame:
     """
-    Apply a sliding window over the epoch DataFrame and compute all 35 features.
+    Apply a sliding window over the epoch DataFrame and compute all 35 raw base features.
 
     Args:
         epoch_df: DataFrame with per-epoch columns (output of merge_epoch_data).
         window_sec: Window length in seconds.
 
     Returns:
-        DataFrame with one row per epoch (after warm-up), 35 feature columns,
+        DataFrame with one row per epoch (after warm-up), 35 raw base feature columns,
         plus metadata columns: timestamp, source, scenario, label.
     """
     if len(epoch_df) < 2:
@@ -645,7 +645,7 @@ def compute_features(
 
 
 def _compute_single_epoch_features(window: pd.DataFrame, current: pd.Series) -> dict:
-    """Compute all 35 features for one epoch given a 30s sliding window."""
+    """Compute all 35 raw base features for one epoch given a 30s sliding window."""
     f: dict = {}
 
     # ── G1: Position (5) ─────────────────────────────────────────────────────

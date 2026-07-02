@@ -7,8 +7,8 @@ Answers "what do the different inference configurations buy us?" in two panels:
   (b) Fusion stage      — real Tokyo blocked-segment RMSE for the positioning choices
                           (raw GNSS, simple KF, aided EKF).
 
-Reads the real result JSONs; no hard-coded numbers. Beihang/cividis palette, 300 dpi,
-no title, (a)/(b) panel labels.
+Reads the real result JSONs; no hard-coded numbers. Cividis palette (perceptually
+uniform, colour-blind safe), 300 dpi, no title, (a)/(b) panel labels.
 """
 import json
 from pathlib import Path
@@ -23,8 +23,23 @@ RESULTS = ROOT / "results"
 FIGS = RESULTS / "paper_figures"
 FIGS.mkdir(parents=True, exist_ok=True)
 
-PAL = {"dl": "#344E7F", "deg": "#BCB245", "best": "#003360", "raw": "#7A8CA3",
-       "kf": "#5B7799", "aided": "#003360"}
+# ── Cividis palette — single source of truth, matches make_paper_figures.py ───
+_CIV = matplotlib.colormaps["cividis"]
+
+
+def civ(t):
+    r, g, b, _ = _CIV(float(t))
+    return (r, g, b)
+
+
+# Semantic assignments (evenly-spaced cividis samples for max separation)
+PAL = {
+    "macro":  civ(0.25),   # Macro-F1 bars  (dark blue-purple)
+    "deg":    civ(0.85),   # DEGRADED F1 bars (yellow)
+    "raw":    civ(0.05),   # Raw GNSS  (darkest — worst performer)
+    "kf":     civ(0.40),   # Simple KF (mid)
+    "aided":  civ(0.70),   # Aided EKF proposed (light — best performer)
+}
 rcParams.update({"font.size": 13, "font.weight": "bold", "axes.labelweight": "bold",
                  "axes.linewidth": 1.2, "figure.dpi": 300})
 
@@ -49,7 +64,7 @@ def main():
 
     # ---- Panel (b): real Tokyo blocked-segment RMSE ----
     deg = (real or {}).get("rmse_degraded_segment", {})
-    fmethods = ["Raw GNSS", "Simple KF", "Aided EKF\n(ours)"]
+    fmethods = ["Raw GNSS", "Simple KF", "Aided EKF\n(proposed)"]
     fvals = [deg.get("gnss_raw", 47.4), deg.get("cv_kf", 31.2), deg.get("aided_ekf_fixed", 24.3)]
     fcolors = [PAL["raw"], PAL["kf"], PAL["aided"]]
 
@@ -57,8 +72,8 @@ def main():
 
     # Panel (a)
     x = np.arange(len(models)); w = 0.38
-    b1 = ax1.bar(x - w / 2, macro, w, label="Macro-F1", color=PAL["dl"], edgecolor="black", linewidth=0.7)
-    b2 = ax1.bar(x + w / 2, degf, w, label="DEGRADED F1", color=PAL["deg"], edgecolor="black", linewidth=0.7)
+    b1 = ax1.bar(x - w / 2, macro, w, label="Macro-F1", color=PAL["macro"], edgecolor="black", linewidth=1.5)
+    b2 = ax1.bar(x + w / 2, degf, w, label="DEGRADED F1", color=PAL["deg"], edgecolor="black", linewidth=1.5)
     for bars in (b1, b2):
         for b in bars:
             ax1.text(b.get_x() + b.get_width() / 2, b.get_height() + 0.01, f"{b.get_height():.2f}",
@@ -72,7 +87,7 @@ def main():
 
     # Panel (b)
     xb = np.arange(len(fmethods))
-    bb = ax2.bar(xb, fvals, 0.6, color=fcolors, edgecolor="black", linewidth=0.7)
+    bb = ax2.bar(xb, fvals, 0.6, color=fcolors, edgecolor="black", linewidth=1.5)
     for b in bb:
         ax2.text(b.get_x() + b.get_width() / 2, b.get_height() + 0.6, f"{b.get_height():.1f} m",
                  ha="center", va="bottom", fontsize=10)

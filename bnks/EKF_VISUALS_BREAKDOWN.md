@@ -483,7 +483,7 @@ Box A — "Transformer Encoder" (fill #E3F2FD):
   "Self-attention: long-range signal patterns"
   Formula: "Attention(Q,K,V) = softmax(QKᵀ/√d)V"
 
-Box B — "Bidirectional LSTM" (fill #FFF8E1):
+Box B — "LSTM (Unidirectional)" (fill #FFF8E1):
   "2 layers · hidden=256"
   "Causal trend — is signal worsening?"
 

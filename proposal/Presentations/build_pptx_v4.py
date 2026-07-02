@@ -227,14 +227,14 @@ bullets_slide("From raw signals to model-ready features", [
 section_divider("3", "Method")
 bullets_slide("The SENTINEL-GNSS architecture", [
     "Transformer encoder (2 layers, 8 heads, d=128) — long-range dependencies in the window.",
-    "BiLSTM (2 layers, hidden=256) — directional trajectory toward degradation.",
+    "LSTM (2 layers, hidden=256, unidirectional) — sequential trajectory toward degradation.",
     "Three output heads (+5s, +15s, +30s) + auxiliary head — one model, one forward pass.",
     "1.46 M parameters; focal loss (gamma=1.0) + class weights [1, 2, 5]; NO SMOTE for the network.",
     ("Honest validation: ablations + permutation test + temporal-feature ablation — "
      "we report negative results too.", BLUE),
 ])
 figure_slide("Architecture", "fig14_architecture.png",
-             "Block diagram: input 30×37 → projection → Transformer ×2 → BiLSTM ×2 → 3 heads.")
+             "Block diagram: input 30×37 → projection → Transformer ×2 → LSTM ×2 → 4 heads.")
 
 section_divider("4", "Results (Run 15)")
 figure_slide("Multi-horizon performance", "fig01_multihorizon.png",

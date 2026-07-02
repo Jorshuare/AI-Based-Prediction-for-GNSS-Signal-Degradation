@@ -81,7 +81,7 @@ I led the core technical pipeline of SENTINEL-GNSS:
   \item SENTINEL adaptive R integration
   \item Huber robust EKF (IRLS) — calibrated for each receiver
   \item Bootstrap Particle Filter with Student-$t$ likelihood
-  \item Inference packaging (0.039\,ms/sample)
+  \item Inference packaging (0.0449\,ms/sample)
   \item Dashboard backend + Huber/PF track integration
   \item All documentation and paper writing (3 docs, 5 paper sections)
 \end{itemize}
@@ -99,11 +99,11 @@ Captures: PDOP trends, satellite rise/set events
 2 layers · hidden\,256\\
 Captures: sequential C/N$_0$ decline, directional approach
 
-\textbf{3 Output Heads}: $+5$\,s, $+15$\,s, $+30$\,s
+\textbf{4 Output Heads}: $+5$\,s, $+15$\,s, $+30$\,s + auxiliary $t{+}0$
 \quad (one forward pass, 1.46\,M params)
 
 \textbf{Training}: Focal loss $\gamma=1.0$, class weights $[1,2,5]$,\\
-AdamW $10^{-3}$, cosine annealing, early stopping patience\,20
+AdamW $10^{-3}$, cosine annealing, early stopping patience\,50
 \end{poblock}
 
 \begin{center}
@@ -230,7 +230,7 @@ which is the whole point.
 
 \posec{Feature Saliency (My Interpretation)}
 \begin{center}
-  \includegraphics[width=\columnwidth]{../../results/figures/feature_saliency_5s.pdf}
+  \includegraphics[width=\columnwidth]{../../results/paper_figures/feature_saliency_5s.pdf}
   \captionof{figure}{Most important features for +5\,s prediction.
   PDOP, pseudorange residuals, and $\Delta$C/N$_0$ are top-ranked.}
 \end{center}

@@ -127,7 +127,7 @@ $$\text{Attention}(Q,K,V)=\text{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right
 _Why 2 layers / 8 heads / d=128 / d_ff=512?_ enough capacity for the patterns without overfitting a
 modest dataset; multiple heads attend to different cues (geometry vs strength).
 
-**Bidirectional LSTM** — captures _directional momentum_ toward failure (is the signal trending
+**LSTM (unidirectional)** — captures _directional momentum_ toward failure (is the signal trending
 down?). The LSTM cell’s gated memory avoids the vanishing-gradient problem over the 30-step window.
 _Why both Transformer and LSTM?_ attention finds patterns; the LSTM reasons about _causal trend_.
 Ablations (below) confirm both contribute.

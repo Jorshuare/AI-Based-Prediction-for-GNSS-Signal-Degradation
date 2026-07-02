@@ -1,11 +1,15 @@
 """
 Unified Feature Extractor for GNSS Signal Degradation Prediction
 =================================================================
-Extracts 35 standardized features from RTKLIB .pos solution files.
+Extracts 35 raw base features from RTKLIB .pos solution files.
 MUST use the SAME logic for ALL datasets (vehicle, drone, NCLT, UrbanNav, Oxford, KAIST).
 
+NOTE: The SENTINEL model uses 37 features, not 35.  feature_prep.py downstream
+excludes lat/lon (metadata, geographic overfitting risk) and adds 4 derived
+features (cnr_available, pdop_delta, hdop_delta, receiver_tier) → 35 − 2 + 4 = 37.
+
 Input:  RTKLIB .pos solution file (from rtkpost.exe)
-Output: CSV with 35 feature columns + timestamp + label columns
+Output: CSV with 35 raw feature columns + timestamp + label columns
 
 Usage:
     python feature_extractor.py --input data/rinex/vehicle_solution.pos
@@ -24,7 +28,7 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger(__name__)
 
 # ─── FEATURE DEFINITIONS ─────────────────────────────────────────────────────
-# 35 features, grouped into 7 categories of 5 each
+# 35 raw extracted features in 7 groups (feature_prep.py yields 37 model inputs)
 
 FEATURE_GROUPS = {
     "Position": ["lat", "lon", "alt", "lat_std", "lon_std"],
@@ -37,7 +41,7 @@ FEATURE_GROUPS = {
 }
 
 ALL_FEATURES = [feat for group in FEATURE_GROUPS.values()
-                for feat in group]  # 35 features total
+                for feat in group]  # 35 raw features (model uses 37 after feature_prep.py)
 
 
 def read_rtklib_pos(pos_file: Path) -> pd.DataFrame:
@@ -88,14 +92,14 @@ def read_rtklib_pos(pos_file: Path) -> pd.DataFrame:
 
 def compute_features_window(window: pd.DataFrame, current: pd.Series) -> dict:
     """
-    Compute all 35 features for a single epoch using a 30-second sliding window.
+    Compute all 35 raw features for a single epoch using a 30-second sliding window.
 
     Args:
         window: DataFrame with last 30 seconds of GPS data
         current: Series with current epoch data
 
     Returns:
-        dict with all 35 feature values
+        dict with all 35 raw feature values
     """
     features = {}
 
@@ -214,7 +218,7 @@ def extract_features(pos_file: Path, output_csv: Path, source_tag: str = "unknow
         window_size: Sliding window size in seconds (default: 30)
 
     Returns:
-        DataFrame with 35 features per epoch
+        DataFrame with 35 raw features per epoch
     """
     df = read_rtklib_pos(pos_file)
     if df is None or len(df) < window_size:
@@ -241,7 +245,7 @@ def extract_features(pos_file: Path, output_csv: Path, source_tag: str = "unknow
 
     features_df = pd.DataFrame(features_list)
 
-    # Reorder columns: timestamp first, then 35 features, then source
+    # Reorder columns: timestamp first, then 35 raw features, then source
     cols = ['timestamp'] + ALL_FEATURES + ['source']
     features_df = features_df[[c for c in cols if c in features_df.columns]]
 

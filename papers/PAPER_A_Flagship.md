@@ -75,7 +75,7 @@ Vehicle Navigation"**
    ablations confirm both components contribute (§5.3).
 3. **Cross-domain evidence** — the network generalises to an unseen city while a strong
    tree baseline fails catastrophically on the safety-critical degraded class (§5.5, E6).
-4. **Efficiency** — 0.039 ms/sample, 10.5× faster than per-horizon tree models, one 17.8 MB
+4. **Efficiency** — 0.0449 ms/sample, 9.46× faster than per-horizon tree models, one 17.8 MB
    checkpoint (§5.6, E4).
 5. **Open benchmark** — 149,662 labelled epochs, 4 cities, 9+ receivers, public pipeline
    (forward-reference to Paper 4).
@@ -233,7 +233,7 @@ to §5.5.
 
 ### 5.6 Computational efficiency (E4)
 
-0.039 ms/sample, 10.5× faster than 3 tree models, single 17.8 MB checkpoint, all horizons
+0.0449 ms/sample, 9.46× faster than 3 tree models, single 17.8 MB checkpoint, all horizons
 in one pass. Real-time at 10 Hz with <0.4% of the per-epoch budget.
 
 ### 5.7 On data balancing (E5 + ablation)

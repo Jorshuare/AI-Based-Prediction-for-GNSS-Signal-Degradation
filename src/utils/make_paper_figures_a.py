@@ -66,10 +66,10 @@ COPIES = [
     (SRC_PFX, "fig06_crosscity_gap.pdf",         "fig_cross_city_gap.pdf"),
     (SRC_PFX, "fig06_crosscity_gap.png",         "fig_cross_city_gap.png"),
 
-    # Confusion matrices & analysis (PNG rasters — 300 dpi, suitable for journal)
-    (SRC_FIG, "confusion_matrices_test.png",     "fig_confusion_matrices.png"),
-    (SRC_FIG, "feature_saliency_5s.png",         "fig_saliency.png"),
-    (SRC_FIG, "roc_curves_test.png",             "fig_roc.png"),
+    # Confusion matrices & analysis (now in paper_figures/ — canonical location)
+    (SRC_PFX, "confusion_matrices_test.png",     "fig_confusion_matrices.png"),
+    (SRC_PFX, "feature_saliency_5s.png",         "fig_saliency.png"),
+    (SRC_PFX, "roc_curves_test.png",             "fig_roc.png"),
 
     # Discussion / supplementary
     (SRC_PFX, "fig17_persistence.pdf",           "fig_persistence.pdf"),

@@ -111,7 +111,7 @@ In-domain (Beihang test set), Random Forest outperforms SENTINEL:
   \toprule
   Model & Macro-F1 & DEG F1 \\
   \midrule
-  Random Forest & \textbf{0.926} & 0.823 \\
+  Random Forest & \textbf{0.910} & 0.789 \\
   XGBoost       & 0.919 & 0.810 \\
   SENTINEL (DL) & 0.821 & 0.718 \\
   \bottomrule
@@ -155,7 +155,7 @@ Hyperparameter search (5-fold CV):
   \item Class weights: CLEAN:1, WARNING:2, DEGRADED:5
 \end{itemize}
 
-\textbf{In-domain}: Macro-F1\,=\,0.926 ✓ (beats DL)\\
+\textbf{In-domain}: Macro-F1\,=\,0.910 ✓ (beats DL)\\
 \textbf{Tokyo (unseen)}: DEG F1\,=\,0.148 ✗ (collapses)
 
 Why: RF memorises Beihang-specific C/N$_0$ thresholds.
@@ -171,7 +171,7 @@ XGBoost with Optuna search (50 trials):
   \item \texttt{subsample=0.8}, per-class \texttt{scale\_pos\_weight}
 \end{itemize}
 
-XGBoost transfers \emph{better} than RF to Tokyo (DEG F1\,=\,0.62 vs RF 0.15),
+XGBoost transfers \emph{better} than RF to Tokyo (DEG F1\,=\,0.784 vs RF 0.148),
 suggesting boosted residuals capture some generalizable features.
 Documented in Related Work discussion.
 \end{poblock}

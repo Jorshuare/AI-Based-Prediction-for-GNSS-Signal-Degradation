@@ -168,13 +168,13 @@ Progress Presentation · Version 4 · Run 14 results
 
 - **Transformer encoder** (2 layers, 8 heads, d=128) — long-range dependencies inside the
   30-second window.
-- **BiLSTM** (2 layers, hidden=256) — directional trajectory toward degradation.
+- **LSTM** (2 layers, hidden=256, unidirectional) — sequential trajectory toward degradation.
 - **Three output heads** (+5 s, +15 s, +30 s) + auxiliary head — one model, one forward pass.
 - **1.46 M parameters**; focal loss (γ=1.0) + class weights [1, 2, 5]; **no SMOTE** for the
   network (imbalance handled at the loss level).
 
 > **[FIGURE]** `fig_architecture.pdf` — block diagram: input 30×37 → projection → positional
-> encoding → Transformer ×2 → BiLSTM ×2 → 3 heads.
+> encoding → Transformer ×2 → LSTM ×2 → 4 heads.
 > **[IMAGE PROMPT]** "Neural-network architecture block diagram, left-to-right: input tensor,
 > transformer blocks (stacked), LSTM blocks, three coloured output heads (green/amber/red),
 > Beihang blue blocks, sky-blue connectors, white background, academic, flat vector."
@@ -274,7 +274,7 @@ Trained on Beihang + Hong Kong, tested on **Tokyo (never seen)**:
 
 ## Efficiency & calibration
 
-- **Inference: 0.039 ms/sample on GPU — 10.5× faster** than three separate tree models;
+- **Inference: 0.0449 ms/sample on GPU — 9.46× faster** than three separate tree models;
   one 17.8 MB checkpoint serves all three horizons.
 - Real-time at 10 Hz using <0.4% of the per-epoch time budget.
 - **Calibration:** temperature scaling applied (Guo et al., 2017); reliability diagram in
@@ -283,7 +283,7 @@ Trained on Beihang + Hong Kong, tested on **Tokyo (never seen)**:
 
 > **[FIGURE — insert]** `calibration_curves_test.png`.
 > **[IMAGE PROMPT]** "Speedometer-style comparison: one fast needle (DL) vs three slow needles
-> (RF), with a '10.5x faster' badge, Beihang blue + sky accent, flat vector."
+> (RF), with a '9.46x faster' badge, Beihang blue + sky accent, flat vector."
 
 ---
 
@@ -297,9 +297,9 @@ Trained on Beihang + Hong Kong, tested on **Tokyo (never seen)**:
 
 1. **Reactive → proactive.** First multi-horizon GNSS degradation **predictor** (to our
    knowledge — pending systematic literature confirmation).
-2. **Cross-city generalisation as the deciding metric** — network retains DEGRADED F1 0.75
-   where trees fall to 0.15 on an unseen city.
-3. **Unified multi-horizon model** — one pass, three horizons, 10.5× faster than per-horizon
+2. **Cross-city generalisation as the deciding metric** — network retains DEGRADED F1 0.753
+   where trees fall to 0.148 on an unseen city.
+3. **Unified multi-horizon model** — one pass, three horizons, 9.46× faster than per-horizon
    trees.
 4. **Multi-city, multi-receiver open benchmark** — 149,662 labelled epochs, reproducible
    pipeline.
@@ -311,7 +311,7 @@ Trained on Beihang + Hong Kong, tested on **Tokyo (never seen)**:
 
 | Question                         | Our evidence                                                                                                         |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| "Trees beat you in-domain."      | True; we disclose it. Out-of-domain we win on DEGRADED (0.75 vs 0.15), run 10.5× faster, one model for 3 horizons.   |
+| "Trees beat you in-domain."      | True; we disclose it. Out-of-domain we win on DEGRADED (0.753 vs 0.148), run 9.46× faster, one model for 3 horizons.   |
 | "Does the Transformer use time?" | Honestly, temporal _order_ adds ~3% (permutation test). The win is **representation transfer**, not order modelling. |
 | "Small DEGRADED test set?"       | Bootstrap 95% CIs on every per-class metric.                                                                         |
 | "Data leakage?"                  | Session-level split; scaler/SMOTE on train only; one within-site overlap disclosed; Tokyo fully held out.            |
@@ -332,7 +332,7 @@ Trained on Beihang + Hong Kong, tested on **Tokyo (never seen)**:
 - **Paper A — flagship** (_GPS Solutions_, Q1): method + multi-horizon + cross-receiver +
   cross-city + adaptive EKF. _(Cross-receiver and cross-city are robustness sections, not
   separate thin papers.)_
-- **Paper B — benchmark** (_Scientific Data_ / _Data in Brief_): the dataset descriptor.
+- **Paper B — navigation** (_IEEE T-ITS_): adaptive EKF with SENTINEL-calibrated process noise and full Tokyo evaluation.
 - **Conference — ION GNSS+ 2026**: cross-city result as a short paper, later extended.
 
 > <span class="small">Two substantial papers avoid "salami-slicing" and carry more impact

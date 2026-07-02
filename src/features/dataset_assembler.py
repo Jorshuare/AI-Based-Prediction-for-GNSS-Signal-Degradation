@@ -38,7 +38,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger(__name__)
 
 
-# ─── FEATURE COLUMNS (35 features) ────────────────────────────────────────────
+# ─── FEATURE COLUMNS (35 raw extracted features; model uses 37 after feature_prep.py) ──
 FEATURE_COLS = [
     # Position
     'lat', 'lon', 'alt', 'lat_std', 'lon_std',

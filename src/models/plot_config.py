@@ -222,7 +222,7 @@ def save_figure(
     Parameters
     ----------
     fig    : matplotlib Figure to save.
-    path   : Base path WITHOUT extension (e.g. 'results/figures/confusion_matrix').
+    path   : Base path WITHOUT extension (e.g. 'results/paper_figures/confusion_matrix').
     formats: Iterable of format strings ('pdf', 'png', 'svg', 'eps').
     dpi    : Resolution for raster formats (ignored for pdf/svg/eps).
     """

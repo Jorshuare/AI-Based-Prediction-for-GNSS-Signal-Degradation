@@ -172,7 +172,7 @@ pseudorange, temporal, atmospheric, receiver status
     captures global satellite-geometry trends across the 30-second window
   \item \textbf{LSTM} (2 layers, hidden 256):
     captures sequential approach dynamics (gradual C/N$_0$ decline)
-  \item \textbf{Three output heads:} $+5$\,s, $+15$\,s, $+30$\,s
+  \item \textbf{Four output heads:} $+5$\,s, $+15$\,s, $+30$\,s + auxiliary $t{+}0$
   \item \textbf{Training:} Focal loss ($\gamma=1.0$), class weights $[1,2,5]$,
     AdamW, cosine annealing
 \end{itemize}
@@ -201,11 +201,11 @@ pseudorange, temporal, atmospheric, receiver status
 catches 85\,\% of impending degradations 5 seconds early.
 
 \medskip
-\textbf{10.5$\times$ faster} than three separate tree models; 0.039\,ms/sample.
+\textbf{9.46$\times$ faster} than three separate tree models; 0.0449\,ms/sample.
 \end{poblock}
 
 \begin{center}
-  \includegraphics[width=\columnwidth]{../../results/figures/multi_horizon_comparison.pdf}
+  \includegraphics[width=\columnwidth]{../../results/paper_figures/multi_horizon_comparison.pdf}
   \captionof{figure}{Multi-horizon Macro-F1 and per-class F1.
   The +5\,s horizon is used for real-time EKF integration.}
 \end{center}

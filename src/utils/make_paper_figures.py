@@ -149,7 +149,7 @@ SPLITS = {"Train": (11438, 37494, 13481), "Val": (
 
 
 def _full_from_json():
-    m = load_json(RES / "figures" / "metrics_test.json")
+    m = load_json(RES / "metrics" / "metrics_test.json")
     if not m:
         return "constants"
     for hk, h in [("5s", "+5s"), ("15s", "+15s"), ("30s", "+30s")]:

@@ -312,19 +312,19 @@ Table~\ref{tab:features} summarises the feature taxonomy.
 
 \begin{table}[h]
 \caption{SENTINEL input feature taxonomy (37 features)}\label{tab:features}
-\begin{tabular}{@{}llp{5cm}@{}}
+\begin{tabular}{@{}llp{5.2cm}@{}}
 \toprule
-Group & Count & Description \\
+Group & Count & Features \\
 \midrule
-Satellite count    & 2 & $n_\text{sat}$, $\Delta n_\text{sat}$ \\
-Geometry (DOP)     & 4 & PDOP, HDOP, VDOP, $\Delta$HDOP \\
-Fix quality        & 2 & Fix type code, age of differential \\
-$C/N_0$ statistics & 8 & Mean, min, max, std per epoch \\
-$C/N_0$ dynamics   & 4 & $\Delta$mean, $\Delta$min, $\Delta$max, $\Delta$std \\
-Velocity / heading & 4 & Speed, heading, $\Delta$speed, $\Delta$heading \\
-Position residuals & 5 & Latitude/longitude variance proxies \\
-Receiver tier      & 1 & Hardware quality tier (0=survey, 1=consumer, 2=smartphone) \\
-Rolling statistics & 7 & 30-s rolling mean and range of key indicators \\
+$C/N_0$ statistics     & 6 & Mean, min, max, std, trend; binary availability flag \\
+Satellite tracking     & 5 & $n_\text{sat}$, mean, min, visibility ratio, drop rate \\
+Geometry (DOP)         & 5 & PDOP, HDOP, VDOP, GDOP, DOP ratio \\
+DOP dynamics           & 2 & $\Delta$PDOP, $\Delta$HDOP \\
+Fix quality            & 5 & Fix type, baseline satellites, solution age, continuity, transitions \\
+Position quality       & 3 & Altitude, latitude std dev, longitude std dev \\
+Signal anomalies       & 5 & Position variance, $C/N_0$ variance, elevation violations, multipath index, clock bias \\
+Atmospheric / residual & 5 & Iono delay, tropo delay, cycle slips, residual mean and std \\
+Receiver hardware tier & 1 & Hardware quality tier (0\,=\,survey to 4\,=\,smartphone) \\
 \botrule
 \end{tabular}
 \end{table}
@@ -426,7 +426,7 @@ examples:
 with $\gamma = 1.0$ and class weights $\alpha_c \in \{1.0,\; 2.0,\; 5.0\}$
 for CLEAN, WARNING, and DEGRADED respectively.  Label smoothing
 ($\varepsilon = 0.1$) prevents overconfident probability estimates.
-The Adam optimiser \cite{[AuthorYear_Adam_Kingma2015]} is used with learning
+The AdamW optimiser \cite{[AuthorYear_Adam_Kingma2015]} is used with learning
 rate $10^{-3}$, weight decay $10^{-4}$, and gradient clipping at 1.0.
 Training runs for up to 150 epochs with early stopping (patience = 50,
 minimum warm-up = 15 epochs) on validation macro-averaged F1.
@@ -493,7 +493,7 @@ at the 5-second prediction horizon.
 \caption{%
   Test-set classification performance at the 5-second prediction horizon.
   Bold = best per column; underline = second-best.
-  Bootstrap 95\% CI for SENTINEL Macro-F1: [0.745, 0.789].}
+  Bootstrap 95\% CI for SENTINEL Macro-F1: [0.798, 0.840].}
 \label{tab:main_results}
 \begin{tabular*}{\textwidth}{@{\extracolsep\fill}lcccccccc@{}}
 \toprule
@@ -510,10 +510,10 @@ RF + SMOTE            & 0.949 & 0.909 & 0.915 & 0.914 & \textbf{0.997} & 0.944 &
 XGB (no SMOTE)        & \textbf{0.956} & \textbf{0.919} & \textbf{0.926} &
   \textbf{0.925} & 0.995 & \textbf{0.953} & \underline{0.810} & 0.722 \\
 XGB + SMOTE           & 0.949 & 0.909 & 0.915 & 0.914 & 0.992 & 0.947 & 0.790 & 0.722 \\
-SENTINEL-Transformer  & 0.813 & 0.767 & 0.725 & 0.708 & 0.967 & 0.764 & 0.571 & 0.871 \\
-SENTINEL-LSTM         & 0.810 & 0.757 & 0.725 & 0.712 & 0.965 & 0.758 & 0.548 & 0.843 \\
+SENTINEL-Transformer  & 0.813 & 0.767 & 0.725 & 0.708 & 0.967 & 0.764 & 0.571 & \underline{0.871} \\
+SENTINEL-LSTM         & 0.803 & 0.767 & 0.702 & 0.688 & 0.911 & 0.746 & 0.645 & \textbf{0.885} \\
 \textbf{SENTINEL}     & \underline{0.853} & 0.821 & 0.773 & 0.762 &
-  \underline{0.927} & 0.817 & 0.718 & \textbf{0.847} \\
+  \underline{0.927} & 0.817 & 0.718 & 0.847 \\
 \botrule
 \end{tabular*}
 \footnotetext{%
@@ -550,9 +550,9 @@ bootstrap 95\% confidence intervals}\label{tab:multi_horizon}
 \toprule
 Horizon & Macro-F1 & MCC & $\kappa$ & DEGRAD. Recall & 95\%~CI (F1) \\
 \midrule
-+5~s  & 0.821 & 0.773 & 0.762 & 0.847 & [0.745, 0.789] \\
-+15~s & 0.741 & 0.691 & 0.667 & 0.843 & [0.740, 0.784] \\
-+30~s & 0.783 & 0.731 & 0.723 & 0.734 & [0.679, 0.724] \\
++5~s  & 0.821 & 0.773 & 0.762 & 0.847 & [0.798, 0.840] \\
++15~s & 0.741 & 0.691 & 0.667 & 0.843 & [0.717, 0.764] \\
++30~s & 0.783 & 0.731 & 0.723 & 0.734 & [0.758, 0.804] \\
 \botrule
 \end{tabular}
 \end{table}
@@ -569,12 +569,12 @@ Horizon & Macro-F1 & MCC & $\kappa$ & DEGRAD. Recall & 95\%~CI (F1) \\
 
 \subsection{Ablation Study}
 
-Removing the LSTM decoder (SENTINEL-Transformer) reduces Macro-F1 by 0.054
+Removing the LSTM decoder (SENTINEL-Transformer) reduces Macro-F1 by 0.053
 relative to the full model.  Removing the Transformer encoder (SENTINEL-LSTM)
-reduces Macro-F1 by 0.064.  Both ablations confirm that the Transformer's
+reduces Macro-F1 by 0.053.  Both ablations confirm that the Transformer's
 intra-window attention and the LSTM's inter-window memory each contribute
-independently; neither component alone achieves the full model's combination
-of aggregate accuracy and minority-class recall.
+independently and approximately equally; neither component alone achieves the
+full model's combination of aggregate accuracy and minority-class recall.
 
 Fig.~\ref{fig:confusion_matrices} shows the confusion matrices for the full
 SENTINEL model at all three horizons.
@@ -693,7 +693,7 @@ intervals confirming statistical reliability.  The 5-second predictive lead
 enables downstream navigation filters to pre-adapt their measurement noise
 covariance before signal corruption reaches the position solution---a
 capability that reduces root mean squared position error during degraded
-epochs by 38.7\% in the companion navigation paper.
+epochs by up to 43.2\% in the companion navigation paper.
 
 Future work will broaden training to multiple cities and receiver
 families, investigate attention-head interpretability for physical signal

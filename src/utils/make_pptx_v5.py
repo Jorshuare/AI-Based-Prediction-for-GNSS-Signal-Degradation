@@ -741,11 +741,11 @@ def rebuild_validation_slide(slide):
          "MCC = 0.773 ± 0.035.",
          BLUE_DARK),
         ("E4", "Inference Latency (Tesla T4 GPU)",
-         "SENTINEL-GNSS: 0.039 ms/sample vs 3 tree models: 0.409 ms — 10.52× speedup. "
+         "SENTINEL-GNSS: 0.0449 ms/sample vs 3 tree models: 0.409 ms — 9.46× speedup. "
          "17.8 MB checkpoint. <0.04% of CPU budget at 10 Hz.",
          GREEN),
         ("E6", "Cross-City Zero-Shot — Tokyo Shinjuku",
-         "XGBoost DEGRADED F1: 0.822 → 0.148 (−82%). SENTINEL-GNSS: 0.718 → 0.753 (+5%). "
+         "RF DEGRADED F1: 0.789 → 0.148 (−81%). XGBoost: 0.810 → 0.784 (−3%). SENTINEL-GNSS: 0.718 → 0.753 (+5%). "
          "DL + XGBoost ensemble: 0.892 macro-F1, 0.896 DEGRADED F1. KEY RESULT.",
          RED),
         ("E7", "Probability Calibration (ECE)",

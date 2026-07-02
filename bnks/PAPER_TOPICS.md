@@ -49,9 +49,9 @@ salami-slicing). The three outputs target three distinct communities and do not 
 
 - +5 s Macro-F1 = **0.821** [95% CI 0.800–0.843], MCC 0.773; +30 s Macro-F1 = 0.783.
 - DEGRADED recall 0.85 at +5 s; DEGRADED F1 0.274 → **0.718** across runs (2.6×).
-- **Cross-city (unseen Tokyo): DL retains DEGRADED F1 0.75 while RandomForest collapses to
-  0.15** — the deciding result for deployment.
-- Inference 0.039 ms/sample, **10.5× faster** than three per-horizon tree models.
+- **Cross-city (unseen Tokyo): DL retains DEGRADED F1 0.753 while RandomForest collapses to
+  0.148** — the deciding result for deployment.
+- Inference 0.0449 ms/sample, **9.46× faster** than three per-horizon tree models.
 - Adaptive EKF (controlled simulation): **−33.8%** position RMSE during blockage vs raw GNSS.
 
 ---

@@ -112,7 +112,9 @@ log = logging.getLogger(__name__)
 
 # ─── Paths ───────────────────────────────────────────────────────────────────
 ROOT = Path(__file__).resolve().parents[2]
-FIG_DIR = ROOT / "results" / "figures"
+FIG_DIR = ROOT / "results" / "figures"       # intermediate plots (recreated by eval runs)
+METRICS_DIR = ROOT / "results" / "metrics"  # persistent JSON metrics (canonical location)
+METRICS_DIR.mkdir(parents=True, exist_ok=True)
 CKPT_DIR = ROOT / "results" / "models" / "checkpoints"
 DATA_CSV = ROOT / "data" / "labelled" / "sentinel_gnss_labelled.csv"
 
@@ -1231,7 +1233,7 @@ def run_all(
                                     temperature=temperature)
         thresholds = tune_thresholds(val_results)
         # Save thresholds for reproducibility
-        thr_path = out_dir / "tuned_thresholds.json"
+        thr_path = METRICS_DIR / "tuned_thresholds.json"
         with open(thr_path, "w") as f:
             json.dump({h: thresholds[h].tolist()
                       for h in HORIZONS}, f, indent=2)
@@ -1242,7 +1244,7 @@ def run_all(
         print("\n  ── With tuned thresholds ──")
         print_metrics_table(metrics_tuned, split=f"{split}+tuned")
         # Also save tuned metrics
-        with open(out_dir / f"metrics_{split}_tuned.json", "w") as f:
+        with open(METRICS_DIR / f"metrics_{split}_tuned.json", "w") as f:
             json.dump(metrics_tuned, f, indent=2)
         log.info("  Using tuned-threshold predictions for figures.")
         results = results_tuned
@@ -1251,9 +1253,9 @@ def run_all(
     metrics = compute_metrics(results)
     print_metrics_table(metrics, split)
 
-    # Save metrics JSON (model-type-specific filename for ablation runs)
+    # Save metrics JSON to canonical metrics dir (model-type-specific for ablation runs)
     suffix = f"_{model_type}" if model_type else ""
-    metrics_path = out_dir / f"metrics_{split}{suffix}.json"
+    metrics_path = METRICS_DIR / f"metrics_{split}{suffix}.json"
     with open(metrics_path, "w") as f:
         json.dump(metrics, f, indent=2)
     log.info(f"  Metrics saved → {metrics_path}")
@@ -1261,7 +1263,7 @@ def run_all(
     # ── Bootstrap CIs ────────────────────────────────────────────────────
     log.info(f"  Computing {n_bootstrap}-iteration bootstrap CIs …")
     ci = bootstrap_metrics(results, n_boot=n_bootstrap)
-    ci_path = out_dir / f"bootstrap_ci_{split}.json"
+    ci_path = METRICS_DIR / f"bootstrap_ci_{split}.json"
     with open(ci_path, "w") as f:
         json.dump(ci, f, indent=2)
 

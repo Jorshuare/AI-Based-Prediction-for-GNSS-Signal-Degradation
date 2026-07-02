@@ -33,8 +33,8 @@ _Journal of Navigation_ (Cambridge). Different community from Paper A (method) �
 > conduct a fair comparison of model families — gradient-boosted trees, deep sequence models
 > (Transformer–LSTM and ablations), and their ensembles — for predicting GNSS signal-quality
 > 5–30 s ahead, evaluating both in-domain and on an unseen city. We find that trees lead
-> in-domain (Macro-F1 0.92 vs 0.82) but **fail to transfer** (cross-city DEGRADED F1 0.15),
-> whereas the Transformer–LSTM retains DEGRADED F1 0.75 across cities and runs 10.5× faster as
+> in-domain (Macro-F1 0.92 vs 0.82) but **fail to transfer** (cross-city DEGRADED F1 0.148),
+> whereas the Transformer–LSTM retains DEGRADED F1 0.753 across cities and runs 9.46× faster as
 > a single unified multi-horizon model; static ensembles do not reconcile the two regimes. We
 > therefore select the deep model for deployment and integrate its P(DEGRADED) output into an
 > **adaptive Extended Kalman Filter** that inflates GNSS measurement noise pre-emptively. In a

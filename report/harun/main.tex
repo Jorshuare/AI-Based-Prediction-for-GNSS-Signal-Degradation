@@ -58,7 +58,7 @@
   {\color{buaaNavy}\rule{\linewidth}{2pt}}\\[0.5cm]
   {\normalsize\color{buaaBlue} SENTINEL-GNSS}\\[0.25cm]
   {\LARGE\bfseries\color{buaaNavy} AI-Based Proactive Prediction of GNSS\\[0.2cm]
-   Signal Degradation for Autonomous\\[0.2cm]
+   Signal Degradation for Autonomous\\[0.4cm]
    Vehicle Navigation}\\[0.45cm]
   {\large\color{buaaBlue} Individual Contribution Report}\\[0.5cm]
   {\color{buaaNavy}\rule{\linewidth}{2pt}}\\[0.8cm]
@@ -540,11 +540,11 @@ I wrote this analysis into the paper's baseline comparison section.
     \midrule
     SNR Threshold         & 0.559 & 0.391 & 0.358 & $<0.01$ \\
     RAIM                  & 0.483 & 0.321 & 0.284 & 0.08 \\
-    Random Forest         & 0.926 & 0.889 & 0.823 & 0.12 \\
-    XGBoost               & 0.919 & 0.884 & 0.810 & 0.23 \\
+    Random Forest         & 0.910 & 0.916 & 0.789 & 0.12 \\
+    XGBoost               & 0.919 & 0.926 & 0.810 & 0.23 \\
     \midrule
     \textbf{SENTINEL (DL)} & \textbf{0.821} & \textbf{0.773} & \textbf{0.718} &
-      \textbf{0.039} \\
+      \textbf{0.0449} \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -685,8 +685,8 @@ Advance notice enables action.
 \textbf{Contributions list (5 items):}
 \begin{enumerate}
   \item Problem reformulation: predictive vs reactive
-  \item SENTINEL architecture: Transformer+LSTM, 1.46M parameters, 0.039ms
-  \item Cross-city generalisation: 0.75 vs 0.15 Tokyo DEGRADED F1
+  \item SENTINEL architecture: Transformer+LSTM, 1.46M parameters, 0.0449ms
+  \item Cross-city generalisation: 0.753 vs 0.148 Tokyo DEGRADED F1
   \item Prediction-informed sensor fusion: 48.8\,\% degraded-RMSE gain
   \item Open benchmark: 149,662 epochs, 4 cities, 9+ receiver types
 \end{enumerate}

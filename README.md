@@ -55,7 +55,7 @@ Team-Pilot-Project/
 │   ├── rtklib/
 │   │   └── rtklib_pipeline.py    ← RTKLIB automation for RINEX → .pos
 │   ├── features/
-│   │   ├── feature_extractor.py  ← Extract 35 features from .pos files
+│   │   ├── feature_extractor.py  ← Extract 35 raw base features from .pos files (model uses 37 after feature_prep.py)
 │   │   └── dataset_assembler.py  ← Combine + train/val/test split
 │   ├── labeling/
 │   │   └── labeler.py            ← Assign scenario labels to feature windows

@@ -31,7 +31,7 @@ split, scaler fit on train only):
 | ---------------------- | -------------- | ------------------------ | --------------------- | -------------------- | ----------- |
 | **Scenarios A–E**      | Self-collected | Beihang, 2026            | Septentrio Mosaic-X5C | RINEX SNR-indicator  | 7,193       |
 | **Supervisor Vehicle** | Self-collected | Beihang, 2025            | Septentrio Mosaic-X5C | NMEA GSV (direct)    | 3,401       |
-| **Supervisor Drone**   | Self-collected | Beihang, 2024            | Unicore UB4B0         | RINEX S1C (direct)   | 11,123      |
+| **Supervisor Drone**   | Self-collected | Beihang, 2024            | Unicore UB4B0         | RINEX S1C (direct)   | 14,862      |
 | **UrbanNav HK Medium** | Downloaded     | Hong Kong, 2021          | 10 receivers          | RINEX S1C + NMEA GSV | 7,608       |
 | **UrbanNav HK Tunnel** | Downloaded     | Hong Kong, 2021          | 10 receivers          | RINEX S1C + NMEA GSV | 3,461       |
 | **UrbanNav HK Deep**   | Downloaded     | Hong Kong, 2023          | 10 receivers          | RINEX S1C + NMEA GSV | 15,233      |
@@ -88,7 +88,7 @@ This table directly answers: **"Will there be too many NaN?"**
 | `tropo_delay`                      | ✓ Hopfield proxy |        ✓        |         ✓         |       ✓       |        ✓        |             ✓             |          ✓          |        ✓        |
 | `cycle_slips`                      |   ✓ RINEX LLI    |        0        |    ✓ RINEX LLI    |  ✓ RINEX LLI  |        ✓        |        ✓ RINEX LLI        |          0          |        0        |
 | `residual_mean` / `residual_std`   |   ✓ GBS / GST    |      ✓ GST      |      ~ proxy      |       ✓       |        ✓        |          ~ proxy          |      ✓ RTK err      |     ✓ sigma     |
-| **Approx. features with data**     |    **~32/35**    |   **~30/35**    |    **~26/35**     |  **~30/35**   |   **~30/35**    |        **~24/35**         |     **~16/35**      |   **~18/35**    |
+| **Approx. features with data**     |    **~34/37**    |   **~32/37**    |    **~28/37**     |  **~32/37**   |   **~32/37**    |        **~26/37**         |     **~18/37**      |   **~20/37**    |
 
 ### What "NaN" means for the model
 
@@ -147,7 +147,7 @@ For NCLT and Oxford, C/N0 is unavailable. Labels use **position uncertainty** di
 
 ### 3.3 Combined Dataset Summary (Session-Based 70/15/15 Split)
 
-**Total: 97,393 rows across 10 source groups**
+**Total: 149,662 rows across 12 source groups**
 
 > Note: The epoch-level split percentages reflect session assignments; exact row counts per split depend on session sizes. The split is correct at session level (70% of sessions → train), which is the right unit to prevent temporal leakage.
 
@@ -258,15 +258,15 @@ This goes in the paper as a generalization table (Table X) and directly supports
 
 ---
 
-## 6. The 35 Features — Full Justification
+## 6. The 37 Features — Full Justification
 
-### Why 35 Features and Not More/Fewer?
+### Why 37 Features and Not More/Fewer?
 
-35 = 7 groups × 5 features. This grouping was chosen to:
+37 = 35 raw base features extracted from NMEA/RINEX, minus 2 geographic (lat/lon excluded to prevent route-specific overfitting), plus 4 derived features added by `feature_prep.py` (`cnr_available`, `pdop_delta`, `hdop_delta`, `receiver_tier`). This design was chosen to:
 
 1. Cover every known physical mechanism of GNSS degradation
 2. Be extractable from standard GNSS outputs (NMEA + RINEX)
-3. Create a tensor shape (30 steps × 35 features) that fits the Transformer input width efficiently
+3. Create a tensor shape (30 steps × 37 features) that fits the Transformer input width efficiently
 
 ### Complete Feature Justification Table
 
@@ -316,7 +316,8 @@ Raw latitude/longitude cause **geographic overfitting** — the model learns "Be
 
 - Exclude `lat` and `lon` from the feature tensor
 - Include `alt` (with median imputation) — altitude affects tropospheric delay
-- The model uses **33 features** (35 minus lat/lon) as inputs
+- Add 4 derived features: `cnr_available` (C/N0 data present flag), `pdop_delta` (PDOP rate of change), `hdop_delta` (HDOP rate of change), `receiver_tier` (receiver quality tier)
+- The model uses **37 features** (35 base − 2 geographic + 4 derived) as inputs
 
 ---
 

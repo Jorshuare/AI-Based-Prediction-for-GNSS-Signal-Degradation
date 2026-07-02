@@ -74,7 +74,7 @@
   {\color{buaaNavy}\rule{\linewidth}{2pt}}\\[0.5cm]
   {\normalsize\color{buaaBlue} SENTINEL-GNSS}\\[0.25cm]
   {\LARGE\bfseries\color{buaaNavy} AI-Based Proactive Prediction of GNSS\\[0.2cm]
-   Signal Degradation for Autonomous\\[0.2cm]
+   Signal Degradation for Autonomous\\[0.4cm]
    Vehicle Navigation}\\[0.45cm]
   {\large\color{buaaBlue} Group Report}\\[0.5cm]
   {\color{buaaNavy}\rule{\linewidth}{2pt}}\\[1.5cm]
@@ -119,7 +119,7 @@ has affected positioning performance, giving the vehicle zero preparation time.
 
 This report describes \buaa{SENTINEL-GNSS}, a Transformer-LSTM neural network that
 \emph{predicts} GNSS signal degradation 5, 15, and 30 seconds before it occurs.
-The model processes a 30-second sliding window of 35 receiver-derived features and
+The model processes a 30-second sliding window of 37 receiver-derived features and
 outputs a three-class forecast (\clean{CLEAN} / \warn{WARNING} / \degrad{DEGRADED})
 for each prediction horizon in a single forward pass.
 
@@ -187,11 +187,11 @@ This paper makes the following contributions:
 
   \item \textbf{SENTINEL-GNSS architecture.} A unified Transformer--LSTM network with
     three output heads ($+5$\,s, $+15$\,s, $+30$\,s) achieves Macro-F1\,=\,0.821 at the
-    +5\,s horizon using 1.46\,M parameters and runs at 0.039\,ms per sample.
+    +5\,s horizon using 1.46\,M parameters and runs at 0.0449\,ms per sample.
 
   \item \textbf{Cross-city generalisation.} Training on Beihang + Hong Kong and evaluating
-    on fully held-out Tokyo, the network maintains DEGRADED-class F1\,=\,0.75 while the
-    strongest classical baseline (RandomForest) drops to 0.15.
+    on fully held-out Tokyo, the network maintains DEGRADED-class F1\,=\,0.753 while the
+    strongest classical baseline (RandomForest) drops to 0.148.
 
   \item \textbf{Prediction-informed sensor fusion.} Integration of SENTINEL predictions
     into an adaptive EKF yields a 48.8\,\% degraded-RMSE improvement on a clean dual-frequency
@@ -308,14 +308,17 @@ WARNING otherwise.
 \subsection{Feature Engineering}
 
 Raw RINEX and NMEA observables are processed through RTKLIB \cite{rtklib} to produce
-\textbf{35 features} per epoch in seven groups of five:
+\textbf{37 features} per epoch in seven groups (33 signal features plus four derived
+inputs: \texttt{cnr\_available}, \texttt{pdop\_delta}, \texttt{hdop\_delta},
+\texttt{receiver\_tier}). Geographic coordinates are excluded from model inputs to
+prevent route-specific overfitting.
 
 \begin{description}
-  \item[Position (5)] Latitude, longitude, altitude, and horizontal position standard deviations (\texttt{lat\_std}, \texttt{lon\_std}) derived from the RTKLIB north/east error estimates over the 30-s window.
-  \item[Signal strength / C/N$_0$ (5)] Mean, minimum, maximum, standard deviation, and linear trend of C/N$_0$ across all tracked satellites.
+  \item[Position quality (3)] Altitude (\texttt{alt}) and horizontal position standard deviations (\texttt{lat\_std}, \texttt{lon\_std}) from RTKLIB north/east error estimates.
+  \item[Signal strength / C/N$_0$ (6)] Mean, minimum, maximum, standard deviation, and linear trend of C/N$_0$ across tracked satellites, plus a binary availability flag (\texttt{cnr\_available}).
   \item[Satellite count (5)] Number of satellites used in the SPP solution, mean and minimum count over the window, visibility ratio, and satellite drop rate.
-  \item[DOP (5)] PDOP, HDOP, VDOP, GDOP, and horizontal-to-vertical DOP ratio (\texttt{dop\_ratio}).
-  \item[Receiver status (5)] Normalised solution quality status, baseline satellite count, solution age, fix continuity fraction, and fix transition count over the window.
+  \item[DOP geometry (7)] PDOP, HDOP, VDOP, GDOP, and horizontal-to-vertical DOP ratio (\texttt{dop\_ratio}), plus first-order differences $\Delta$PDOP and $\Delta$HDOP to capture the rate of geometry change.
+  \item[Receiver status (6)] Normalised solution quality, baseline satellite count, solution age, fix continuity fraction, fix transition count, and hardware quality tier (\texttt{receiver\_tier}).
   \item[Temporal patterns (5)] Position variance, C/N$_0$ variance, elevation violations, multipath proxy, and clock bias over the 30-s window.
   \item[Atmospheric effects (5)] Ionospheric delay, tropospheric delay, cycle slip count, and pseudorange residual mean and standard deviation.
 \end{description}
@@ -325,7 +328,7 @@ Features are $z$-score normalised using training-set statistics only.
 \subsection{Sliding Window Construction}
 
 A causal sliding window of $W = 30$ epochs (30\,s at 1\,Hz) produces input tensors
-of shape $(30 \times 35)$.
+of shape $(30 \times 37)$.
 Labels are assigned at horizons $h \in \{5, 15, 30\}$\,s after the last observed epoch,
 giving three binary-per-class prediction targets per window.
 The train/validation/test split follows session boundaries (70/15/15) to prevent
@@ -716,7 +719,7 @@ maximum error rather than median agreement.
 
 \subsection{Efficiency}
 
-SENTINEL runs at 0.039\,ms per sample, making it 10.5$\times$ faster than three
+SENTINEL runs at 0.0449\,ms per sample, making it 9.46$\times$ faster than three
 separate per-horizon tree models, while serving all horizons from a single
 17.8\,MB checkpoint.
 Real-time operation at 1\,Hz uses less than 0.4\,\% of the per-epoch time budget.
@@ -857,13 +860,13 @@ geographic diversity.
       and ablation; 9-state EKF formulation (Joseph form, adaptive R, Mehra
       disabled); Huber robust EKF (IRLS, c-calibration, SENTINEL+Huber
       incompatibility); Bootstrap PF (Student-$t$ likelihood, GPS attractor
-      analysis); inference pipeline (0.039\,ms); production dashboard
+      analysis); inference pipeline (0.0449\,ms); production dashboard
       (Next.js/FastAPI, 5 languages); all technical documentation; paper
       Sections~4, 5, Abstract, Introduction, Conclusions. \\
     \midrule
     \textbf{Ogunlade Joshua} (LS2525237) &
       ROSBAG topic identification; \code{extract\_gnss.py}; RTKLIB batch
-      pipeline (\code{run\_rtklib.py}); 35-feature implementation with all
+      pipeline (\code{run\_rtklib.py}); 37-feature implementation with all
       mathematical formulas; dataset assembly (labelling, sliding windows,
       session-level split); normalisation pipeline; dataset QA (3 bugs fixed,
       zero NaN/leakage); UrbanNav HK feature extraction; on-site real-time

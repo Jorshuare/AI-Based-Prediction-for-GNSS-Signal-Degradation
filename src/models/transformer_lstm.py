@@ -7,8 +7,8 @@ Architecture
 
   1. Linear input projection    F=37 → d_model=128
   2. Sinusoidal positional encoding
-  3. Transformer Encoder        n_layers=2, n_heads=8, d_ff=256, dropout=0.1
-  4. 2-layer stacked LSTM       hidden=256, dropout=0.1  (unidirectional)
+  3. Transformer Encoder        n_layers=2, n_heads=8, d_ff=512, dropout=0.3
+  4. 2-layer stacked LSTM       hidden=256, dropout=0.3  (unidirectional)
   5. Three parallel output heads (5 s, 15 s, 30 s) → logits (B, 3)
 
 Design rationale
@@ -20,8 +20,9 @@ ordering of the encoded tokens, which matters for predicting future signal
 states.  The combination outperforms either architecture alone for sequential
 sensor data.  Ref: Chen, T. et al. (2023). TF-LSTM hybrid for time-series.
 
-Three output heads allow a single model to optimise simultaneously for short-
-term (5 s), medium-term (15 s), and long-term (30 s) horizon predictions.
+Four output heads allow a single model to optimise simultaneously for short-
+term (5 s), medium-term (15 s), and long-term (30 s) horizon predictions,
+plus an auxiliary t+0 head that regularises training (Caruana, 1997).
 This multi-task formulation improves performance on all horizons compared
 to training separate models.  Ref: Caruana, R. (1997). Multitask Learning.
 
@@ -180,11 +181,11 @@ class SentinelGNSS(nn.Module):
         d_model:       int = 128,
         n_heads:       int = 8,
         n_tf_layers:   int = 2,
-        d_ff:          int = 256,
+        d_ff:          int = 512,
         lstm_hidden:   int = 256,
         n_lstm_layers: int = 2,
         n_classes:     int = 3,
-        dropout:       float = 0.1,
+        dropout:       float = 0.3,
     ):
         super().__init__()
         self.d_model = d_model
@@ -223,7 +224,7 @@ class SentinelGNSS(nn.Module):
         )
         self.lstm_dropout = nn.Dropout(dropout)
 
-        # ── Three output heads (one per prediction horizon) ──────────────
+        # ── Four output heads (three prediction horizons + one auxiliary) ──
         head_in = lstm_hidden
         self.head_5s = self._make_head(head_in, n_classes, dropout)
         self.head_15s = self._make_head(head_in, n_classes, dropout)
@@ -360,11 +361,11 @@ def build_model(config: dict | None = None) -> SentinelGNSS:
         d_model=128,
         n_heads=8,
         n_tf_layers=2,
-        d_ff=256,
+        d_ff=512,
         lstm_hidden=256,
         n_lstm_layers=2,
         n_classes=3,
-        dropout=0.1,
+        dropout=0.3,
     )
     if config:
         # Only update keys that SentinelGNSS.__init__ actually accepts.

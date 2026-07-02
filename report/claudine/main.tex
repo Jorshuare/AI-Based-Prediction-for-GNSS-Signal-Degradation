@@ -57,7 +57,7 @@
  
   {\normalsize\color{buaaBlue} SENTINEL-GNSS}\\[0.25cm]
   {\LARGE\bfseries\color{buaaNavy} AI-Based Proactive Prediction of GNSS\\[0.2cm]
-   Signal Degradation for Autonomous\\[0.2cm]
+   Signal Degradation for Autonomous\\[0.4cm]
    Vehicle Navigation}\\[0.45cm]
   {\large\color{buaaBlue} Individual Contribution Report}\\[0.5cm]
   {\color{buaaNavy}\rule{\linewidth}{2pt}}\\[0.8cm]
@@ -87,8 +87,8 @@ For cross-city generalisation, I designed and executed the full evaluation metho
 downloading and processing the UrbanNav Hong Kong, Tokyo, and Oxford RobotCar datasets,
 applying the trained SENTINEL model without retraining, and producing the cross-city
 comparison that became the central argument of the paper.
-The finding that SENTINEL retains DEGRADED-class F1\,=\,0.75 on held-out Tokyo while
-RandomForest collapses to 0.15 originated from experiments I ran.
+The finding that SENTINEL retains DEGRADED-class F1\,=\,0.753 on held-out Tokyo while
+RandomForest collapses to 0.148 originated from experiments I ran.
 
 Additionally, I produced all 13 publication-quality results figures and formatted all
 results tables for Section~5 of the team paper.
@@ -546,7 +546,7 @@ the same style baseline.
     Same at $+30$\,s horizon. Comparison across 3 horizons included in paper. \\
   \code{crosscity\_degraded\_f1} &
     Grouped bars: SENTINEL vs RF DEGRADED F1 across all evaluation cities.
-    The 0.75 vs 0.15 Tokyo result is visually prominent. \\
+    The 0.753 vs 0.148 Tokyo result is visually prominent. \\
   \bottomrule
 \end{longtable}
 
@@ -571,7 +571,7 @@ the same style baseline.
   \centering
   \includegraphics[width=0.72\textwidth]{fig05_crosscity_degraded.pdf}
   \caption{Cross-city DEGRADED-class F1: SENTINEL vs RandomForest across all evaluation
-           environments. The 5$\times$ performance gap in Tokyo (0.75 vs 0.15) is the
+           environments. The 5$\times$ performance gap in Tokyo (0.753 vs 0.148) is the
            central generalisation result. This figure was designed to make the gap as
            visually immediate as possible: bars are colour-coded (green = DL, red = RF)
            and annotated with the exact value.}

@@ -196,7 +196,7 @@
 > "P(DEGRADED) is used as a risk score. If the model is over-confident — outputs P=0.9 for things that are only 60% likely to be degraded — the EKF inflates R too aggressively and discards valid GPS. Calibration ensures the probability means what it says, making the EKF threshold interpretable."
 
 **"How would this work in a real AV?"**
-> "The SENTINEL model runs at 10 Hz, processing 30-second GNSS feature windows. The EKF receives P(DEGRADED) via the same message bus as IMU and wheel speed. Inference latency is 0.039 ms — 25× faster than needed for real-time operation. The dashboard WebSocket API serves position, alarms, and covariance to the vehicle controller at 10 Hz."
+> "The SENTINEL model runs at 10 Hz, processing 30-second GNSS feature windows. The EKF receives P(DEGRADED) via the same message bus as IMU and wheel speed. Inference latency is 0.0449 ms — 22× faster than needed for real-time operation. The dashboard WebSocket API serves position, alarms, and covariance to the vehicle controller at 10 Hz."
 
 **"What happens if SENTINEL makes a false positive — predicts degradation when GPS is fine?"**
 > "The filter inflates R for one second and relies more on dead-reckoning. The IMU + wheel odometry + NHC keep the estimate stable during this brief over-protection. When P drops back to zero, the filter immediately resumes trusting GPS. The cost of a false positive is a 1-second dead-reckoning period with ~1–3 m drift — much less harmful than incorrectly trusting a 100-metre biased GPS fix."

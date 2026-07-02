@@ -66,7 +66,7 @@
   {\color{buaaNavy}\rule{\linewidth}{2pt}}\\[0.5cm]
   {\normalsize\color{buaaBlue} SENTINEL-GNSS}\\[0.25cm]
   {\LARGE\bfseries\color{buaaNavy} AI-Based Proactive Prediction of GNSS\\[0.2cm]
-   Signal Degradation for Autonomous\\[0.2cm]
+   Signal Degradation for Autonomous\\[0.4cm]
    Vehicle Navigation}\\[0.45cm]
   {\large\color{buaaBlue} Individual Contribution Report}\\[0.5cm]
   {\color{buaaNavy}\rule{\linewidth}{2pt}}\\[0.8cm]
@@ -607,8 +607,8 @@ training window and any test window from the same physical location is $> 24$ ho
     \textbf{Split} & \textbf{Windows} & \textbf{CLEAN\,\%} &
     \textbf{WARNING\,\%} & \textbf{DEG\,\%} & \textbf{Sessions} \\
     \midrule
-    Train          & 104,763 & 58.2 & 34.0 & 7.8  & 27 \\
-    Validation     &  22,449 & 57.1 & 34.5 & 8.4  &  5 \\
+    Train          &  62,413 & 58.2 & 34.0 & 7.8  & 27 \\
+    Validation     &  18,074 & 57.1 & 34.5 & 8.4  &  5 \\
     Test           &   1,686 & 43.4 & 44.2 & 12.4 &  2 \\
     \midrule
     \textbf{Total} & \textbf{149,662} & --- & --- & --- & 34 \\
@@ -637,7 +637,7 @@ training window and any test window from the same physical location is $> 24$ ho
 \section{Normalisation Pipeline: \texttt{fit\_scaler.py}}
 % ============================================================
 
-StandardScaler (zero-mean, unit-variance) is fit on the 104,763 training windows only
+StandardScaler (zero-mean, unit-variance) is fit on the 62,413 training windows only
 and frozen for all downstream datasets --- validation, test, cross-city, and Tokyo.
 The scaler is serialised to \code{results/scaler.pkl} with a SHA-256 checksum.
 For cross-city evaluation, out-of-distribution values ($|z| > 5$) are soft-clipped to

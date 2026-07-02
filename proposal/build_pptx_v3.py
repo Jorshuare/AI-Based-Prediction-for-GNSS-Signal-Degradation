@@ -4,7 +4,7 @@ Build GNSS_Proposal_Presentation_v3.pptx
 Adds 5 new "AI Model & Training" slides after the V2 progress section,
 reflecting:
   • SENTINEL-GNSS Transformer-LSTM architecture
-  • Dataset expansion to 97,393 rows (10 sources, 3 cities)
+  • Dataset expansion to 149,662 rows (10 sources, 3 cities)
   • Full training pipeline (feature_prep → SMOTE → train → evaluate)
   • Smoke-test result: val macro-F1 = 0.9375 at epoch 3
   • Colab T4 GPU training setup
@@ -135,7 +135,7 @@ def make_v3_divider_slide(prs):
                  size=Pt(16), bold=False, color=C_ACCENT)
 
     bullets = [
-        "✔  97,393 labelled epochs — 10 sources, 3 cities (Beihang · Hong Kong · Tokyo)",
+        "✔  149,662 labelled epochs — 10 sources, 3 cities (Beihang · Hong Kong · Tokyo)",
         "✔  SENTINEL-GNSS Transformer-LSTM architecture finalised — 359 K parameters",
         "✔  Full pipeline: feature_prep → SMOTE → sliding windows → train → evaluate",
         "✔  Smoke test passed — val macro-F1 = 0.9375 at epoch 3 (5-epoch debug run)",
@@ -202,9 +202,9 @@ def make_architecture_slide(prs):
                  Inches(0.35), Inches(2.7), Inches(2.1), Inches(0.28),
                  size=Pt(9.5), bold=True, color=C_ACCENT)
     enc_items = [
-        "4 attention heads",
-        "d_ff = 256  |  GELU",
-        "Pre-LN  |  dropout 0.1",
+        "8 attention heads",
+        "d_ff = 512  |  GELU",
+        "Pre-LN  |  dropout 0.3",
     ]
     for i, item in enumerate(enc_items):
         add_text_box(slide, f"• {item}",
@@ -222,7 +222,7 @@ def make_architecture_slide(prs):
     add_text_box(slide, "LSTM  (×2 layers)",
                  Inches(0.35), Inches(3.93), Inches(2.1), Inches(0.28),
                  size=Pt(9.5), bold=True, color=C_WHITE)
-    add_text_box(slide, "hidden = 128  |  dropout 0.1",
+    add_text_box(slide, "hidden = 256  |  dropout 0.3",
                  Inches(0.35), Inches(4.19), Inches(2.1), Inches(0.28),
                  size=Pt(8.5), bold=False, color=C_LIGHT)
 
@@ -279,7 +279,7 @@ def make_architecture_slide(prs):
                  Inches(2.9), Inches(2.47), Inches(6.7), Inches(0.3),
                  size=Pt(11), bold=True, color=C_DARK)
     cfg = [
-        ("Max epochs",      "150  (early stop patience = 20)"),
+        ("Max epochs",      "150  (early stop patience = 50)"),
         ("Train/Val/Test",  "Session-based split  70 / 15 / 15 %"),
         ("Class imbalance", "SMOTE oversampling on training windows"),
         ("Checkpointing",   "Save every 10 epochs + best val macro-F1"),
@@ -309,7 +309,7 @@ def make_dataset_expansion_slide(prs):
 
     add_rect(slide, 0, 0, W, H, fill_rgb=C_WHITE)
     slide_title_bar(slide,
-                    "Dataset Expansion — 97,393 Labelled Epochs",
+                    "Dataset Expansion — 149,662 Labelled Epochs",
                     "3 quality classes: CLEAN / WARNING / DEGRADED  ·  10 sources  ·  3 cities  ·  4 GNSS constellations")
 
     # ── Class distribution bar chart (text-based) ────────────────────────────
@@ -350,7 +350,7 @@ def make_dataset_expansion_slide(prs):
         ("Supervisor Vehicle (ref)",     "Beihang, China",
          "Septentrio",     "3,739",   "D"),
         ("Supervisor Drone",             "Beihang, China",
-         "Unicore UB4B0",  "11,123",  "D"),
+         "Unicore UB4B0",  "14,862",  "D"),
         ("UrbanNav HK Medium",           "Hong Kong, China",
          "10 receivers",    "7,608",   "B C"),
         ("UrbanNav HK Tunnel",           "Hong Kong, China",
@@ -377,7 +377,7 @@ def make_dataset_expansion_slide(prs):
                          size=Pt(8), bold=False, color=C_DARK)
 
     add_text_box(slide,
-                 "Total: 97,393 rows  ·  41 features  ·  Labelled CSV tracked in GitHub",
+                 "Total: 149,662 rows  ·  41 features  ·  Labelled CSV tracked in GitHub",
                  Inches(0.25), Inches(5.27), Inches(9.5), Inches(0.25),
                  size=Pt(9.5), bold=True, color=C_ACCENT)
     return slide
@@ -534,7 +534,7 @@ def make_results_colab_slide(prs):
     add_text_box(slide, "0.9375",
                  Inches(2.65), Inches(1.62), Inches(1.9), Inches(0.7),
                  size=Pt(28), bold=True, color=C_DARK, align=PP_ALIGN.CENTER)
-    add_text_box(slide, "at epoch 3  (early stop patience = 20)",
+    add_text_box(slide, "at epoch 3  (early stop patience = 50)",
                  Inches(0.45), Inches(1.9), Inches(2.2), Inches(0.3),
                  size=Pt(8.5), color=C_DARK)
 

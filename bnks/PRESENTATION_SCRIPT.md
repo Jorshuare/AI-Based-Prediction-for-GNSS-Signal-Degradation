@@ -182,9 +182,9 @@
 > - Captures the directional trajectory toward degradation
 > - 'The signal is getting worse; that trend will continue'
 >
-> **Three output heads** (+5s, +15s, +30s):
+> **Four output heads** (+5s, +15s, +30s + auxiliary t+0):
 >
-> - One forward pass, three predictions
+> - One forward pass, four predictions (three horizons + one auxiliary regulariser)
 > - Calibrated probabilities P(CLEAN), P(WARNING), P(DEGRADED) at each horizon
 >
 > **Total:** 1.46 million parameters. Focal loss (γ=1.0) to handle class imbalance. No SMOTE in the DL path—the loss function does the weighting."
@@ -537,7 +537,7 @@ A: "We ran a full severity sweep across multiple multipath levels — not just o
 A: "Conservative fixed-R protects you in blockage but costs accuracy in clean segments — you're always distrusting GNSS even when it's fine. Adaptive-R is the best of both: tight when clean, loose when degraded, driven by prediction rather than a static guess."
 
 **Q: "The dashboard — is this real-time?"**  
-A: "Currently it replays pre-computed inference at configurable speed. The model itself runs at 0.039 ms/sample — fast enough for live 10 Hz operation. Adding live inference is a one-endpoint change in the FastAPI backend."
+A: "Currently it replays pre-computed inference at configurable speed. The model itself runs at 0.0449 ms/sample — fast enough for live 10 Hz operation. Adding live inference is a one-endpoint change in the FastAPI backend."
 
 **Q: "The EKF trajectory looks like it is swirling / making loops on the map. Is the filter diverging?"**  
 A: "What you are seeing is not divergence — it is the filter recovering from a bad GPS measurement. When GPS reports a position 30–80 m off, the Kalman filter partially moves toward it. In the next 2–3 epochs, wheel odometry + non-holonomic constraint pull the estimate back toward the true direction. That creates a small loop. The RMSE numbers quantify the size: 47.4 m for raw GPS vs. 24.3 m for our EKF. The swirling in the EKF is smaller and shorter than the swirling in raw GPS — that is exactly what we are demonstrating. The RMSE bar chart is the quantitative summary."

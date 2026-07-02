@@ -233,9 +233,9 @@ box(ax, 3.95, 3.80, 3.15, 1.00, FILL_BLUE, BLUE,
                 "Self-attention: long-range signal patterns",
                 "Attention(Q,K,V) = softmax(QKᵀ/√d) V"])
 
-# BiLSTM
+# LSTM
 box(ax, 3.95, 2.60, 3.15, 0.92, FILL_AMB, AMBER,
-    "Bidirectional LSTM",
+    "LSTM (Unidirectional)",
     title_color="#7B5200",
     body_lines=["2 layers · hidden = 256",
                 "Causal trend: is signal worsening?",

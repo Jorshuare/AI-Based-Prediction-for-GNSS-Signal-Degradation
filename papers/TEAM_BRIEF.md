@@ -25,8 +25,8 @@ and on a fully held-out city (Tokyo).
 | +5s DEGRADED recall    | **0.85** (catches 85% of impending degradations 5 s early) |
 | +30s macro-F1          | 0.783 (useful well beyond minimum actionable window)       |
 | DEGRADED F1 progress   | 0.274 (Run 11) → **0.718** (Run 14), a 2.6× gain           |
-| Inference speed        | **0.039 ms/sample**, 10.5× faster than 3 tree models       |
-| Cross-city DEGRADED F1 | **DL 0.75 vs RandomForest 0.15** on unseen Tokyo           |
+| Inference speed        | **0.0449 ms/sample**, 9.46× faster than 3 tree models      |
+| Cross-city DEGRADED F1 | **DL 0.753 vs RandomForest 0.148** on unseen Tokyo         |
 
 ---
 
@@ -39,13 +39,13 @@ and on a fully held-out city (Tokyo).
 
 2. **Cross-city generalisation as the deciding metric.** Our strongest, most defensible
    result: in-domain, gradient-boosted trees beat the network (0.92 vs 0.82 macro-F1); but on
-   an **unseen city**, the network retains DEGRADED-class F1 of **0.75 while the tree collapses
-   to 0.15**. RandomForest memorises city-specific thresholds (XGBoost transfers); the network learns a transferable
+   an **unseen city**, the network retains DEGRADED-class F1 of **0.753 while the tree collapses
+   to 0.148**. RandomForest memorises city-specific thresholds (XGBoost transfers); the network learns a transferable
    degradation representation. This is the "right model for deployment" argument and it is
    backed by data (E6).
 
 3. **Unified multi-horizon architecture.** One model, one 17.8 MB checkpoint, one forward
-   pass → all three horizons, 10.5× faster than three separate per-horizon tree models.
+   pass → all three horizons, 9.46× faster than three separate per-horizon tree models.
 
 4. **Multi-city, multi-receiver benchmark.** 149,662 labelled epochs, 4 cities, 9+ receiver
    types, a single 3-class schema, a fully reproducible raw→feature→label pipeline. No such
@@ -110,7 +110,7 @@ We have **five layers of validation**:
 
 | Question                                           | Answer                                                                                                                                                                                            |
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| "Trees beat your model — why publish the network?" | In-domain yes; out-of-domain (Tokyo) the network keeps DEGRADED F1 at 0.75 vs RandomForest's 0.15, runs 10.5× faster, and serves 3 horizons in one model. Deployment needs cross-city robustness. |
+| "Trees beat your model — why publish the network?" | In-domain yes; out-of-domain (Tokyo) the network keeps DEGRADED F1 at 0.753 vs RandomForest's 0.148, runs 9.46× faster, and serves 3 horizons in one model. Deployment needs cross-city robustness. |
 | "Does the Transformer actually use time?"          | Honestly, temporal _order_ contributes ~3% (E1). The benefit is representational transfer, not order modelling. We state this plainly.                                                            |
 | "DEGRADED test set is small (n=209)."              | We report bootstrap 95% CIs on every per-class metric; DEGRADED F1 = 0.717 [0.671, 0.762].                                                                                                        |
 | "Any data leakage?"                                | Session-level split; scaler/SMOTE fit on train only; one within-site overlap (scenario_a_r13) explicitly disclosed; Tokyo fully held out.                                                         |

@@ -497,7 +497,7 @@ Step 3 — Extract features from .pos files
     --input data/processed/our_collection/scenario_A_solution.pos \
     --output data/processed/our_collection/scenario_A.features.csv \
     --source our_collection_A
-  → Output: CSV with 35 features per epoch
+  → Output: CSV with 35 raw base features per epoch (model uses 37 after feature_prep.py adds 4 derived, removes 2 geographic)
 
 Step 4 — Label the features
   python src/labeling/labeler.py

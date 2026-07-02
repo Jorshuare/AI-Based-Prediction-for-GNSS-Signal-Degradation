@@ -500,7 +500,7 @@ def generate_five_scenarios():
     • Sampling Rate: 10 Hz (100 ms per measurement)
     • Geographic Coverage: Beihang University Campus, Beihang
     • Labeled Classes: CLEAN (50%) | WARNING (30%) | DEGRADED (20%)
-    • Features Extracted: 35 features per epoch (signal strength, satellites, DOP, etc.)
+    • Features Extracted: 37 features per epoch (signal strength, satellites, DOP, + 4 derived)
     • Train/Val/Test Split: 70% / 15% / 15% (by time, not random)
     """
 

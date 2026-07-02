@@ -8,7 +8,7 @@ Features
   - Gradient clipping (max_norm=1.0) for stable Transformer training
   - Mixed precision (torch.cuda.amp) for GPU speedup
   - Epoch checkpoints + best-model checkpoint (keyed on val macro-F1)
-  - Early stopping (patience=15, monitors val macro-F1)
+  - Early stopping (patience=50, monitors val macro-F1)
   - Full training history saved as JSON (for learning-curve plots)
   - Reproducible: seeds numpy, Python random, and PyTorch
 
@@ -85,7 +85,7 @@ DEFAULT_CONFIG: dict = {
     "n_classes":     3,
     "dropout":       0.3,    # 0.2→0.3: stronger regularisation for the larger model
     # Training
-    "batch_size":    64,   # 64 is safe for 4 GB VRAM; increase to 256 on larger GPUs
+    "batch_size":    256,  # canonical training value (Run 14, Tesla T4); reduce on smaller GPUs
     "max_epochs":    150,
     "lr":            1e-3,
     "weight_decay":  1e-4,    # AdamW  (Loshchilov & Hutter, 2019)
