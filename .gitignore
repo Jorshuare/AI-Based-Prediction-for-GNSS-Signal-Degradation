@@ -72,7 +72,8 @@ THESIS_DIRECTIONS.md
 report/joel/
 report/joshua/
 report/mustapha/
-
+GPS/
+GPS_EKF/
 # ─── Always track these regardless of above rules ────────────────────────────
 !**/.gitkeep
 !docs/dataset_references/*.pdf
@@ -92,3 +93,16 @@ report/mustapha/
 *.snm
 *.nav
 *.vrb
+
+# ─── Lean repo: large assets NOT needed by the Kaggle pipeline ────────────────
+# All kept on local disk (only untracked from git); either regenerable,
+# reference-only, or personal deliverables that do not belong in the Kaggle
+# data source. This section is last so it overrides earlier re-include rules.
+docs/
+route_planning/
+data/processed/combined_dataset.csv
+# Redundant training checkpoints — Kaggle rebuilds these; keep only best_full model.
+results/models/checkpoints/checkpoint_epoch_*.pt
+results/models/checkpoints_lstm_only/
+results/models/checkpoints_transformer_only/
+results/models/checkpoints_debug*/

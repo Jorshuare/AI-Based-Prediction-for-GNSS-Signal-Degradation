@@ -643,6 +643,10 @@ if __name__ == "__main__":
     parser.add_argument("--lr",           type=float, default=None)
     parser.add_argument("--dropout",      type=float, default=None)
     parser.add_argument("--focal_gamma",   type=float, default=None)
+    parser.add_argument("--label_smoothing", type=float, default=None,
+                        help="Label-smoothing epsilon. Set with --focal_gamma 0 "
+                             "--class_weights 1 1 1 --label_smoothing 0 for a plain "
+                             "cross-entropy ablation.")
     parser.add_argument("--class_weights",  type=float, nargs=3,
                         metavar=("W_CLEAN", "W_WARNING", "W_DEGRADED"), default=None,
                         help="Per-class focal loss weights, e.g. --class_weights 1 4 3")
@@ -657,10 +661,15 @@ if __name__ == "__main__":
                              "Use data/processed/windows_no_smote/ for deep model training.")
     parser.add_argument("--debug",        action="store_true",
                         help="Smoke-test: use windows_debug/ and a debug checkpoint dir")
+    parser.add_argument("--ckpt_tag",     type=str,   default=None,
+                        help="Override checkpoint dir suffix, e.g. --ckpt_tag ce_ablation "
+                             "saves to results/models/checkpoints_ce_ablation/ so a "
+                             "same-architecture run does not overwrite the canonical model.")
     args = parser.parse_args()
 
     cfg = DEFAULT_CONFIG.copy()
-    for key in ("batch_size", "max_epochs", "lr", "dropout", "focal_gamma"):
+    for key in ("batch_size", "max_epochs", "lr", "dropout", "focal_gamma",
+                "label_smoothing"):
         val = getattr(args, key)
         if val is not None:
             cfg[key] = val
@@ -668,8 +677,13 @@ if __name__ == "__main__":
         cfg["class_weights"] = list(args.class_weights)
     cfg["model_type"] = args.model_type
 
-    # Each model type gets its own checkpoint directory so runs don't overwrite each other
-    ckpt_suffix = "" if args.model_type == "full" else f"_{args.model_type}"
+    # Each model type gets its own checkpoint directory so runs don't overwrite each other.
+    # An explicit --ckpt_tag takes precedence, isolating same-architecture ablation runs
+    # (e.g. a plain cross-entropy variant) from the canonical checkpoint.
+    if args.ckpt_tag:
+        ckpt_suffix = f"_{args.ckpt_tag}"
+    else:
+        ckpt_suffix = "" if args.model_type == "full" else f"_{args.model_type}"
 
     if args.debug:
         debug_window_dir = ROOT / "data" / "processed" / "windows_debug"

@@ -1107,6 +1107,7 @@ def bootstrap_metrics(
     n_boot: int = 1000,
     alpha: float = 0.05,
     random_state: int = 42,
+    block_size: int = 0,
 ) -> dict:
     """Compute 95% bootstrap CIs for macro-F1, MCC, and Cohen's κ.
 
@@ -1116,8 +1117,11 @@ def bootstrap_metrics(
 
     Parameters
     ----------
-    n_boot : Number of bootstrap resamples (1000 is the recommended minimum).
-    alpha  : Significance level (0.05 → 95% CI).
+    n_boot     : Number of bootstrap resamples (1000 is the recommended minimum).
+    alpha      : Significance level (0.05 → 95% CI).
+    block_size : If > 0, use block bootstrap with this block length to account
+                 for inter-window autocorrelation (set to window length = 30).
+                 If 0, use standard i.i.d. resampling.
     """
     rng = np.random.default_rng(random_state)
     ci = {}
@@ -1132,7 +1136,17 @@ def bootstrap_metrics(
         boot_kap = []
 
         for _ in range(n_boot):
-            idx = rng.integers(0, n, size=n)
+            if block_size > 0:
+                # Block bootstrap: sample contiguous blocks of length block_size.
+                # Number of blocks needed to cover n samples.
+                n_blocks = int(np.ceil(n / block_size))
+                starts = rng.integers(0, max(n - block_size + 1, 1), n_blocks)
+                idx = np.concatenate(
+                    [np.arange(s, min(s + block_size, n)) for s in starts]
+                )[:n]
+            else:
+                idx = rng.integers(0, n, size=n)
+
             yt = y_true[idx]
             yp = y_pred[idx]
             boot_f1.append(f1_score(yt, yp, average="macro",  zero_division=0))
@@ -1146,8 +1160,9 @@ def bootstrap_metrics(
             "mcc":      (np.quantile(boot_mcc, lo), np.quantile(boot_mcc, hi)),
             "kappa":    (np.quantile(boot_kap, lo), np.quantile(boot_kap, hi)),
         }
+        method = f"block(b={block_size})" if block_size > 0 else "i.i.d."
         log.info(
-            f"  Bootstrap CI ({h}):  "
+            f"  Bootstrap CI [{method}] ({h}):  "
             f"macro-F1=[{ci[h]['macro_f1'][0]:.3f}, {ci[h]['macro_f1'][1]:.3f}]  "
             f"MCC=[{ci[h]['mcc'][0]:.3f}, {ci[h]['mcc'][1]:.3f}]"
         )
