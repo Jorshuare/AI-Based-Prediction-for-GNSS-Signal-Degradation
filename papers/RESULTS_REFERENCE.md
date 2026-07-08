@@ -400,3 +400,34 @@ Trees lead in-domain at every horizon; the DL advantage is **cross-domain** (E8)
 2. **"Zero papers on cross-receiver / cross-city GNSS degradation prediction"** — soften to _"to the best of our knowledge, after a systematic search of [databases], we found no prior work that …"_. Never assert an absolute absence as fact.
 3. **GPS Solutions impact factor (4.9)** — verify the current JCR value at submission time.
 4. **Dataset epoch counts per source** — regenerate from the final committed CSVs before writing Paper 4's table.
+
+## 12. Reviewer-Response Experiments (Paper A) — ✅ RUN 2026-07-07 (Kaggle) + local
+
+Source: `kaggle_reviewer_experiments.ipynb` → `results/reviewer_v2/reviewer_experiments_v2.json`.
+All wired into `GPS/sentinel_gps_solutions.tex`.
+
+**A. Threshold sensitivity** (149,662-epoch labelled corpus, labeling-rule sweep):
+- Position boundary ±1 m (4→6 m): <1% of labels flip; DEGRADED prevalence 35.5%→33.9%. Only 3.2% of epochs within 1 m of the 5 m boundary.
+- Satellite-count boundary (3→5): <0.5% of labels flip.
+- C/N₀ boundary ±2 dB-Hz (28→32): DEGRADED prevalence 27.3%→39.2% (most influential input, the physical degradation signal).
+- Caveat: vectorised replica agreed 75% with stored labels (labeler.py drifted); reported as **rule** sensitivity, not stored-label reproduction.
+
+**B. Block bootstrap** (full test set n=1,686, +5 s):
+- Point: Macro-F1 0.8218, DEG-F1 0.7172, DEG-recall 0.8373.
+- i.i.d. CI: Macro [0.800, 0.842], DEG-recall [0.787, 0.883].
+- Block (b=30) CI: Macro **[0.722, 0.895]**, DEG-recall **[0.653, 0.934]** (wider, honest; point unchanged, lower bounds well above baselines).
+
+**C. No-focal-loss ablation** (γ=0, uniform weights, --ckpt_tag ce_ablation; argmax decoding):
+- Focal (canonical): Macro 0.8218, DEG-recall 0.8373, DEG-F1 0.7172.
+- Plain CE: Macro 0.8266, DEG-recall 0.8134, DEG-F1 0.6667.
+- ⇒ CE +0.5 pp Macro-F1 but −2.4 pp DEG-recall, −5.0 pp DEG-F1. Confirms focal config is a deliberate recall-first choice.
+
+**D. RAIM availability** (corrected — use `urbannav_ekf_real_trimble_tracks.npz`, NOT real_tracks.npz=ublox):
+- Trimble track matches paper: GNSS deg 47.4, aided_fixed 24.28, aided_adapt 26.76, 2,450 degraded epochs. ✅
+- **RAIM availability over degraded epochs: nsat≥5 (detection) = 74.8%, nsat≥6 (exclusion) = 0.0%, median nsat = 5.** Over all epochs: ≥5 96.7%, ≥6 86.9%, median 8.
+- ⇒ Classical RAIM exclusion unavailable throughout degraded segments; GNSS-only FDE diverges (>1 km). Reframed from positioning-RMSE row to an **availability** argument (stronger, citable).
+- ⚠️ Original notebook Exp D used the ublox track (78.4 m) and a diverging CV-FDE (1964 m), both wrong; notebook cell corrected.
+
+**E. Floor calibration on cross-city classification** (Tokyo, n=31,236):
+- Raw: Macro 0.6489, DEG-F1 0.7528, DEG-recall 0.9663. Calibrated: Macro 0.6516, DEG-F1 0.7435, DEG-recall 0.7596.
+- ⇒ Calibration **−0.9 pp DEG-F1** on classification (null/negative). It is a **navigation-stage** mechanism; no classification-calibration claim made in the paper.

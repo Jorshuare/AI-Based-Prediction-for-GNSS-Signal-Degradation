@@ -29,10 +29,14 @@ RES = ROOT / "results"
 OUT = RES / "paper_figures"
 OUT.mkdir(parents=True, exist_ok=True)
 
-# ── Single source of truth: cividis colour-blind-safe palette ─────────────────
-# cividis is perceptually uniform and safe for all colour-vision deficiencies.
-# Categorical colours are evenly-spaced samples of the cividis colormap; callout
-# TEXT/ARROWS use a dark colour (C_MARK) because the cividis high end is yellow.
+# ── SINGLE SOURCE OF TRUTH: figure colour palette ─────────────────────────────
+# Every categorical chart figure derives its colours from the constants below.
+# All palettes are colour-vision-deficiency (CVD) safe. To restyle EVERY figure,
+# change PALETTE_NAME to one of the keys in _PALETTES and regenerate
+#   python -m src.utils.make_paper_figures
+# The confusion-matrix heatmap keeps sequential cividis (an intensity map).
+PALETTE_NAME = "okabe_ito"   # "cividis" | "okabe_ito" | "tol_bright" | "dark2"
+
 _CIV = _mpl.colormaps["cividis"]
 
 
@@ -41,22 +45,50 @@ def civ(t):
     return (r, g, b)
 
 
+# role keys: clean/warn/deg (the 3 classes), ours (SENTINEL/DL), base (trees),
+# acc (secondary series e.g. MCC), ens (ensemble), neu (neutral grey),
+# seq (ordered >=6-colour list for multi-method charts).
+_PALETTES = {
+    "cividis": dict(
+        clean=civ(.12), warn=civ(.52), deg=civ(.92), ours=civ(.18), base=civ(.70),
+        acc=civ(.45), ens=civ(.62), neu="#7A7A7A",
+        seq=[civ(.18), civ(.70), "#7A7A7A", civ(.62), civ(.80), civ(.35)],
+        heatmap="cividis"),
+    "okabe_ito": dict(
+        clean="#009E73", warn="#E69F00", deg="#D55E00", ours="#0072B2", base="#E69F00",
+        acc="#56B4E9", ens="#CC79A7", neu="#999999",
+        seq=["#0072B2", "#E69F00", "#009E73", "#CC79A7", "#56B4E9", "#D55E00"],
+        heatmap="Blues"),
+    "tol_bright": dict(
+        clean="#228833", warn="#CCBB44", deg="#EE6677", ours="#4477AA", base="#CCBB44",
+        acc="#66CCEE", ens="#AA3377", neu="#BBBBBB",
+        seq=["#4477AA", "#EE6677", "#228833", "#AA3377", "#66CCEE", "#CCBB44"],
+        heatmap="Blues"),
+    "dark2": dict(
+        clean="#1B9E77", warn="#E6AB02", deg="#D95F02", ours="#7570B3", base="#E6AB02",
+        acc="#66A61E", ens="#E7298A", neu="#666666",
+        seq=["#7570B3", "#D95F02", "#1B9E77", "#E7298A", "#66A61E", "#A6761D"],
+        heatmap="Purples"),
+}
+_P = _PALETTES[PALETTE_NAME]
+
 PALETTE = {
     "c0": civ(0.00), "c1": civ(0.20), "c2": civ(0.40),
     "c3": civ(0.60), "c4": civ(0.80), "c5": civ(1.00),
-    "black": "#000000", "grey": "#7A7A7A", "white": "#FFFFFF",
+    "black": "#000000", "grey": _P["neu"], "white": "#FFFFFF",
 }
-# semantic assignments (consistent across every figure), sampled from cividis
-C_CLEAN = civ(0.12)            # CLEAN    (dark blue)
-C_WARN = civ(0.52)            # WARNING  (slate)
-C_DEG = civ(0.92)            # DEGRADED (yellow)  -- bars/fills only
-C_OURS = civ(0.18)            # SENTINEL-GNSS / DL (dark)
-C_BASE = civ(0.70)            # tree / baseline    (light)
-C_ACC = civ(0.45)            # secondary series (e.g. MCC)
-C_ENS = civ(0.62)            # ensemble series
-C_NEU = PALETTE["grey"]
-# readable callout text / arrows (never yellow on white)
-C_MARK = PALETTE["black"]
+# semantic assignments (consistent across every figure)
+C_CLEAN = _P["clean"]          # CLEAN
+C_WARN  = _P["warn"]           # WARNING
+C_DEG   = _P["deg"]            # DEGRADED  (bars/fills only)
+C_OURS  = _P["ours"]           # SENTINEL-GNSS / DL
+C_BASE  = _P["base"]           # tree / baseline
+C_ACC   = _P["acc"]            # secondary series (e.g. MCC)
+C_ENS   = _P["ens"]            # ensemble series
+C_NEU   = _P["neu"]            # neutral grey
+C_SEQ   = _P["seq"]            # ordered categorical list for multi-method charts
+# readable callout text / arrows
+C_MARK  = PALETTE["black"]
 
 # ── Single source of truth: font sizes (pt) ───────────────────────────────────
 FONTS = {
@@ -197,7 +229,7 @@ def fig_multihorizon():
     ax.set_ylim(0, 1.0)
     ax.set_xlabel("Prediction horizon")
     ax.set_ylabel("Score")
-    blegend(ax, loc="upper right")
+    blegend(ax, loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=2, frameon=False)
     style(ax)
     save(fig, "fig01_multihorizon")
 
@@ -256,7 +288,7 @@ def fig_ablation():
     ax.set_xticklabels(["Transformer\nonly", "LSTM\nonly", "Full\n(Proposed)"])
     ax.set_ylim(0, 1.0)
     ax.set_ylabel("Score  (+5 s)")
-    blegend(ax, ncol=3, loc="upper left")
+    blegend(ax, loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=3, frameon=False)
     style(ax)
     save(fig, "fig04_ablation")
 
@@ -314,41 +346,36 @@ def fig_crosscity_gap():
 
 
 def fig_ekf_rmse():
-    d = load_json(RES / "ekf_demo.json")
-    if not d:
-        print("  [skip] fig07 — no ekf_demo.json")
+    # Visualise the SAME six methods and numbers as the paper navigation table,
+    # from paperb_navigation_metrics.json, so figure and table cannot disagree.
+    d = load_json(RES / "paperb_navigation_metrics.json")
+    seg = (d or {}).get("degraded_segment_metrics")
+    if not seg:
+        print("  [skip] fig07 — no paperb_navigation_metrics.json")
         return
-    ov = d["rmse_overall"]
-    seg = d.get("rmse_degraded_segment", {})
-    # Reorder: GNSS raw → SENTINEL adaptive (ours) → Fixed-R (oracle ceiling)
-    # so bars decrease left→right and our system is the prominent middle bar.
-    keys   = ["gnss_only", "adaptive_ekf", "fixed_ekf"]
-    labels = ["GNSS-only", "SENTINEL\n(Proposed)", "Fixed-R EKF\n(oracle ceiling)"]
-    x = np.arange(3)
-    w = 0.38
-    fig, ax = plt.subplots(figsize=(7.5, 4.8))
-    ax.bar(x - w/2, [ov[k] for k in keys], w, color=C_NEU,
-           label="Overall", edgecolor="white")
-    ax.bar(x + w/2, [seg.get(k, 0) for k in keys], w,
-           color=C_DEG, label="During blockage", edgecolor="white")
-    for i, k in enumerate(keys):
-        ax.text(i - w/2, ov[k] + 0.7, f"{ov[k]:.1f}", ha="center",
+    order = [("GNSS raw", "GNSS\nraw"),
+             ("EKF fixed-R", "Fixed-R\nEKF"),
+             ("EKF adaptive (nsat)", "nsat-proxy\nEKF"),
+             ("EKF Huber (robust)", "Huber\nEKF"),
+             ("Student-t PF", "Student-t\nPF"),
+             ("EKF SENTINEL (calib.)", "SENTINEL\n-EKF")]
+    order = [(k, l) for k, l in order if k in seg]
+    vals = [seg[k]["rmse"] for k, _ in order]
+    cis  = [seg[k].get("rmse_ci95", [seg[k]["rmse"], seg[k]["rmse"]]) for k, _ in order]
+    err  = [[v - c[0] for v, c in zip(vals, cis)],
+            [c[1] - v for v, c in zip(vals, cis)]]
+    cols = [C_OURS if "SENTINEL" in k else (C_NEU if k == "GNSS raw" else C_BASE)
+            for k, _ in order]
+    x = np.arange(len(order))
+    fig, ax = plt.subplots(figsize=(8, 4.8))
+    ax.bar(x, vals, 0.62, yerr=err, capsize=5, color=cols, edgecolor="white")
+    for xi, v, c in zip(x, vals, cis):
+        ax.text(xi, c[1] + 1.0, f"{v:.1f}", ha="center",
                 fontsize=FONTS["value"], fontweight="bold")
-        if seg:
-            ax.text(i + w/2, seg[k] + 0.7, f"{seg[k]:.1f}",
-                    ha="center", fontsize=FONTS["value"], fontweight="bold")
-    # Annotate % gain vs raw GPS on the blockage bars
-    gnss_seg = seg["gnss_only"]
-    for i, k in enumerate(keys[1:], start=1):
-        gain = 100.0 * (gnss_seg - seg[k]) / gnss_seg
-        ax.text(i + w/2, seg[k] / 2,
-                f"−{gain:.1f}%", ha="center", va="center",
-                fontsize=FONTS["annot"] - 1, fontweight="bold", color="white")
     ax.set_xticks(x)
-    ax.set_xticklabels(labels, fontsize=FONTS["tick"])
-    ax.set_ylabel("Position RMSE (m)")
-    ax.set_ylim(0, max(seg.values()) * 1.18)
-    blegend(ax, loc="upper right")
+    ax.set_xticklabels([l for _, l in order], fontsize=FONTS["tick"])
+    ax.set_ylabel("Degraded-segment RMSE (m)")
+    ax.set_ylim(0, max(c[1] for c in cis) * 1.15)
     style(ax)
     save(fig, "fig07_ekf_rmse")
 
@@ -548,7 +575,7 @@ def fig_confusion_matrices():
 
     fig, axs = plt.subplots(1, 3, figsize=(14, 4.2),
                             gridspec_kw={"wspace": 0.38})
-    _cmap = _mpl.colormaps["cividis"]
+    _cmap = _mpl.colormaps[_P.get("heatmap", "cividis")]
     im = None
 
     for ax, (hz, cm_raw) in zip(axs, CMS.items()):
@@ -557,7 +584,9 @@ def fig_confusion_matrices():
         for r in range(3):
             for c in range(3):
                 val = cm_norm[r, c]
-                col = "white" if val < 0.5 else PALETTE["black"]
+                _rgba = _cmap(val)   # pick text colour by actual cell luminance
+                _lum = 0.299 * _rgba[0] + 0.587 * _rgba[1] + 0.114 * _rgba[2]
+                col = "white" if _lum < 0.55 else PALETTE["black"]
                 ax.text(c, r, f"{val:.2f}", ha="center", va="center",
                         fontsize=FONTS["value"], fontweight="bold", color=col)
         ax.set_xticks(range(3))
@@ -820,7 +849,7 @@ def fig_ensemble():
     names = list(ind.keys())
     x = np.arange(len(names))
     w = 0.4
-    cols = [C_OURS, C_BASE, C_NEU, C_ENS, civ(0.80)]
+    cols = C_SEQ[:5]
     fig, ax = plt.subplots(figsize=(8.2, 4.7))
     ax.bar(x - w/2, [ind[n] for n in names], w, color=C_NEU,
            label="In-domain (Beihang/Hangzhou)", edgecolor="white")
@@ -838,7 +867,7 @@ def fig_ensemble():
     ax.set_ylabel("Macro-F1 (+5 s)")
     ax.annotate("ensemble best\ncross-city", xy=(3 + w/2, cro["Soft-vote"]), xytext=(2.4, 0.42),
                 arrowprops=dict(arrowstyle="->", color=C_MARK, lw=2), color=C_MARK, fontsize=FONTS["annot"], fontweight="bold")
-    blegend(ax, loc="upper left")
+    blegend(ax, loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=2, frameon=False)
     style(ax)
     save(fig, "fig16_ensemble")
 
@@ -957,8 +986,8 @@ def fig_robust_comparison():
     method_names = ["GNSS raw", "CV KF", "EKF fixed-R",
                     "EKF adaptive\n(SENTINEL)", "EKF Huber\n(robust)",
                     "PF Student-t\n(robust)"]
-    colors_deg   = [C_NEU, C_BASE, C_WARN, C_OURS, civ(0.35), civ(0.62)]
-    colors_ov    = [civ(0.82), civ(0.70), civ(0.52), civ(0.18), civ(0.35), civ(0.62)]
+    colors_deg   = C_SEQ[:6]
+    colors_ov    = C_SEQ[:6]
 
     fig, axs = plt.subplots(1, 3, figsize=(16, 5.5), sharey=False)
 
@@ -1059,7 +1088,7 @@ def main():
     src = _full_from_json()
     print(f"SENTINEL-GNSS paper figures -> {OUT}")
     print(
-        f"Full-model numbers source: {src}  | palette: cividis (colour-blind safe)")
+        f"Full-model numbers source: {src}  | palette: {PALETTE_NAME} (colour-blind safe)")
     figs = [fig_multihorizon, fig_perclass, fig_comparison, fig_ablation, fig_crosscity_degraded,
             fig_crosscity_gap, fig_ekf_rmse, fig_ekf_trajectory, fig_deg_progress, fig_dataset,
             fig_splits, fig_latency, fig_reactive_vs_proactive, fig_confusion_matrices,

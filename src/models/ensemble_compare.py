@@ -137,8 +137,9 @@ def main():
             dl_te = dl_probs(model, dev, Xte, h)
             row["dl"] = round(macro(yte, dl_te.argmax(1)), 4)
             row["dl_deg"] = round(deg_f1(yte, dl_te.argmax(1)), 4)
-            # RandomForest
-            rf = RandomForestClassifier(200, class_weight="balanced", n_jobs=-1,
+            # RandomForest — 500 trees to match the baselines.py RF so the
+            # in-domain RF Macro-F1 is identical across Table 2 and Table 5.
+            rf = RandomForestClassifier(500, class_weight="balanced", n_jobs=-1,
                                         random_state=42).fit(Xtrf, ytr)
             rf_te = rf.predict_proba(Xtef)
             row["rf"] = round(macro(yte, rf_te.argmax(1)), 4)
