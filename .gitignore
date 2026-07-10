@@ -62,6 +62,12 @@ route_planning/analysis/**/*.png
 .vscode/
 Team-Pilot-Project.code-workspace
 
+# ─── Claude Code settings (internal tooling — never public) ──────────────────
+.claude/
+
+# ─── Internal session notes ───────────────────────────────────────────────────
+SESSION_STATUS.md
+
 # ─── Private project guide (comprehensive internal reference) ─────────────────
 PROJECT_COMPLETE_GUIDE.md
 
