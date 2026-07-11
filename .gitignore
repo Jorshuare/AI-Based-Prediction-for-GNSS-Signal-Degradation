@@ -68,6 +68,55 @@ Team-Pilot-Project.code-workspace
 # ─── Internal session notes ───────────────────────────────────────────────────
 SESSION_STATUS.md
 
+# ─── Internal team notes and planning docs ────────────────────────────────────
+bnks/
+Team-Pilot-Project.code-workspace
+
+# ─── Internal paper planning / team-only docs ─────────────────────────────────
+papers/RESULTS_REFERENCE.md
+papers/PAPER_A_Flagship.md
+papers/PAPER_B_Comparison_EKF.md
+papers/PAPER_CONFERENCE_CrossCity.md
+papers/TEAM_BRIEF.md
+papers/search_keywords.md
+papers/notebooklm_prompts.md
+papers/README.md
+
+# ─── Internal reviewer experiments ───────────────────────────────────────────
+kaggle_reviewer_experiments.ipynb
+results/reviewer_experiments.json
+results/sentinel_reviewer_results/
+
+# ─── Debug / intermediate model checkpoints ───────────────────────────────────
+results/models/checkpoints_debug/
+
+# ─── Internal presentation-building scripts ───────────────────────────────────
+src/utils/make_pptx_v5.py
+src/utils/make_pptx_v6.py
+src/utils/add_paperb_concept_slides.py
+src/utils/generate_presentation_figures.py
+src/utils/ekf_presentation_figures.py
+src/utils/update_slide25_ekf_cards.py
+
+# ─── Training notebooks (local Kaggle/Colab runs) ─────────────────────────────
+kaggle_train.ipynb
+colab_train.ipynb
+
+# ─── Proposal internals and third-party copyrighted docs ─────────────────────
+proposal/Meeting Summary/
+proposal/Documentation/
+proposal/Presentations/GNSS_4Week_DayByDay_Plan.md
+proposal/Presentations/SENTINEL_GNSS_Proposal_v4.md
+proposal/Presentations/build_pptx_v4.py
+proposal/Presentations/*.pptx
+proposal/build_pptx_v2.py
+proposal/build_pptx_v3.py
+proposal/Pilot Project Propsal.docx
+proposal/Project_Framework.docx
+
+# ─── Microsoft Office lock files (never commit these) ─────────────────────────
+~$*
+
 # ─── Private project guide (comprehensive internal reference) ─────────────────
 PROJECT_COMPLETE_GUIDE.md
 
